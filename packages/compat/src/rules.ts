@@ -277,7 +277,7 @@ export const rule8: Rule = ({ gpu, psu }) => {
   const demand = normalizeGpuDemand(gpu);
 
   // ★ 모순 검사. 값이 0이라고 그대로 믿지 않는다.
-  // RTX 40/50 중 166건이 TDP 75W 초과인데 커넥터가 전부 명시적 0이다.
+  // GPU 전체의 20.3%(705/3,468)가 TDP 75W 초과인데 커넥터가 전부 명시적 0이다.
   // 이 검사가 없으면 전부 "보조전원 0개 필요 → 통과"가 된다. docs/compat-rules.md §8.4
   if (
     isFilled(gpu.tdp) &&

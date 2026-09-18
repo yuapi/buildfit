@@ -1,0 +1,22 @@
+{
+  "name": "@buildfit/ingest",
+  "version": "0.0.0",
+  "private": true,
+  "description": "BuildCores OpenDB → PostgreSQL 적재 (이슈 #3)",
+  "type": "module",
+  "scripts": {
+    "ingest": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@buildfit/db": "*",
+    "drizzle-orm": "^0.45.2",
+    "postgres": "^3.4.7"
+  },
+  "devDependencies": {
+    "tsx": "^4",
+    "typescript": "^5",
+    "vitest": "^5.0.1"
+  }
+}

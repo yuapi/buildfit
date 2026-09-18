@@ -1,0 +1,111 @@
+import { describe, expect, it } from 'vitest';
+import { getPath, isFilled, normalizeReleaseYear, toPartRow, toSlug } from '../src/transform';
+
+describe('getPath', () => {
+  it('중첩 경로를 읽는다', () => {
+    expect(getPath({ a: { b: { c: 1 } } }, 'a.b.c')).toBe(1);
+  });
+  it('없는 경로는 undefined', () => {
+    expect(getPath({ a: 1 }, 'a.b.c')).toBeUndefined();
+  });
+  it('null을 만나도 던지지 않는다', () => {
+    expect(getPath({ a: null }, 'a.b')).toBeUndefined();
+  });
+});
+
+describe('isFilled', () => {
+  it('0과 false는 값이다 — 결측이 아니다', () => {
+    expect(isFilled(0)).toBe(true);
+    expect(isFilled(false)).toBe(true);
+  });
+  it('null·빈 배열·빈 문자열은 결측', () => {
+    expect(isFilled(null)).toBe(false);
+    expect(isFilled([])).toBe(false);
+    expect(isFilled('  ')).toBe(false);
+  });
+});
+
+describe('normalizeReleaseYear', () => {
+  const now = new Date('2026-09-18T00:00:00Z');
+
+  it('정상 연도는 통과', () => {
+    expect(normalizeReleaseYear(2024, now)).toBe(2024);
+  });
+
+  it('OpenDB에 실재하는 오타를 버린다', () => {
+    // 조사에서 확인된 실제 값들
+    expect(normalizeReleaseYear(20117, now)).toBeNull();
+    expect(normalizeReleaseYear(20225, now)).toBeNull();
+  });
+
+  it('너무 과거도 버린다', () => {
+    expect(normalizeReleaseYear(1970, now)).toBeNull();
+  });
+
+  it('숫자가 아니면 null', () => {
+    expect(normalizeReleaseYear('2024', now)).toBeNull();
+    expect(normalizeReleaseYear(null, now)).toBeNull();
+  });
+});
+
+describe('toSlug', () => {
+  it('소문자-하이픈으로 정규화한다', () => {
+    expect(toSlug(['AMD', 'Ryzen 7 9800X3D'])).toBe('amd-ryzen-7-9800x3d');
+  });
+  it('특수문자를 하이픈으로 접는다', () => {
+    expect(toSlug(['G.Skill', 'Trident Z5 (2x16GB)'])).toBe('g-skill-trident-z5-2x16gb');
+  });
+  it('빈 값은 건너뛴다', () => {
+    expect(toSlug([null, 'ASUS', undefined, ''])).toBe('asus');
+  });
+});
+
+describe('toPartRow', () => {
+  const gpuRecord = {
+    chipset: 'GeForce RTX 5080',
+    length: 337,
+    tdp: 360,
+    total_slot_width: 3,
+    power_connectors: { pcie_6_pin: 0, pcie_8_pin: 0, pcie_12VHPWR: 1, pcie_12V_2x6: 0 },
+    metadata: {
+      name: 'MSI GAMING TRIO GeForce RTX 5080 16GB',
+      manufacturer: 'MSI',
+      releaseYear: 2025,
+      part_numbers: ['RTX-5080-GAMING-TRIO'],
+    },
+    identifiers: { identifiers: [{ type: 'mpn', value: 'G50TRIO16', region: 'all' }] },
+  };
+
+  it('허용 목록의 스펙만 옮긴다', () => {
+    const row = toPartRow('GPU', 'abcdef12-0000-0000-0000-000000000000', gpuRecord);
+    const keys = row?.specs.map((s) => s.key).sort();
+    expect(keys).toContain('length_mm');
+    expect(keys).toContain('pcie_12vhpwr');
+    // 허용 목록에 없는 필드는 들어오지 않는다
+    expect(keys).not.toContain('video_outputs');
+  });
+
+  it('0인 커넥터를 결측으로 버리지 않는다 — 규칙 8 모순 검사의 입력이다', () => {
+    const row = toPartRow('GPU', 'abcdef12-0000-0000-0000-000000000000', gpuRecord);
+    const six = row?.specs.find((s) => s.key === 'pcie_6_pin');
+    expect(six?.value).toBe(0);
+  });
+
+  it('MPN을 identifiers에서 뽑는다', () => {
+    const row = toPartRow('GPU', 'abcdef12-0000-0000-0000-000000000000', gpuRecord);
+    expect(row?.mpn).toBe('G50TRIO16');
+  });
+
+  it('slug에 opendb id를 붙여 동일 모델명 충돌을 피한다', () => {
+    const row = toPartRow('GPU', 'abcdef12-0000-0000-0000-000000000000', gpuRecord);
+    expect(row?.slug.endsWith('-abcdef12')).toBe(true);
+  });
+
+  it('이름이 없으면 건너뛴다', () => {
+    expect(toPartRow('GPU', 'x', { metadata: {} })).toBeNull();
+  });
+
+  it('모르는 카테고리는 건너뛴다', () => {
+    expect(toPartRow('Keyboard', 'x', gpuRecord)).toBeNull();
+  });
+});
