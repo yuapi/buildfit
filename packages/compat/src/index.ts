@@ -16,12 +16,32 @@ export type {
   BuildVerdict,
 } from './verdict';
 
+export { pass, fail, unknown, missing, inconsistent, summarize, isFilled } from './verdict';
+
+export type {
+  PartRef,
+  Cpu,
+  Motherboard,
+  RamKit,
+  Gpu,
+  GpuConnectors,
+  PcCase,
+  Psu,
+  PsuConnectors,
+  Build,
+} from './parts';
+
+export { emptyBuild } from './parts';
+
+export type { PowerConstants } from './power';
 export {
-  pass,
-  fail,
-  unknown,
-  missing,
-  inconsistent,
-  summarize,
-  isFilled,
-} from './verdict';
+  POWER_CONSTANTS,
+  PCIE_SLOT_POWER_W,
+  PSU_HEADROOM_MULTIPLIER,
+  TIGHT_FIT_RATIO,
+} from './power';
+
+export type { Rule } from './rules';
+export { rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8, phase0Rules } from './rules';
+
+export { evaluate } from './engine';
