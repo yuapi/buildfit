@@ -50,6 +50,9 @@ export {
   REQUIREMENT_CATEGORIES,
   requiredKeysFor,
   rulesBlockedBy,
+  MOBO_FORM_FACTORS,
+  PSU_FORM_FACTORS,
+  MEMORY_TYPES,
 } from './requirements';
 
 export { evaluate } from './engine';
