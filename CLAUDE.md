@@ -71,4 +71,17 @@ Phase 0a: OpenDB 적재 + 국내 유통 매칭 + 어드민
 
 ## 기술 스택
 
-(미정 — 첫 조사 이슈 완료 후 채운다)
+확정: ADR-0010. 근거와 탈락 대안은 `docs/research/stack-requirements.md`.
+
+| 구분 | 확정 |
+|---|---|
+| 프론트·백엔드 | **Next.js (TypeScript)** — App Router, SSR/ISR |
+| DB | **PostgreSQL** — `part_specs`는 JSONB |
+| 규칙 엔진 | 프레임워크 비의존 **순수 TS 모듈** |
+| 정규화 워커 (Phase 2) | Python 별도 서비스. DB로만 연결 |
+| 캐시·큐 | 두지 않는다 |
+
+- **규칙 엔진을 Next.js에 의존시키지 않는다.** DB 접근도 프레임워크 API도 쓰지 않는
+  순수 함수로 두고, 클라이언트와 서버가 같은 코드를 쓴다. 판정 로직이 두 벌이 되면
+  "편집 중엔 통과인데 공유 링크에선 오류"가 난다
+- Phase 2 Python 워커와의 경계는 **DB로만** 한정한다. HTTP로 엮지 않는다
