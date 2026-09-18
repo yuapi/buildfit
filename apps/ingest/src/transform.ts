@@ -1,6 +1,6 @@
 /** OpenDB 레코드를 우리 형태로 옮기는 순수 함수들. DB에 의존하지 않는다. */
 
-import { CATEGORY_SPECS, SPEC_UNITS } from './mapping';
+import { CATEGORY_SPECS, POSITIVE_ONLY_KEYS, SPEC_UNITS } from './mapping';
 
 export interface SpecRow {
   readonly key: string;
@@ -92,8 +92,11 @@ export function toPartRow(
   const specs: SpecRow[] = [];
   for (const [key, path] of Object.entries(specMap)) {
     const value = getPath(record, path);
-    // 결측은 행을 만들지 않는다. 0·false는 값이므로 남긴다.
+    // 결측은 행을 만들지 않는다. 0·false는 기본적으로 값이므로 남긴다.
     if (!isFilled(value)) continue;
+    // 단 0이 물리적으로 불가능한 키는 미입력으로 보고 버린다 (mapping.ts 참조).
+    // 커넥터는 여기 해당하지 않는다 — 조합 모순이라 규칙 엔진이 판정한다.
+    if (POSITIVE_ONLY_KEYS.has(key) && typeof value === 'number' && value <= 0) continue;
     specs.push({ key, value, unit: SPEC_UNITS[key] ?? null });
   }
 
