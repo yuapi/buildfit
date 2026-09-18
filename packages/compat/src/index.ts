@@ -44,4 +44,15 @@ export {
 export type { Rule } from './rules';
 export { rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8, phase0Rules } from './rules';
 
+export type { FieldRequirement } from './requirements';
+export {
+  PHASE0_REQUIREMENTS,
+  REQUIREMENT_CATEGORIES,
+  requiredKeysFor,
+  rulesBlockedBy,
+  MOBO_FORM_FACTORS,
+  PSU_FORM_FACTORS,
+  MEMORY_TYPES,
+} from './requirements';
+
 export { evaluate } from './engine';

@@ -6,7 +6,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./schema": "./src/schema.ts"
+    "./schema": "./src/schema.ts",
+    "./queries": "./src/queries/gaps.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -15,7 +16,8 @@
   },
   "dependencies": {
     "drizzle-orm": "^0.45.2",
-    "postgres": "^3.4.7"
+    "postgres": "^3.4.7",
+    "@buildfit/compat": "*"
   },
   "devDependencies": {
     "drizzle-kit": "^0.31.10",
