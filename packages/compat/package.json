@@ -1,0 +1,16 @@
+{
+  "name": "@buildfit/compat",
+  "version": "0.0.0",
+  "private": true,
+  "description": "호환성 규칙 엔진 — 프레임워크·DB에 의존하지 않는 순수 모듈 (ADR-0010)",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5"
+  }
+}

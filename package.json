@@ -1,0 +1,20 @@
+{
+  "name": "buildfit",
+  "version": "0.0.0",
+  "private": true,
+  "description": "PC 부품 호환성·소비전력·전기요금을 검증하는 견적 도구",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace web",
+    "build": "npm run build --workspace web",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20.9"
+  }
+}
