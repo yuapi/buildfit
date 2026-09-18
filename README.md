@@ -36,7 +36,9 @@ buildfit은 **가격 비교 커머스가 아니다.** 다나와·에누리와 �
 
 ```
 apps/web/           Next.js 앱 (App Router, SSR/ISR)
+apps/ingest/        BuildCores OpenDB → PostgreSQL 적재 CLI
 packages/compat/    호환성 규칙 엔진 — 프레임워크·DB 비의존 순수 TS 모듈
+packages/db/        PostgreSQL 스키마와 접근 계층 (Drizzle)
 docs/               설계 문서·ADR·조사 결과
 ```
 
@@ -49,10 +51,30 @@ npm install
 npm run dev         # apps/web 개발 서버
 npm run typecheck   # 워크스페이스 전체
 npm run lint
+npm run test
 npm run build
 ```
 
 Node 20.9 이상이 필요하다.
+
+### 데이터 적재
+
+부품 데이터는 [BuildCores OpenDB](https://github.com/buildcores/buildcores-open-db)에서
+가져온다. 레포에 포함하지 않고 별도로 clone한다 (ADR-0002).
+
+```bash
+cp .env.example .env
+docker compose up -d db
+
+# OpenDB clone (레포 바깥에)
+git clone --depth 1 https://github.com/buildcores/buildcores-open-db ../buildcores-open-db
+
+npm run migrate -w @buildfit/db     # 스키마 적용
+npm run ingest  -w @buildfit/ingest # 적재
+```
+
+적재는 멱등하다. OpenDB 갱신은 `git pull` 후 재실행이면 된다 (주 1회).
+현재 적재 규모는 부품 22,962건 / 스펙 173,622건이며 16초쯤 걸린다.
 
 ## 문서
 
