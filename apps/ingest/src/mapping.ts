@@ -52,16 +52,34 @@ export const CATEGORY_SPECS: Readonly<Record<string, SpecMap>> = {
   GPU: {
     chipset: 'chipset',
     chipset_manufacturer: 'chipset_manufacturer',
+
+    // --- 물리 (호환성 판정) ---
     // 현행 세대 AIB 1,344개 전량 보유 (조사 §4)
     length_mm: 'length',
     total_slot_width: 'total_slot_width',
+    case_expansion_slot_width: 'case_expansion_slot_width',
+    cooling: 'cooling',
+    radiator_size_mm: 'radiator_size',
+
+    // --- 전력 ---
     tdp_w: 'tdp',
-    memory_gb: 'memory',
-    memory_type: 'memory_type',
     pcie_6_pin: 'power_connectors.pcie_6_pin',
     pcie_8_pin: 'power_connectors.pcie_8_pin',
     pcie_12vhpwr: 'power_connectors.pcie_12VHPWR',
     pcie_12v_2x6: 'power_connectors.pcie_12V_2x6',
+
+    // --- 성능 (Phase 3 §6.6.1) ---
+    // 같은 칩이라도 AIB 모델마다 다르다. RTX 4090 부스트 클럭이 2235~2670MHz로
+    // 435MHz(약 19%) 벌어진다. OC 에디션을 구분하는 것이 이 필드다.
+    // §6.6.1의 g(연산 유닛, 클럭, 메모리 대역폭, VRAM, 해상도)에 대응한다.
+    core_count: 'core_count',
+    core_base_clock_mhz: 'core_base_clock',
+    core_boost_clock_mhz: 'core_boost_clock',
+    memory_gb: 'memory',
+    memory_type: 'memory_type',
+    memory_bus_bit: 'memory_bus',
+    effective_memory_clock: 'effective_memory_clock',
+    interface: 'interface',
   },
   PCCase: {
     form_factor: 'form_factor',
@@ -94,6 +112,39 @@ export const CATEGORY_SPECS: Readonly<Record<string, SpecMap>> = {
   },
 };
 
+/**
+ * 0이 "값 없음"을 뜻하는 키.
+ *
+ * 개별적으로 물리적 불가능한 값은 적재 단계에서 버린다 — 코어 0개, 클럭 0MHz,
+ * 메모리 버스 0bit인 그래픽카드는 없다. `metadata.releaseYear`의 `20117`을 버리는
+ * 것과 같은 처리다 (docs/compat-rules.md §0.2 '범위 밖').
+ *
+ * **보조전원 커넥터는 여기 들어가지 않는다.** 커넥터 0개는 실제로 가능한 값이고
+ * (TDP 75W 이하 카드), 0이 잘못된 경우는 TDP와 함께 봐야 알 수 있는 **조합 모순**이라
+ * 규칙 엔진이 판정한다 (docs/compat-rules.md §8.4). 두 경우를 구분한다.
+ *
+ * - 개별적으로 불가능 → 적재 시 버린다 (여기)
+ * - 조합으로 모순     → 저장하고 규칙 엔진이 판정 불가를 낸다
+ */
+export const POSITIVE_ONLY_KEYS: ReadonlySet<string> = new Set([
+  'core_count',
+  'core_base_clock_mhz',
+  'core_boost_clock_mhz',
+  'memory_bus_bit',
+  'effective_memory_clock',
+  'length_mm',
+  'tdp_w',
+  'wattage_w',
+  'memory_gb',
+  'memory_slots',
+  'height_mm',
+  'max_gpu_length_mm',
+  'max_cpu_cooler_height_mm',
+  'max_psu_length_mm',
+  'speed_mts',
+  'module_count',
+]);
+
 /** 단위. 없는 키는 단위가 없는 값이다. */
 export const SPEC_UNITS: Readonly<Record<string, string>> = {
   tdp_w: 'W',
@@ -111,6 +162,9 @@ export const SPEC_UNITS: Readonly<Record<string, string>> = {
   module_capacity_gb: 'GB',
   memory_max_gb: 'GB',
   speed_mts: 'MT/s',
+  core_base_clock_mhz: 'MHz',
+  core_boost_clock_mhz: 'MHz',
+  memory_bus_bit: 'bit',
 };
 
 export const CATEGORIES = Object.keys(CATEGORY_SPECS);

@@ -109,3 +109,41 @@ describe('toPartRow', () => {
     expect(toPartRow('Keyboard', 'x', gpuRecord)).toBeNull();
   });
 });
+
+describe('0이 물리적으로 불가능한 키 (POSITIVE_ONLY_KEYS)', () => {
+  const base = {
+    chipset: 'GeForce RTX 4090',
+    length: 304,
+    tdp: 450,
+    core_count: 16384,
+    core_boost_clock: 2520,
+    memory_bus: 384,
+    power_connectors: { pcie_6_pin: 0, pcie_8_pin: 0, pcie_12VHPWR: 1, pcie_12V_2x6: 0 },
+    metadata: { name: 'NVIDIA Founders Edition GeForce RTX 4090', manufacturer: 'NVIDIA' },
+  };
+  const keysOf = (r: Record<string, unknown>) =>
+    (toPartRow('GPU', 'aaaaaaaa-0000-0000-0000-000000000000', r)?.specs ?? []).map((s) => s.key);
+
+  it('정상값은 남는다', () => {
+    const k = keysOf(base);
+    expect(k).toContain('core_boost_clock_mhz');
+    expect(k).toContain('memory_bus_bit');
+  });
+
+  it('메모리 버스 0bit는 버린다 — 그런 그래픽카드는 없다', () => {
+    expect(keysOf({ ...base, memory_bus: 0 })).not.toContain('memory_bus_bit');
+  });
+
+  it('부스트 클럭 0MHz는 버린다', () => {
+    expect(keysOf({ ...base, core_boost_clock: 0 })).not.toContain('core_boost_clock_mhz');
+  });
+
+  it('★ 보조전원 커넥터 0은 버리지 않는다 — 조합 모순이라 규칙 엔진이 판정한다', () => {
+    const k = keysOf({
+      ...base,
+      power_connectors: { pcie_6_pin: 0, pcie_8_pin: 0, pcie_12VHPWR: 0, pcie_12V_2x6: 0 },
+    });
+    expect(k).toContain('pcie_8_pin');
+    expect(k).toContain('pcie_12vhpwr');
+  });
+});
