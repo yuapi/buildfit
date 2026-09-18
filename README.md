@@ -26,11 +26,33 @@ buildfit은 **가격 비교 커머스가 아니다.** 다나와·에누리와 �
 
 ## 현재 상태
 
-**개발 초기 단계다.** 아직 동작하는 애플리케이션이 없다.
+**개발 초기 단계다.** 아직 사용할 수 있는 기능이 없다.
 
 - 현재 Phase: **0a — OpenDB 적재 + 국내 유통 매칭 + 어드민**
-- 기술 스택: 미정 (첫 조사 이슈 완료 후 결정)
-- 지금 레포에 있는 것은 설계 문서와 결정 기록뿐이다
+- 기술 스택: **Next.js (TypeScript) + PostgreSQL** ([ADR-0010](docs/decisions/0010-nextjs-typescript-stack.md))
+- 설계 문서와 결정 기록이 대부분이고, 코드는 방금 스캐폴드를 세운 단계다
+
+## 구조
+
+```
+apps/web/           Next.js 앱 (App Router, SSR/ISR)
+packages/compat/    호환성 규칙 엔진 — 프레임워크·DB 비의존 순수 TS 모듈
+docs/               설계 문서·ADR·조사 결과
+```
+
+**규칙 엔진을 별도 패키지로 둔 이유**는 클라이언트와 서버가 같은 판정 코드를 써야
+하기 때문이다. 견적 편집 중 즉시 판정과 `/build/:hash` 공유 링크의 SSR 결과가 어긋나면
+안 된다. 자세한 근거는 ADR-0010.
+
+```bash
+npm install
+npm run dev         # apps/web 개발 서버
+npm run typecheck   # 워크스페이스 전체
+npm run lint
+npm run build
+```
+
+Node 20.9 이상이 필요하다.
 
 ## 문서
 
