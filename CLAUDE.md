@@ -17,6 +17,38 @@ PC 견적 검증 도구. 부품 조합의 호환성·전력·전기요금을 판
 4. 조사 결과는 `docs/research/`에 markdown으로 남긴다.
 5. 커밋은 작게. 한 커밋에 한 가지 변경.
 
+## 브랜치 전략
+
+Git Flow를 따른다. 근거와 상세: `docs/decisions/0008-git-flow-branching.md`
+
+| 브랜치 | 용도 | 분기 원본 | 머지 대상 |
+|---|---|---|---|
+| `main` | **배포된 것만.** 릴리스마다 태그 | — | — |
+| `develop` | 통합 브랜치. 기본 브랜치 | `main` | — |
+| `feature/<이슈번호>-<요약>` | 기능·문서·데이터 작업 | `develop` | `develop` |
+| `release/<버전>` | 릴리스 준비 (버그 수정만) | `develop` | `main` + `develop` |
+| `hotfix/<요약>` | 배포된 것의 긴급 수정 | `main` | `main` + `develop` |
+
+- **`main`과 `develop`에 직접 커밋하지 않는다.** 항상 브랜치를 따서 머지한다
+- 머지는 **`--no-ff`**. 작업 단위가 히스토리에 남아야 한다
+- **이슈 하나 = feature 브랜치 하나.** 여러 이슈를 한 브랜치에서 처리하지 않는다
+- 머지한 feature 브랜치는 삭제한다
+- 이슈 번호가 없는 작업은 `feature/<요약>`
+- 릴리스 태그는 semver. 1.0 이전이므로 **Phase 완료마다 minor를 올린다**
+  (Phase 0a → `v0.1.0`, Phase 0b → `v0.2.0`, …)
+
+```bash
+# 작업 시작
+git checkout develop && git pull
+git checkout -b feature/1-opendb-schema-research
+
+# 작업 종료
+git checkout develop
+git merge --no-ff feature/1-opendb-schema-research
+git push origin develop
+git branch -d feature/1-opendb-schema-research
+```
+
 ## 절대 규칙
 
 - **회원가입·로그인 기능을 만들지 않는다.** 개인정보를 다루지 않는 것이 이 프로젝트의 안전 전제다.
