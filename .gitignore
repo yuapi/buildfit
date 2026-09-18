@@ -1,5 +1,4 @@
-# 기술 스택 미정 — 언어·프레임워크별 항목은 스택 확정 후 추가한다.
-# 지금은 OS·에디터가 만드는 파일만 제외한다.
+# 스택: Next.js (TypeScript) + PostgreSQL — ADR-0010
 
 # --- macOS ---
 .DS_Store
@@ -57,3 +56,46 @@ tags
 .env
 .env.local
 .env.*.local
+
+# --- Node / Next.js ---
+node_modules/
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+next-env.d.ts
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# --- 테스트 / 커버리지 ---
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+blob-report/
+.playwright/
+
+# --- Python (Phase 2 정규화 워커) ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# --- 로컬 데이터 ---
+# OpenDB clone은 레포에 넣지 않는다 (ADR-0002: git clone으로 별도 취득)
+/buildcores-open-db/
+*.sqlite
+*.db
