@@ -7,12 +7,14 @@
   "scripts": {
     "ingest": "tsx src/index.ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "sample": "tsx src/sample.ts"
   },
   "dependencies": {
     "@buildfit/db": "*",
     "drizzle-orm": "^0.45.2",
-    "postgres": "^3.4.7"
+    "postgres": "^3.4.7",
+    "@buildfit/compat": "*"
   },
   "devDependencies": {
     "tsx": "^4",
