@@ -1,34 +1,70 @@
 /**
- * 전력 계산 상수. docs/compat-rules.md §7.2
+ * 전력 계산 가정. docs/compat-rules.md §7.2
  *
- * OpenDB 메인보드 스키마에는 소비전력 필드가 없다. tdp / wattage / power_draw를
- * 전부 검색해 확인했다. 따라서 CPU·GPU만 실측값을 쓰고 나머지는 상수로 가정해야 한다.
+ * OpenDB 메인보드 스키마에는 소비전력 필드가 없다. 그래서 CPU·GPU만 실측값을 쓰고
+ * 나머지는 가정해야 하는데, **공개 자료의 편차가 커서 점 값을 고를 수 없다**
+ * (메인보드 25~80W, 3배 차이).
  *
- * **아직 채우지 않는다.** CLAUDE.md: 근거 없는 수치를 지어내지 않는다.
- * 임시값으로 계산해 그럴듯한 숫자를 보여주는 것이 가장 나쁘다.
- * 출처를 확보할 때까지 규칙 7은 판정 불가를 반환한다.
+ * ADR-0004·§6.6.4의 원칙을 그대로 적용한다 — 단일 수치를 내놓지 않는다.
+ * 범위로 두고 판정을 세 갈래로 낸다.
  */
-export interface PowerConstants {
-  /** 메인보드 (W). 칩셋 등급별로 나눌지 단일값으로 둘지도 확정 대상. */
-  readonly motherboardW: number;
-  /** 메모리 모듈 1개당 (W). DDR4/DDR5 구분 여부도 확정 대상. */
-  readonly ramPerModuleW: number;
-  /** 스토리지 1개당 (W). Phase 1에서 스토리지 추가 시. */
-  readonly storagePerDeviceW: number;
-  /** 케이스 팬 1개당 (W). */
-  readonly caseFanPerUnitW: number;
+
+export interface PowerRange {
+  readonly minW: number;
+  readonly maxW: number;
+}
+
+export interface PowerSource {
+  readonly label: string;
+  readonly url: string;
+  /**
+   * 1차 출처 원문을 직접 확인했는가.
+   *
+   * `false`면 **결과에 그대로 노출한다.** 숨기면 사용자가 검증된 수치로 오해한다.
+   */
+  readonly verified: boolean;
+}
+
+export interface PowerAssumptions {
+  readonly motherboard: PowerRange;
+  /** 메모리 모듈 1개당. */
+  readonly ramPerModule: PowerRange;
+  readonly source: PowerSource;
 }
 
 /**
- * `[확인 필요]` 출처 있는 수치를 확보하면 채운다.
- * 채우는 순간 규칙 7이 살아나므로, 결과 화면에 가정값과 출처를 함께 노출해야 한다.
+ * ⚠ 원문 미확인.
+ *
+ * 이 실행 환경의 네트워크 정책이 seasonic.com을 차단해 1차 출처를 직접 읽지 못했다.
+ * 검색 결과가 해당 페이지의 수치로 제시한 값이다. 경위는
+ * `docs/research/power-constants.md`.
+ *
+ * 스토리지·쿨러·팬은 MVP 취급 부품(6종)에 없으므로 가정하지 않는다.
  */
-export const POWER_CONSTANTS: PowerConstants | null = null;
+export const POWER_ASSUMPTIONS: PowerAssumptions = {
+  motherboard: { minW: 25, maxW: 80 },
+  ramPerModule: { minW: 2, maxW: 5 },
+  source: {
+    label: 'Seasonic PSU 계산기 가이드',
+    url: 'https://seasonic.com/insights/psu-calculator-using-guide-2025/',
+    verified: false,
+  },
+};
+
+/** 결과에 함께 내보낼 가정 설명. §7.4 */
+export function describeAssumptions(a: PowerAssumptions = POWER_ASSUMPTIONS): string {
+  const mark = a.source.verified ? '' : ' · 원문 미확인';
+  return (
+    `메인보드 ${a.motherboard.minW}~${a.motherboard.maxW}W, ` +
+    `메모리 모듈당 ${a.ramPerModule.minW}~${a.ramPerModule.maxW}W로 가정 ` +
+    `(${a.source.label}${mark})`
+  );
+}
 
 /** PCIe 슬롯이 보조전원 없이 공급할 수 있는 전력 (W). 규칙 8의 모순 검사 기준. */
 export const PCIE_SLOT_POWER_W = 75;
 
-/** PSU 권장 정격 배수. pc-builder-spec.md §4.1 */
+/** PSU 권장 정격 배수. pc-builder-spec.md §4.1. Seasonic의 여유분 20~30%와 일치한다. */
 export const PSU_HEADROOM_MULTIPLIER = 1.3;
 
 /** 케이스 GPU 최대 길이 대비 "빠듯함" 경고 임계. pc-builder-spec.md §5.1 */

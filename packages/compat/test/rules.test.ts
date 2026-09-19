@@ -194,17 +194,80 @@ describe('6. PSU 폼팩터 ⊂ 케이스 지원', () => {
   });
 });
 
-describe('7. 총 소비전력 × 1.3 ≤ PSU 정격', () => {
-  it('상수가 확정되기 전에는 계산하지 않고 판정 불가를 낸다', () => {
-    const r = rule7(f.goodBuild);
-    expect(r?.verdict).toBe('unknown');
-    expect(r?.message).toContain('기준값');
+describe('7. 소비전력 대비 PSU 정격 — 구간 판정', () => {
+  // 기준 견적: CPU PPT 162W + GPU TDP 360W = 522W, 메모리 2모듈
+  //   총_최소  = 522 + 25 + 2×2 = 551W
+  //   총_최대  = 522 + 80 + 5×2 = 612W
+  //   권장정격 = ceil(612 × 1.3) = 796W
+  const withPsu = (wattage: number | null) =>
+    f.withBuild({ psu: { ...f.psu, wattage } });
+
+  it('권장 정격 이상이면 통과', () => {
+    const r = rule7(withPsu(850));
+    expect(r?.verdict).toBe('pass');
   });
 
-  it('소비전력 자체가 없으면 그 사유로 판정 불가', () => {
+  it('경계: 권장 정격과 정확히 같으면 통과', () => {
+    expect(rule7(withPsu(796))?.verdict).toBe('pass');
+  });
+
+  it('경계: 권장 정격보다 1W 낮으면 경고', () => {
+    const r = rule7(withPsu(795));
+    expect(r?.verdict).toBe('fail');
+    expect(r?.severity).toBe('warning');
+  });
+
+  it('경계: 총 최소와 정확히 같으면 경고이지 오류가 아니다', () => {
+    const r = rule7(withPsu(551));
+    expect(r?.verdict).toBe('fail');
+    expect(r?.severity).toBe('warning');
+  });
+
+  it('총 최소보다 낮으면 오류', () => {
+    const r = rule7(withPsu(550));
+    expect(r?.verdict).toBe('fail');
+    expect(r?.severity).toBe('error');
+  });
+
+  it('추정 구간을 메시지에 낸다 — 단일 수치를 내놓지 않는다', () => {
+    expect(rule7(withPsu(850))?.message).toContain('551~612W');
+  });
+
+  it('가정 범위와 출처를 결과에 싣는다 (§7.4)', () => {
+    const notes = rule7(withPsu(850))?.notes ?? [];
+    expect(notes).toHaveLength(1);
+    expect(notes[0]).toContain('메인보드 25~80W');
+    expect(notes[0]).toContain('메모리 모듈당 2~5W');
+    expect(notes[0]).toContain('Seasonic');
+  });
+
+  it('1차 출처 미확인 상태를 숨기지 않는다', () => {
+    expect(rule7(withPsu(850))?.notes?.[0]).toContain('원문 미확인');
+  });
+
+  it('GPU를 고르지 않으면 GPU 전력 없이 계산한다 (내장그래픽 구성)', () => {
+    // 522 → 162W 기준. 총_최소 = 162+25+4 = 191, 총_최대 = 162+80+10 = 252, 권장 328
+    const r = rule7(f.withBuild({ gpu: null, psu: { ...f.psu, wattage: 400 } }));
+    expect(r?.verdict).toBe('pass');
+    expect(r?.message).toContain('191~252W');
+  });
+
+  it('CPU는 PPT가 있으면 TDP 대신 PPT를 쓴다', () => {
+    const withTdpOnly = rule7(
+      f.withBuild({ cpu: { ...f.cpu, ppt: null }, psu: { ...f.psu, wattage: 850 } }),
+    );
+    // PPT 162 대신 TDP 120 → 총_최소 509
+    expect(withTdpOnly?.message).toContain('509~570W');
+  });
+
+  it('소비전력 정보가 없으면 판정 불가', () => {
     const r = rule7(f.withBuild({ cpu: { ...f.cpu, tdp: null, ppt: null } }));
     expect(r?.verdict).toBe('unknown');
     expect(r?.reason?.fields[0]?.field).toContain('소비전력');
+  });
+
+  it('PSU 정격이 없으면 판정 불가', () => {
+    expect(rule7(withPsu(null))?.verdict).toBe('unknown');
   });
 });
 
@@ -285,11 +348,11 @@ describe('8. PCIe 보조전원 커넥터', () => {
 });
 
 describe('엔진', () => {
-  it('정상 견적은 규칙 7만 판정 불가로 남는다 (상수 미확정)', () => {
+  it('정상 견적은 8개 규칙이 전부 통과한다', () => {
     const v = evaluate(f.goodBuild);
+    expect(v.counts.pass).toBe(8);
     expect(v.counts.fail).toBe(0);
-    expect(v.counts.unknown).toBe(1);
-    expect(v.counts.pass).toBe(7);
+    expect(v.counts.unknown).toBe(0);
   });
 
   it('고르지 않은 부품의 규칙은 결과에서 빠진다', () => {
