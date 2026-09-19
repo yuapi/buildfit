@@ -33,8 +33,12 @@ export default async function sitemap({
   let rows: { slug: string; updatedAt: Date }[] = [];
   try {
     rows = await slugsInCategory(getDb(), category, { limit: 50000 });
-  } catch {
-    // DB가 죽었을 때 빈 sitemap을 내는 것이 500을 내는 것보다 낫다.
+  } catch (err) {
+    // 빌드 중이면 던진다. 이 함수는 SSG라 결과가 파일로 구워져 배포된다.
+    // 여기서 삼키면 **빈 sitemap이 그대로 배포되고 아무도 모른다** — 위 주석이
+    // 걱정한 바로 그 상황이다. 요청 시점의 실패와 배포물의 결함은 다른 문제다.
+    if (process.env.NEXT_PHASE === 'phase-production-build') throw err;
+    // 요청 시점이라면 빈 sitemap을 내는 것이 500을 내는 것보다 낫다.
     return [];
   }
 
