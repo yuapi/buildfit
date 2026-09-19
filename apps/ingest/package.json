@@ -8,7 +8,8 @@
     "ingest": "tsx src/index.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "sample": "tsx src/sample.ts"
+    "sample": "tsx src/sample.ts",
+    "verify": "tsx src/verify-stability.ts"
   },
   "dependencies": {
     "@buildfit/db": "*",
