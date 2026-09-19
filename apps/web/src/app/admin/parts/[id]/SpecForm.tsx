@@ -56,8 +56,8 @@ export function SpecForm({
       onSubmit={() => setAttempt((n) => n + 1)}
       className={`rounded border p-4 ${
         filled
-          ? 'border-neutral-200 dark:border-neutral-800'
-          : 'border-amber-400 dark:border-amber-600'
+          ? 'border-border'
+          : 'border-warn-border'
       }`}
     >
       <input type="hidden" name="partId" value={partId} />
@@ -67,9 +67,9 @@ export function SpecForm({
       <div className="flex items-baseline justify-between gap-2">
         <label className="font-medium">
           {req.label}
-          {!filled && <span className="ml-2 text-xs font-normal text-amber-700 dark:text-amber-500">비어 있음</span>}
+          {!filled && <span className="ml-2 text-xs font-normal text-warn">비어 있음</span>}
         </label>
-        <span className="shrink-0 text-xs text-neutral-500">
+        <span className="shrink-0 text-xs text-fg-subtle">
           {req.specKey} · 규칙 #{req.ruleId}
         </span>
       </div>
@@ -82,7 +82,7 @@ export function SpecForm({
             name="value"
             value={text}
             onChange={(e) => setText(e.target.value)}
-            className="w-full rounded border border-neutral-300 bg-transparent px-2 py-1.5 text-sm dark:border-neutral-700"
+            className="field"
           >
             <option value="">선택하세요</option>
             <option value="true">예</option>
@@ -112,7 +112,7 @@ export function SpecForm({
             name="value"
             value={text}
             onChange={(e) => setText(e.target.value)}
-            className="w-full rounded border border-neutral-300 bg-transparent px-2 py-1.5 text-sm dark:border-neutral-700"
+            className="field"
           >
             <option value="">선택하세요</option>
             {req.options.map((opt) => (
@@ -128,21 +128,21 @@ export function SpecForm({
             step="any"
             value={text}
             onChange={(e) => setText(e.target.value)}
-            className="w-full rounded border border-neutral-300 bg-transparent px-2 py-1.5 text-sm dark:border-neutral-700"
+            className="field"
           />
         )}
       </div>
 
       <div className="mt-3" key={`source-${attempt}`}>
-        <label className="text-sm text-neutral-600 dark:text-neutral-400">
-          출처 URL <span className="text-red-600">*</span>
+        <label className="text-sm text-fg-muted">
+          출처 URL <span className="text-danger">*</span>
         </label>
         {manufacturerUrl && (
           <a
             href={manufacturerUrl}
             target="_blank"
             rel="noreferrer noopener"
-            className="ml-2 text-xs underline underline-offset-2"
+            className="ml-2 text-xs link"
           >
             제조사 스펙 열기 ↗
           </a>
@@ -154,9 +154,9 @@ export function SpecForm({
           value={sourceUrl}
           onChange={(e) => setSourceUrl(e.target.value)}
           placeholder="제조사 스펙시트 주소"
-          className="mt-1 w-full rounded border border-neutral-300 bg-transparent px-2 py-1.5 text-sm dark:border-neutral-700"
+          className="field mt-1"
         />
-        <p className="mt-1 text-xs text-neutral-500">
+        <p className="mt-1 text-xs text-fg-subtle">
           나중에 재검증할 때 출처가 없으면 처음부터 다시 해야 한다 (§5.5).
         </p>
       </div>
@@ -165,7 +165,7 @@ export function SpecForm({
         <button
           type="submit"
           disabled={pending}
-          className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900"
+          className="btn btn-primary"
         >
           {pending ? '저장 중…' : '확인하고 저장'}
         </button>
@@ -174,8 +174,8 @@ export function SpecForm({
             data-testid="save-message"
             className={
               state.ok
-                ? 'text-sm text-green-700 dark:text-green-400'
-                : 'text-sm text-red-700 dark:text-red-400'
+                ? 'text-sm text-ok'
+                : 'text-sm text-danger'
             }
           >
             {state.message}

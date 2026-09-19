@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { partBySlug, type PartSpecRow } from '@buildfit/db/part';
+import { Container } from '@/components/SiteShell';
 import { categoryLabel } from '@/lib/categories';
 import { getDb } from '@/lib/db';
 import { specLabel, specValueText } from '@/lib/spec-labels';
@@ -51,7 +52,7 @@ export default async function ComparePage({
     return (
       <main className="mx-auto max-w-3xl px-4 py-16">
         <h1 className="text-xl font-semibold">지금은 비교할 수 없습니다</h1>
-        <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
+        <p className="mt-2 text-sm text-fg-muted">
           잠시 후 다시 시도해 주세요.
         </p>
       </main>
@@ -68,76 +69,70 @@ export default async function ComparePage({
   const catPath = left.category.toLowerCase();
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-10">
-      <nav className="text-sm text-neutral-500">
-        <Link href="/part" className="underline underline-offset-2">
+    <Container className="py-10 sm:py-14">
+      <nav aria-label="위치" className="text-sm text-fg-subtle">
+        <Link href="/part" className="link">
           부품
         </Link>
-        <span className="mx-2">·</span>
-        <Link href={`/part/${catPath}`} className="underline underline-offset-2">
+        <span className="mx-1.5">/</span>
+        <Link href={`/part/${catPath}`} className="link">
           {categoryLabel(left.category)}
         </Link>
       </nav>
 
-      <h1 className="mt-4 text-xl font-semibold sm:text-2xl">
-        {left.modelName} <span className="text-neutral-400">vs</span> {right.modelName}
+      <h1 className="mt-3 text-xl font-semibold tracking-tight sm:text-2xl">
+        {left.modelName} <span className="font-normal text-fg-subtle">vs</span> {right.modelName}
       </h1>
-      <p className="mt-2 text-sm text-neutral-500">
-        스펙 {rows.length}개 중 {differing}개가 다릅니다. 조합의 호환성은{' '}
-        <Link href="/" className="underline underline-offset-2">
+      <p className="mt-2 text-sm text-fg-muted">
+        스펙 {rows.length}개 중 <strong className="font-medium text-fg tnum">{differing}개</strong>가
+        다릅니다. 조합의 호환성은{' '}
+        <Link href="/" className="link">
           견적 구성
         </Link>
         에서 판정합니다.
       </p>
 
-      <table className="mt-6 w-full text-sm">
-        <thead>
-          <tr className="border-b border-neutral-300 text-left dark:border-neutral-700">
-            <th className="w-40 py-2 font-medium text-neutral-500">항목</th>
-            <th className="py-2 font-medium">
-              <Link href={`/part/${catPath}/${left.slug}`} className="underline underline-offset-2">
-                {left.modelName}
-              </Link>
-            </th>
-            <th className="py-2 font-medium">
-              <Link href={`/part/${catPath}/${right.slug}`} className="underline underline-offset-2">
-                {right.modelName}
-              </Link>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr
-              key={row.key}
-              className={`border-b border-neutral-200 dark:border-neutral-800 ${
-                row.differs ? '' : 'text-neutral-500'
-              }`}
-            >
-              <td className="py-2 pr-4 align-top text-neutral-500">{specLabel(row.key)}</td>
-              <td className={`py-2 pr-4 align-top break-words ${row.differs ? 'font-medium' : ''}`}>
-                {/* 한쪽에만 있는 항목은 "없음"이 아니라 "정보 없음"이다.
-                    값이 0이라는 뜻으로 읽히면 안 된다. */}
-                {row.lText ?? <span className="text-neutral-400">정보 없음</span>}
-              </td>
-              <td className={`py-2 align-top break-words ${row.differs ? 'font-medium' : ''}`}>
-                {row.rText ?? <span className="text-neutral-400">정보 없음</span>}
-              </td>
+      <div className="card mt-6 overflow-x-auto">
+        <table className="w-full min-w-[34rem] text-sm">
+          <thead>
+            <tr className="border-b border-border text-left">
+              <th className="w-36 px-4 py-3 font-medium text-fg-subtle">항목</th>
+              <th className="px-3 py-3 font-medium">
+                <Link href={`/part/${catPath}/${left.slug}`} className="link">
+                  {left.modelName}
+                </Link>
+              </th>
+              <th className="px-4 py-3 font-medium">
+                <Link href={`/part/${catPath}/${right.slug}`} className="link">
+                  {right.modelName}
+                </Link>
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-
-      <footer className="mt-16 border-t border-neutral-200 pt-6 text-xs text-neutral-500 dark:border-neutral-800">
-        스펙 출처:{' '}
-        <a
-          href="https://github.com/buildcores/buildcores-open-db"
-          className="underline underline-offset-2"
-        >
-          BuildCores OpenDB
-        </a>{' '}
-        (ODC-By 1.0)
-      </footer>
-    </main>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr
+                key={row.key}
+                className={`border-b border-border last:border-0 ${
+                  row.differs ? '' : 'text-fg-muted'
+                }`}
+              >
+                <th scope="row" className="px-4 py-2.5 text-left align-top font-normal text-fg-subtle">
+                  {specLabel(row.key)}
+                </th>
+                <td className={`px-3 py-2.5 align-top break-words ${row.differs ? 'font-medium text-fg' : ''}`}>
+                  {/* 한쪽에만 있는 항목은 "없음"이 아니라 "정보 없음"이다.
+                      값이 0이라는 뜻으로 읽히면 안 된다. */}
+                  {row.lText ?? <span className="text-fg-subtle">정보 없음</span>}
+                </td>
+                <td className={`px-4 py-2.5 align-top break-words ${row.differs ? 'font-medium text-fg' : ''}`}>
+                  {row.rText ?? <span className="text-fg-subtle">정보 없음</span>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Container>
   );
 }

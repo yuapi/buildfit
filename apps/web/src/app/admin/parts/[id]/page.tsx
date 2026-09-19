@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requiredKeysFor } from '@buildfit/compat';
 import { partWithSpecs } from '@buildfit/db/queries';
+import { Container } from '@/components/SiteShell';
 import { getDb } from '@/lib/db';
 import { SpecForm } from './SpecForm';
 
@@ -33,13 +34,13 @@ export default async function PartEditor({
   });
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-10">
-      <Link href="/admin" className="text-sm text-neutral-500 underline underline-offset-2">
+    <Container className="py-10">
+      <Link href="/admin" className="link text-sm text-fg-muted">
         ← 빈 필드 목록
       </Link>
 
       <h1 className="mt-4 text-2xl font-semibold">{part.modelName}</h1>
-      <p className="mt-1 text-sm text-neutral-500">
+      <p className="mt-1 text-sm text-fg-subtle">
         {part.category}
         {part.brand ? ` · ${part.brand}` : ''}
         {part.releaseYear ? ` · ${part.releaseYear}` : ''}
@@ -49,12 +50,12 @@ export default async function PartEditor({
           href={part.manufacturerUrl}
           target="_blank"
           rel="noreferrer noopener"
-          className="mt-2 inline-block text-sm underline underline-offset-2"
+          className="mt-2 inline-block text-sm link"
         >
           제조사 스펙 페이지 열기 ↗
         </a>
       ) : (
-        <p className="mt-2 text-sm text-neutral-500">
+        <p className="mt-2 text-sm text-fg-subtle">
           제조사 스펙 주소가 없습니다. 출처를 직접 찾아야 합니다.
         </p>
       )}
@@ -63,7 +64,7 @@ export default async function PartEditor({
         <h2 className="text-lg font-medium">
           호환성 판정에 쓰는 필드
           {part.missing.length > 0 && (
-            <span className="ml-2 text-sm font-normal text-amber-700 dark:text-amber-500">
+            <span className="ml-2 text-sm font-normal text-warn">
               {part.missing.length}개 비어 있음
             </span>
           )}
@@ -83,18 +84,18 @@ export default async function PartEditor({
 
       <section className="mt-10">
         <h2 className="text-lg font-medium">
-          전체 스펙 <span className="text-neutral-500">({part.specs.length})</span>
+          전체 스펙 <span className="text-fg-subtle">({part.specs.length})</span>
         </h2>
         <table className="mt-3 w-full text-sm">
           <tbody>
             {part.specs.map((s) => (
-              <tr key={s.key} className="border-b border-neutral-200 dark:border-neutral-800">
-                <td className="py-1.5 pr-4 text-neutral-500">{s.key}</td>
+              <tr key={s.key} className="border-b border-border">
+                <td className="py-1.5 pr-4 text-fg-subtle">{s.key}</td>
                 <td className="py-1.5 pr-4 break-all">
                   {JSON.stringify(s.value)}
                   {s.unit ? ` ${s.unit}` : ''}
                 </td>
-                <td className="py-1.5 text-right text-xs whitespace-nowrap text-neutral-500">
+                <td className="py-1.5 text-right text-xs whitespace-nowrap text-fg-subtle">
                   {s.verifiedAt ? `확인 ${s.verifiedAt.toISOString().slice(0, 10)}` : '미확인'}
                   {s.disputed ? ' · 신고됨' : ''}
                 </td>
@@ -103,6 +104,6 @@ export default async function PartEditor({
           </tbody>
         </table>
       </section>
-    </main>
+    </Container>
   );
 }

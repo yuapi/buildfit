@@ -6,7 +6,13 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { RULE_PARTS, SLOT_LABELS, blockingSlots, notApplicable } from '../src/applicability';
+import {
+  RULE_PARTS,
+  RULE_SUMMARY,
+  SLOT_LABELS,
+  blockingSlots,
+  notApplicable,
+} from '../src/applicability';
 import type { PartSlot } from '../src/applicability';
 import { emptyBuild } from '../src/parts';
 import { phase1Rules } from '../src/rules';
@@ -77,6 +83,14 @@ describe('notApplicable', () => {
       'pcCase',
       'psu',
     ]);
+  });
+
+  it('모든 규칙에 한 줄 설명이 있다 — 빈 화면이 무엇을 검사하는지 말한다', () => {
+    for (const id of Object.keys(RULE_PARTS)) {
+      expect(RULE_SUMMARY[Number(id)], `규칙 ${id}`).toBeTruthy();
+    }
+    // 반대 방향도 막는다. 구현하지 않은 규칙을 설명만 해두면 거짓말이 된다
+    expect(Object.keys(RULE_SUMMARY).sort()).toEqual(Object.keys(RULE_PARTS).sort());
   });
 
   it('모든 슬롯에 표시 이름이 있다', () => {

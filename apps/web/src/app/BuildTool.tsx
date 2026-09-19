@@ -2,9 +2,16 @@
 
 import Link from 'next/link';
 
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, useTransition } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+  useTransition,
+} from 'react';
 import type { Build, RuleResult } from '@buildfit/compat';
-import { SLOT_LABELS, blockingSlots, evaluate } from '@buildfit/compat';
+import { RULE_SUMMARY, SLOT_LABELS, blockingSlots, evaluate } from '@buildfit/compat';
 import { decodeBuildCode, encodeBuildCode } from '@/lib/build-code';
 import { SLOT_META, type SlotName } from '@/lib/categories';
 import { listWithJosa } from '@/lib/korean';
@@ -66,8 +73,7 @@ function autoLabel(build: Build): string {
 function pickedCount(build: Build): number {
   return (
     [build.cpu, build.motherboard, build.gpu, build.pcCase, build.psu, build.cooler].filter(Boolean)
-      .length +
-    build.ram.length
+      .length + build.ram.length
   );
 }
 
@@ -144,11 +150,21 @@ export function BuildTool({ initial }: { initial?: Build }) {
     [selection, apply],
   );
 
+  const picked = pickedCount(build);
+
   return (
-    <div className="grid gap-8 lg:grid-cols-[1fr_22rem]">
-      <section>
-        <h2 className="text-lg font-medium">부품 선택</h2>
-        <ul className="mt-4 divide-y divide-neutral-200 dark:divide-neutral-800">
+    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_23rem] lg:gap-8">
+      <section aria-labelledby="slots-heading">
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 id="slots-heading" className="text-lg font-semibold">
+            부품 선택
+          </h2>
+          <span className="text-sm text-fg-subtle tnum">
+            {picked} / {SLOT_META.length}
+          </span>
+        </div>
+
+        <ul className="mt-3 space-y-2">
           {SLOT_META.map((meta) => (
             <SlotRow
               key={meta.slot}
@@ -165,10 +181,14 @@ export function BuildTool({ initial }: { initial?: Build }) {
         </ul>
       </section>
 
-      <aside className="lg:sticky lg:top-6 lg:self-start">
+      <aside className="space-y-4 lg:sticky lg:top-20">
         {loadError && (
-          <p className="mb-4 rounded border border-amber-400 p-3 text-sm text-amber-700 dark:border-amber-600 dark:text-amber-500">
-            부품 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요. 고른 구성은 그대로 있습니다.
+          <p
+            role="alert"
+            className="rounded-(--radius-card) border border-warn-border bg-warn-bg p-3 text-sm text-warn"
+          >
+            부품 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요. 고른 구성은 그대로
+            있습니다.
           </p>
         )}
         <VerdictPanel verdict={verdict} pending={pending} build={build} />
@@ -176,7 +196,7 @@ export function BuildTool({ initial }: { initial?: Build }) {
         <SaveBox
           code={code}
           defaultLabel={autoLabel(build)}
-          canSave={pickedCount(build) > 0}
+          canSave={picked > 0}
           onLoad={loadCode}
         />
       </aside>
@@ -204,38 +224,37 @@ function SlotRow({
   onClear: () => void;
 }) {
   return (
-    <li className="py-3">
-      <div className="flex items-baseline gap-3">
-        <span className="w-20 shrink-0 text-sm text-neutral-500">{label}</span>
+    <li className={`card overflow-hidden ${open ? 'ring-1 ring-border-strong' : ''}`}>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2.5 sm:px-4">
+        <span className="w-[5.5rem] shrink-0 text-xs font-medium text-fg-subtle">{label}</span>
         <span className="min-w-0 flex-1 text-sm">
           {selectedName ? (
             detailHref ? (
-              <Link href={detailHref} className="underline underline-offset-2">
+              <Link href={detailHref} className="link font-medium">
                 {selectedName}
               </Link>
             ) : (
-              selectedName
+              <span className="font-medium">{selectedName}</span>
             )
           ) : (
-            <span className="text-neutral-400">아직 고르지 않음</span>
+            <span className="text-fg-subtle">아직 고르지 않음</span>
           )}
         </span>
-        <button
-          type="button"
-          onClick={onToggle}
-          className="shrink-0 text-sm underline underline-offset-2"
-        >
-          {open ? '닫기' : selectedName ? '변경' : '선택'}
-        </button>
-        {selectedName && (
+        <span className="flex shrink-0 items-center gap-1">
           <button
             type="button"
-            onClick={onClear}
-            className="shrink-0 text-sm text-neutral-500 underline underline-offset-2"
+            onClick={onToggle}
+            aria-expanded={open}
+            className={selectedName ? 'btn btn-ghost' : 'btn btn-secondary'}
           >
-            제거
+            {open ? '닫기' : selectedName ? '변경' : '선택'}
           </button>
-        )}
+          {selectedName && (
+            <button type="button" onClick={onClear} className="btn btn-ghost">
+              제거
+            </button>
+          )}
+        </span>
       </div>
       {open && <PartPicker slot={slot} onChoose={onChoose} />}
     </li>
@@ -276,38 +295,43 @@ function PartPicker({ slot, onChoose }: { slot: SlotName; onChoose: (id: string)
   }, [slot]);
 
   return (
-    <div className="mt-3 rounded border border-neutral-300 p-3 dark:border-neutral-700">
+    <div className="border-t border-border bg-surface-2 px-3 py-3 sm:px-4">
       <input
         type="search"
         value={query}
         onChange={(e) => run(e.target.value)}
         placeholder="모델명으로 검색"
-        className="w-full rounded border border-neutral-300 bg-transparent px-2 py-1.5 text-sm dark:border-neutral-700"
+        aria-label="부품 검색"
+        className="field"
+        autoFocus
       />
-      <ul className="mt-2 max-h-64 overflow-y-auto text-sm">
-        {loading && <li className="py-2 text-neutral-500">찾는 중…</li>}
+      <ul className="mt-2 max-h-64 space-y-0.5 overflow-y-auto text-sm">
+        {loading && <li className="px-1 py-2 text-fg-subtle">찾는 중…</li>}
         {/* "결과 없음"과 "불러오지 못함"은 사용자가 할 행동이 다르다. */}
         {!loading && failed && (
-          <li className="py-2 text-amber-700 dark:text-amber-500">
+          <li className="px-1 py-2 text-warn">
             부품 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.
           </li>
         )}
         {!loading && !failed && options.length === 0 && (
-          <li className="py-2 text-neutral-500">결과가 없습니다.</li>
+          <li className="px-1 py-2 text-fg-subtle">결과가 없습니다.</li>
         )}
-        {!loading && !failed &&
+        {!loading &&
+          !failed &&
           options.map((o) => (
             <li key={o.id}>
               <button
                 type="button"
                 onClick={() => onChoose(o.id)}
-                className="w-full rounded px-1 py-1.5 text-left hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                className="w-full rounded-(--radius-control) px-2 py-1.5 text-left hover:bg-surface"
               >
-                {o.name}
-                <span className="ml-2 text-xs text-neutral-500">
-                  {o.brand ?? ''}
-                  {o.releaseYear ? ` · ${o.releaseYear}` : ''}
-                </span>
+                <span className="block truncate">{o.name}</span>
+                {(o.brand || o.releaseYear) && (
+                  <span className="mt-0.5 block text-xs text-fg-subtle">
+                    {o.brand ?? ''}
+                    {o.releaseYear ? ` · ${o.releaseYear}년` : ''}
+                  </span>
+                )}
               </button>
             </li>
           ))}
@@ -316,14 +340,20 @@ function PartPicker({ slot, onChoose }: { slot: SlotName; onChoose: (id: string)
   );
 }
 
+/**
+ * 판정 등급 표시 — ADR-0014.
+ *
+ * **색만으로 구분하지 않는다.** 점 색과 함께 등급 라벨을 글자로 낸다 (WCAG 1.4.1).
+ * 색 리터럴 대신 의미 토큰을 쓴다.
+ */
 const STYLE = {
-  error: { dot: 'bg-red-500', text: 'text-red-700 dark:text-red-400', label: '오류' },
-  warning: { dot: 'bg-amber-500', text: 'text-amber-700 dark:text-amber-500', label: '경고' },
+  error: { dot: 'bg-danger', text: 'text-danger', label: '오류' },
+  warning: { dot: 'bg-warn', text: 'text-warn', label: '경고' },
   // 명세 §4.3의 "정보" 등급. 규칙 12에서 Flashback이 있는 경우가 여기다.
   // 빨간 오류로 보여주면 번거로울 뿐인 상황을 못 쓰는 조합으로 오해시킨다.
-  info: { dot: 'bg-sky-500', text: 'text-sky-700 dark:text-sky-400', label: '정보' },
-  unknown: { dot: 'bg-neutral-400', text: 'text-neutral-600 dark:text-neutral-400', label: '판정 불가' },
-  pass: { dot: 'bg-green-500', text: 'text-neutral-700 dark:text-neutral-300', label: '통과' },
+  info: { dot: 'bg-info', text: 'text-info', label: '정보' },
+  unknown: { dot: 'bg-unknown', text: 'text-fg-muted', label: '판정 불가' },
+  pass: { dot: 'bg-ok', text: 'text-fg', label: '통과' },
 } as const;
 
 type Tone = keyof typeof STYLE;
@@ -337,6 +367,15 @@ function toneOf(r: RuleResult): Tone {
 
 /** 심각한 것부터 보여준다. */
 const TONE_RANK: Record<Tone, number> = { error: 0, warning: 1, info: 2, unknown: 3, pass: 4 };
+
+/** 한 줄 요약. 가장 심각한 등급이 견적 전체의 표정이 된다. */
+const HEADLINE: Record<Tone, { text: string; className: string }> = {
+  error: { text: '조립되지 않는 조합입니다', className: 'text-danger' },
+  warning: { text: '확인이 필요합니다', className: 'text-warn' },
+  info: { text: '알아둘 것이 있습니다', className: 'text-info' },
+  unknown: { text: '데이터가 없어 판정하지 못한 항목이 있습니다', className: 'text-fg-muted' },
+  pass: { text: '검사한 항목은 모두 통과했습니다', className: 'text-ok' },
+};
 
 /** slug로 부품의 카테고리를 되찾는다. 상세 페이지 주소를 만들려면 둘 다 필요하다. */
 function partHref(build: Build | undefined, slug: string | undefined): string | null {
@@ -369,27 +408,53 @@ export function VerdictPanel({
   // 이걸 말하지 않으면 CPU와 보드만 고른 사람이 "통과 4"를 보고 견적이
   // 확인됐다고 믿는다. 이 도구가 낼 수 있는 가장 나쁜 결과다 (명세 §4.3).
   const waiting = build ? blockingSlots(build) : [];
+  const worst = sorted[0] ? toneOf(sorted[0]) : null;
 
   return (
-    <div className="rounded border border-neutral-300 p-4 dark:border-neutral-700">
-      <h2 className="text-lg font-medium">
-        판정 {pending && <span className="text-sm font-normal text-neutral-500">갱신 중…</span>}
-      </h2>
+    <section className="card p-4 sm:p-5" aria-labelledby="verdict-heading">
+      <div className="flex items-baseline justify-between gap-2">
+        <h2 id="verdict-heading" className="text-lg font-semibold">
+          판정
+        </h2>
+        {pending && <span className="text-xs text-fg-subtle">갱신 중…</span>}
+      </div>
 
       {results.length === 0 ? (
-        <p className="mt-2 text-sm text-neutral-500">
-          부품을 두 개 이상 고르면 호환성을 판정합니다.
-        </p>
+        <>
+          <p className="mt-1 text-sm text-fg-muted">
+            부품을 두 개 이상 고르면 판정을 시작합니다.
+          </p>
+          {/* 빈 화면이 무엇을 할 수 있는지 말하지 않으면 고를 이유가 없다.
+              규칙 목록은 packages/compat이 정본이라 여기서 지어내지 않는다. */}
+          <h3 className="mt-4 text-xs font-medium text-fg-subtle">검사하는 항목</h3>
+          <ul className="mt-2 space-y-1.5 text-xs leading-relaxed text-fg-muted">
+            {Object.entries(RULE_SUMMARY)
+              .sort(([a], [b]) => Number(a) - Number(b))
+              .map(([id, text]) => (
+                <li key={id} className="flex gap-2">
+                  <span className="shrink-0 text-fg-subtle tnum">{id}</span>
+                  <span>{text}</span>
+                </li>
+              ))}
+          </ul>
+        </>
       ) : (
         <>
+          {worst && (
+            <p className={`mt-1 text-sm font-medium ${HEADLINE[worst].className}`}>
+              {HEADLINE[worst].text}
+            </p>
+          )}
+
           {/* ADR-0009: "모든 검사 통과"라고 쓰지 않는다. 통과와 판정 불가를 나눠 센다. */}
-          <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-            통과 {counts.pass}
-            {counts.fail > 0 && ` · 문제 ${counts.fail}`}
-            {counts.unknown > 0 && ` · 판정 불가 ${counts.unknown}`}
-          </p>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            <span className="chip tnum">통과 {counts.pass}</span>
+            {counts.fail > 0 && <span className="chip tnum">문제 {counts.fail}</span>}
+            {counts.unknown > 0 && <span className="chip tnum">판정 불가 {counts.unknown}</span>}
+          </div>
+
           {waiting.length > 0 && (
-            <p className="mt-1 text-sm text-neutral-500">
+            <p className="mt-2.5 text-xs leading-relaxed text-fg-subtle">
               {listWithJosa(
                 waiting.map((s) => SLOT_LABELS[s]),
                 '을',
@@ -399,16 +464,22 @@ export function VerdictPanel({
             </p>
           )}
 
-          <ul className="mt-4 space-y-3">
+          <ul className="mt-4 space-y-3 border-t border-border pt-4">
             {sorted.map((r) => {
-              const s = STYLE[toneOf(r)];
+              const tone = toneOf(r);
+              const s = STYLE[tone];
               return (
                 <li key={r.ruleId} className="flex gap-2.5 text-sm">
-                  <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${s.dot}`} />
-                  <div className="min-w-0">
-                    <span className={s.text}>{r.message}</span>
+                  <span
+                    className={`mt-[0.45rem] h-1.5 w-1.5 shrink-0 rounded-full ${s.dot}`}
+                    aria-hidden
+                  />
+                  <div className="min-w-0 flex-1">
+                    {/* 색만으로 등급을 구분하지 않는다 (ADR-0014) */}
+                    <span className={`mr-1.5 text-xs font-medium ${s.text}`}>{s.label}</span>
+                    <span className="text-fg">{r.message}</span>
                     {r.reason && (
-                      <p className="mt-0.5 text-xs text-neutral-500">
+                      <p className="mt-1 text-xs leading-relaxed text-fg-subtle">
                         {r.reason.kind === 'missing' ? '없는 정보: ' : '데이터 이상: '}
                         {r.reason.kind !== 'missing' && `${r.reason.detail} `}
                         {r.reason.fields.map((f, i) => {
@@ -419,7 +490,7 @@ export function VerdictPanel({
                               {/* 판정 불가를 만난 사람이 그 값을 아는 경우가 있다.
                                   거기서 제보로 이어지는 것이 가장 값싼 보강 경로다 (§5.5). */}
                               {href ? (
-                                <Link href={href} className="underline underline-offset-2">
+                                <Link href={href} className="link">
                                   {f.part}의 {f.field}
                                 </Link>
                               ) : (
@@ -434,12 +505,12 @@ export function VerdictPanel({
                       </p>
                     )}
                     {r.notes?.map((n) => (
-                      <p key={n} className="mt-0.5 text-xs text-neutral-500">
+                      <p key={n} className="mt-1 text-xs leading-relaxed text-fg-subtle">
                         {n}
                       </p>
                     ))}
                     {r.skipped?.map((n) => (
-                      <p key={n} className="mt-0.5 text-xs text-neutral-500">
+                      <p key={n} className="mt-1 text-xs leading-relaxed text-fg-subtle">
                         {n}
                       </p>
                     ))}
@@ -450,26 +521,28 @@ export function VerdictPanel({
           </ul>
         </>
       )}
-    </div>
+    </section>
   );
 }
 
 function ShareBox({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
-  const url = typeof window === 'undefined' ? `/build/${code}` : `${window.location.origin}/build/${code}`;
+  const url =
+    typeof window === 'undefined' ? `/build/${code}` : `${window.location.origin}/build/${code}`;
 
   return (
-    <div className="mt-4 rounded border border-neutral-300 p-4 text-sm dark:border-neutral-700">
-      <h3 className="font-medium">공유 링크</h3>
-      <p className="mt-1 text-xs text-neutral-500">
+    <section className="card p-4 sm:p-5">
+      <h3 className="font-semibold">공유 링크</h3>
+      <p className="mt-1 text-xs leading-relaxed text-fg-subtle">
         이 링크에 견적 내용이 전부 담겨 있습니다. 브라우저 데이터를 지워도 링크만 있으면
         복원됩니다.
       </p>
       <input
         readOnly
         value={url}
+        aria-label="공유 링크"
         onFocus={(e) => e.currentTarget.select()}
-        className="mt-2 w-full rounded border border-neutral-300 bg-transparent px-2 py-1.5 text-xs dark:border-neutral-700"
+        className="field mt-2 text-xs"
       />
       <button
         type="button"
@@ -479,11 +552,11 @@ function ShareBox({ code }: { code: string }) {
             () => setCopied(false),
           );
         }}
-        className="mt-2 rounded bg-neutral-900 px-3 py-1.5 text-xs text-white dark:bg-neutral-100 dark:text-neutral-900"
+        className="btn btn-primary mt-2 w-full"
       >
         {copied ? '복사했습니다' : '링크 복사'}
       </button>
-    </div>
+    </section>
   );
 }
 
@@ -510,22 +583,22 @@ function SaveBox({
 
   if (!available) {
     return (
-      <div className="mt-4 rounded border border-neutral-300 p-4 text-sm dark:border-neutral-700">
-        <h3 className="font-medium">저장</h3>
-        <p className="mt-1 text-xs text-neutral-500">
+      <section className="card p-4 sm:p-5">
+        <h3 className="font-semibold">저장</h3>
+        <p className="mt-1 text-xs leading-relaxed text-fg-subtle">
           이 브라우저에서는 저장할 수 없습니다. 시크릿 모드이거나 저장이 차단된 것 같습니다.
           위의 공유 링크를 복사해 두면 나중에 그대로 복원됩니다.
         </p>
-      </div>
+      </section>
     );
   }
 
   return (
-    <div className="mt-4 rounded border border-neutral-300 p-4 text-sm dark:border-neutral-700">
-      <h3 className="font-medium">저장</h3>
-      <p className="mt-1 text-xs text-neutral-500">
-        이 브라우저에만 저장됩니다. 브라우저 데이터를 지우면 사라지니 공유 링크도 함께
-        보관해 두세요.
+    <section className="card p-4 sm:p-5">
+      <h3 className="font-semibold">저장</h3>
+      <p className="mt-1 text-xs leading-relaxed text-fg-subtle">
+        이 브라우저에만 저장됩니다. 브라우저 데이터를 지우면 사라지니 공유 링크도 함께 보관해
+        두세요.
       </p>
 
       <div className="mt-2 flex gap-2">
@@ -533,8 +606,9 @@ function SaveBox({
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           placeholder={defaultLabel}
+          aria-label="견적 이름"
           disabled={!canSave}
-          className="min-w-0 flex-1 rounded border border-neutral-300 bg-transparent px-2 py-1.5 text-xs disabled:opacity-50 dark:border-neutral-700"
+          className="field min-w-0 flex-1 text-xs disabled:opacity-50"
         />
         <button
           type="button"
@@ -546,30 +620,35 @@ function SaveBox({
             );
             setLabel('');
           }}
-          className="shrink-0 rounded bg-neutral-900 px-3 py-1.5 text-xs text-white disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900"
+          className="btn btn-primary shrink-0"
         >
           저장
         </button>
       </div>
-      {message && <p className="mt-1.5 text-xs text-neutral-500">{message}</p>}
+      {message && (
+        <p className="mt-1.5 text-xs text-fg-subtle" role="status">
+          {message}
+        </p>
+      )}
 
       {builds.length > 0 && (
         <>
-          <h4 className="mt-4 text-xs font-medium text-neutral-500">저장한 견적 {builds.length}</h4>
-          <ul className="mt-1 space-y-1">
+          <h4 className="mt-5 text-xs font-medium text-fg-subtle">저장한 견적 {builds.length}</h4>
+          <ul className="mt-1.5 space-y-0.5">
             {builds.map((b) => (
-              <li key={b.code} className="flex items-baseline gap-2">
+              <li key={b.code} className="flex items-center gap-1">
                 <button
                   type="button"
                   onClick={() => onLoad(b.code)}
-                  className="min-w-0 flex-1 truncate text-left text-xs underline underline-offset-2"
+                  className="min-w-0 flex-1 truncate rounded-(--radius-control) px-2 py-1.5 text-left text-xs hover:bg-surface-2"
                 >
                   {b.label}
                 </button>
                 <button
                   type="button"
                   onClick={() => removeBuild(b.code)}
-                  className="shrink-0 text-xs text-neutral-500"
+                  aria-label={`${b.label} 삭제`}
+                  className="btn btn-ghost shrink-0 px-2 py-1 text-xs"
                 >
                   삭제
                 </button>
@@ -581,14 +660,14 @@ function SaveBox({
 
       {recentBuilds.length > 0 && (
         <>
-          <h4 className="mt-4 text-xs font-medium text-neutral-500">최근 구성</h4>
-          <ul className="mt-1 space-y-1">
+          <h4 className="mt-5 text-xs font-medium text-fg-subtle">최근 구성</h4>
+          <ul className="mt-1.5 space-y-0.5">
             {recentBuilds.map((b) => (
               <li key={b.code}>
                 <button
                   type="button"
                   onClick={() => onLoad(b.code)}
-                  className="w-full truncate text-left text-xs text-neutral-600 underline underline-offset-2 dark:text-neutral-400"
+                  className="w-full truncate rounded-(--radius-control) px-2 py-1.5 text-left text-xs text-fg-muted hover:bg-surface-2"
                 >
                   {b.label}
                 </button>
@@ -597,6 +676,6 @@ function SaveBox({
           </ul>
         </>
       )}
-    </div>
+    </section>
   );
 }

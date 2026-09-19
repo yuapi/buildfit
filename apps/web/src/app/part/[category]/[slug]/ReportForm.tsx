@@ -37,7 +37,7 @@ export function ReportForm({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-sm text-neutral-500 underline underline-offset-2"
+        className="link text-sm text-fg-muted"
       >
         {missingKeys.length > 0 ? '비어 있는 값 알려주기 · 오류 신고' : '스펙이 잘못됐나요? 신고하기'}
       </button>
@@ -45,25 +45,25 @@ export function ReportForm({
   }
 
   return (
-    <form action={action} className="rounded border border-neutral-300 p-4 text-sm dark:border-neutral-700">
+    <form action={action} className="card p-4 text-sm">
       <input type="hidden" name="partId" value={partId} />
       <input type="hidden" name="slug" value={slug} />
       <input type="hidden" name="category" value={category} />
 
       <h3 className="font-medium">{missingKeys.length > 0 ? '값 제보 · 오류 신고' : '스펙 오류 신고'}</h3>
-      <p className="mt-1 text-xs text-neutral-500">
+      <p className="mt-1 text-xs text-fg-subtle">
         신고하면 해당 항목이 &ldquo;검증 중&rdquo;으로 표시되고 확인 후 반영합니다.
         로그인은 필요 없습니다.
       </p>
 
-      <label className="mt-3 block text-xs text-neutral-600 dark:text-neutral-400">
+      <label className="mt-3 block text-xs text-fg-muted">
         어느 항목인가요
       </label>
       <select
         name="specKey"
         required
         defaultValue={initialKey}
-        className="mt-1 w-full rounded border border-neutral-300 bg-transparent px-2 py-1.5 text-sm dark:border-neutral-700"
+        className="field mt-1"
       >
         {/* 비어 있는 필수 항목을 먼저 보여준다. 견적을 막고 있는 것이 이쪽이다. */}
         {missingKeys.length > 0 && (
@@ -86,16 +86,16 @@ export function ReportForm({
         )}
       </select>
 
-      <label className="mt-3 block text-xs text-neutral-600 dark:text-neutral-400">
+      <label className="mt-3 block text-xs text-fg-muted">
         맞다고 생각하는 값
       </label>
       <input
         name="reportedValue"
         maxLength={200}
-        className="mt-1 w-full rounded border border-neutral-300 bg-transparent px-2 py-1.5 text-sm dark:border-neutral-700"
+        className="field mt-1"
       />
 
-      <label className="mt-3 block text-xs text-neutral-600 dark:text-neutral-400">
+      <label className="mt-3 block text-xs text-fg-muted">
         설명이나 출처 (선택)
       </label>
       <textarea
@@ -103,26 +103,26 @@ export function ReportForm({
         rows={2}
         maxLength={500}
         placeholder="제조사 스펙시트 주소를 적어 주시면 확인이 빠릅니다"
-        className="mt-1 w-full rounded border border-neutral-300 bg-transparent px-2 py-1.5 text-sm dark:border-neutral-700"
+        className="field mt-1"
       />
 
       <div className="mt-3 flex items-center gap-3">
         <button
           type="submit"
           disabled={pending}
-          className="rounded bg-neutral-900 px-3 py-1.5 text-xs text-white disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900"
+          className="btn btn-primary"
         >
           {pending ? '보내는 중…' : '신고'}
         </button>
-        <button type="button" onClick={() => setOpen(false)} className="text-xs text-neutral-500">
+        <button type="button" onClick={() => setOpen(false)} className="text-xs text-fg-subtle">
           닫기
         </button>
         {state && (
           <span
             className={
               state.ok
-                ? 'text-xs text-green-700 dark:text-green-400'
-                : 'text-xs text-red-700 dark:text-red-400'
+                ? 'text-xs text-ok'
+                : 'text-xs text-danger'
             }
           >
             {state.message}
