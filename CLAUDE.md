@@ -60,8 +60,21 @@ git branch -d feature/1-opendb-schema-research
 
 ## 현재 단계
 
-Phase 0a: OpenDB 적재 + 국내 유통 매칭 + 어드민
-(로드맵: `docs/pc-builder-spec.md` §11)
+**Phase 0a — 유통 매칭만 남음 (막힘)**
+- OpenDB 적재 ✅ 부품 22,962건 (`apps/ingest`)
+- 어드민(빈 필드 보강) ✅ (`/admin`)
+- 국내 유통 매칭 ⛔ **네이버 쇼핑 API 키 대기** (handoff-guide §7의 사용자 작업)
+
+**Phase 0b — 완료**
+- 호환성 규칙 8개 동작 ✅ (`packages/compat`)
+- 견적 구성 도구 ✅ (`/`)
+- 공유 링크 ✅ (`/build/[code]`, ADR-0012)
+- 로컬 저장 ✅ (§8A, ADR-0005)
+
+로드맵: `docs/pc-builder-spec.md` §11
+
+**다음 개선 지점**: 판정 불가의 대부분이 케이스 데이터다 (규칙 6, 83.3%).
+`/admin`으로 채우면 그만큼 줄어든다. 근거: `docs/research/opendb-schema-analysis.md` §9.3.1
 
 ## 보류 중
 

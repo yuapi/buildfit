@@ -165,14 +165,18 @@ export function saveBuild(code: string, label: string): boolean {
     { v: RECORD_VERSION, code, label: label.trim() || '이름 없는 견적', savedAt: new Date().toISOString() },
     ...rest,
   ].slice(0, LIMITS.builds);
-  return writeList(STORAGE_KEYS.builds, next);
+  const ok = writeList(STORAGE_KEYS.builds, next);
+  invalidate();
+  return ok;
 }
 
 export function removeBuild(code: string): boolean {
-  return writeList(
+  const ok = writeList(
     STORAGE_KEYS.builds,
     loadBuilds().filter((b) => b.code !== code),
   );
+  invalidate();
+  return ok;
 }
 
 // --- 최근 구성한 견적 (자동) -------------------------------------------------
@@ -190,7 +194,9 @@ export function recordRecentBuild(code: string, label: string): boolean {
     { v: RECORD_VERSION, code, label, savedAt: new Date().toISOString() },
     ...rest,
   ].slice(0, LIMITS.recentBuilds);
-  return writeList(STORAGE_KEYS.recentBuilds, next);
+  const ok = writeList(STORAGE_KEYS.recentBuilds, next);
+  invalidate();
+  return ok;
 }
 
 // --- 최근 조회한 부품 --------------------------------------------------------
@@ -207,5 +213,58 @@ export function recordRecentPart(part: { id: string; category: string; name: str
     { v: RECORD_VERSION, ...part, at: new Date().toISOString() },
     ...rest,
   ].slice(0, LIMITS.recentParts);
-  return writeList(STORAGE_KEYS.recentParts, next);
+  const ok = writeList(STORAGE_KEYS.recentParts, next);
+  invalidate();
+  return ok;
+}
+
+// --- React 연동 --------------------------------------------------------------
+
+/**
+ * localStorage는 React 바깥의 스토어다. `useSyncExternalStore`로 읽는다.
+ *
+ * effect에서 setState로 끌어오면 마운트마다 연쇄 렌더가 나고, 서버 렌더와
+ * 어긋나 hydration 불일치가 생긴다. 스냅샷을 캐시해 참조를 안정시키고,
+ * 쓰기가 일어날 때만 무효화한다.
+ */
+export interface StorageSnapshot {
+  readonly available: boolean;
+  readonly builds: readonly SavedBuild[];
+  readonly recentBuilds: readonly SavedBuild[];
+}
+
+/** 서버에는 저장소가 없다. 항상 같은 참조를 돌려줘야 한다. */
+const SERVER_SNAPSHOT: StorageSnapshot = { available: false, builds: [], recentBuilds: [] };
+
+let snapshot: StorageSnapshot | null = null;
+const listeners = new Set<() => void>();
+
+function invalidate(): void {
+  snapshot = null;
+  for (const notify of listeners) notify();
+}
+
+export function subscribeStorage(notify: () => void): () => void {
+  listeners.add(notify);
+  return () => {
+    listeners.delete(notify);
+  };
+}
+
+export function getStorageSnapshot(): StorageSnapshot {
+  snapshot ??= {
+    available: isStorageAvailable(),
+    builds: loadBuilds(),
+    recentBuilds: loadRecentBuilds(),
+  };
+  return snapshot;
+}
+
+export function getServerStorageSnapshot(): StorageSnapshot {
+  return SERVER_SNAPSHOT;
+}
+
+/** 테스트에서 캐시를 비운다. */
+export function resetStorageSnapshot(): void {
+  snapshot = null;
 }

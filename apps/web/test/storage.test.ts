@@ -20,6 +20,10 @@ import {
   recordRecentPart,
   removeBuild,
   saveBuild,
+  getServerStorageSnapshot,
+  getStorageSnapshot,
+  resetStorageSnapshot,
+  subscribeStorage,
 } from '../src/lib/storage';
 
 const CODE = 'AQMRERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg';
@@ -51,6 +55,7 @@ function installStorage(opts: { failWrites?: boolean; throwOnAccess?: boolean } 
 
 beforeEach(() => {
   vi.unstubAllGlobals();
+  resetStorageSnapshot();
 });
 
 describe('★ 버전별 샘플 복원 (§10.4)', () => {
@@ -256,5 +261,45 @@ describe('저장 대상 키가 §8A.1과 맞는다', () => {
 
   it('상한이 스펙대로다', () => {
     expect(LIMITS).toEqual({ builds: 20, recentBuilds: 5, recentParts: 20 });
+  });
+});
+
+describe('React 스냅샷 (useSyncExternalStore)', () => {
+  it('같은 스냅샷은 참조가 유지된다 — 무한 렌더를 막는 조건', () => {
+    installStorage();
+    expect(getStorageSnapshot()).toBe(getStorageSnapshot());
+  });
+
+  it('서버 스냅샷은 항상 같은 참조이고 비어 있다', () => {
+    expect(getServerStorageSnapshot()).toBe(getServerStorageSnapshot());
+    expect(getServerStorageSnapshot()).toEqual({ available: false, builds: [], recentBuilds: [] });
+  });
+
+  it('쓰기가 일어나면 스냅샷이 갱신되고 구독자에게 알린다', () => {
+    installStorage();
+    const before = getStorageSnapshot();
+    const notify = vi.fn();
+    const unsubscribe = subscribeStorage(notify);
+
+    saveBuild(CODE, '새 견적');
+
+    expect(notify).toHaveBeenCalled();
+    const after = getStorageSnapshot();
+    expect(after).not.toBe(before);
+    expect(after.builds[0]?.label).toBe('새 견적');
+    unsubscribe();
+  });
+
+  it('구독을 해제하면 더 알리지 않는다', () => {
+    installStorage();
+    const notify = vi.fn();
+    subscribeStorage(notify)();
+    saveBuild(CODE, 'x');
+    expect(notify).not.toHaveBeenCalled();
+  });
+
+  it('저장소가 막혀 있으면 available이 false다', () => {
+    installStorage({ throwOnAccess: true });
+    expect(getStorageSnapshot().available).toBe(false);
   });
 });
