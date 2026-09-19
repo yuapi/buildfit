@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { partBySlug, partsMatchingSpec, type RelatedPart } from '@buildfit/db/part';
 import { encodeBuildCode } from '@/lib/build-code';
-import { SLOT_META } from '@/lib/categories';
+import { SLOT_META, categoryLabel } from '@/lib/categories';
 import { getDb } from '@/lib/db';
 import { specLabel, specValueText } from '@/lib/spec-labels';
 import { ReportForm } from './ReportForm';
@@ -107,7 +107,16 @@ export default async function PartPage({
           견적 구성
         </Link>
         <span className="mx-2">·</span>
-        <span>{part.category}</span>
+        <Link href="/part" className="underline underline-offset-2">
+          부품
+        </Link>
+        <span className="mx-2">·</span>
+        <Link
+          href={`/part/${part.category.toLowerCase()}`}
+          className="underline underline-offset-2"
+        >
+          {categoryLabel(part.category)}
+        </Link>
       </nav>
 
       <h1 className="mt-4 text-2xl font-semibold">{part.modelName}</h1>
