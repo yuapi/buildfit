@@ -19,6 +19,13 @@ export interface FieldRef {
   readonly part: string;
   /** 사람이 읽는 필드 이름. 예: "케이스 지원 PSU 폼팩터" */
   readonly field: string;
+  /**
+   * 부품 slug. 화면이 상세 페이지로 안내할 때 쓴다.
+   *
+   * 판정 불가를 만난 사용자가 그 값을 아는 경우가 있다. 거기서 제보로 이어지는
+   * 것이 가장 값싼 보강 경로다 (§5.5).
+   */
+  readonly slug?: string | undefined;
 }
 
 /**

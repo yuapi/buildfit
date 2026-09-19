@@ -158,7 +158,7 @@ export function BuildTool({ initial }: { initial?: Build }) {
             부품 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요. 고른 구성은 그대로 있습니다.
           </p>
         )}
-        <VerdictPanel verdict={verdict} pending={pending} />
+        <VerdictPanel verdict={verdict} pending={pending} build={build} />
         {anySelected && <ShareBox code={code} />}
         <SaveBox
           code={code}
@@ -321,12 +321,26 @@ function toneOf(r: RuleResult): Tone {
 /** 심각한 것부터 보여준다. */
 const TONE_RANK: Record<Tone, number> = { error: 0, warning: 1, unknown: 2, pass: 3 };
 
+/** slug로 부품의 카테고리를 되찾는다. 상세 페이지 주소를 만들려면 둘 다 필요하다. */
+function partHref(build: Build | undefined, slug: string | undefined): string | null {
+  if (!build || !slug) return null;
+  for (const meta of SLOT_META) {
+    const candidates = meta.slot === 'ram' ? build.ram : [build[meta.slot]];
+    if (candidates.some((p) => p?.slug === slug)) {
+      return `/part/${meta.category.toLowerCase()}/${slug}`;
+    }
+  }
+  return null;
+}
+
 export function VerdictPanel({
   verdict,
   pending = false,
+  build,
 }: {
   verdict: ReturnType<typeof evaluate>;
   pending?: boolean;
+  build?: Build;
 }) {
   const { counts, results } = verdict;
   // 심각한 것부터. 같은 등급 안에서는 규칙 번호순 (docs/compat-rules.md §0.3)
@@ -365,7 +379,26 @@ export function VerdictPanel({
                       <p className="mt-0.5 text-xs text-neutral-500">
                         {r.reason.kind === 'missing' ? '없는 정보: ' : '데이터 이상: '}
                         {r.reason.kind !== 'missing' && `${r.reason.detail} `}
-                        {r.reason.fields.map((f) => `${f.part}의 ${f.field}`).join(', ')}
+                        {r.reason.fields.map((f, i) => {
+                          const href = partHref(build, f.slug);
+                          return (
+                            <span key={`${f.part}-${f.field}`}>
+                              {i > 0 && ', '}
+                              {/* 판정 불가를 만난 사람이 그 값을 아는 경우가 있다.
+                                  거기서 제보로 이어지는 것이 가장 값싼 보강 경로다 (§5.5). */}
+                              {href ? (
+                                <Link href={href} className="underline underline-offset-2">
+                                  {f.part}의 {f.field}
+                                </Link>
+                              ) : (
+                                `${f.part}의 ${f.field}`
+                              )}
+                            </span>
+                          );
+                        })}
+                        {r.reason.fields.some((f) => partHref(build, f.slug)) && (
+                          <span className="ml-1">— 아는 값이 있으면 알려주세요</span>
+                        )}
                       </p>
                     )}
                     {r.notes?.map((n) => (

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { requiredKeysFor } from '@buildfit/compat';
 import { partBySlug, partsMatchingSpec, type RelatedPart } from '@buildfit/db/part';
 import { encodeBuildCode } from '@/lib/build-code';
 import { SLOT_META, categoryLabel } from '@/lib/categories';
@@ -96,6 +97,13 @@ export default async function PartPage({
   // 주소를 정본으로 유지한다. 카테고리가 어긋나면 그 주소는 없는 것으로 본다.
   if (!part || part.category.toLowerCase() !== category.toLowerCase()) notFound();
 
+  // 값이 있는 항목뿐 아니라 **비어 있는 필수 항목**도 제보 대상이다.
+  // 견적에서 "판정 불가"를 만난 사용자가 그 값을 알려줄 수 있어야 한다 (§5.5).
+  const have = new Set(part.specs.map((s) => s.key));
+  const missingRequired = requiredKeysFor(part.category)
+    .filter((r) => !have.has(r.specKey))
+    .map((r) => r.specKey);
+
   const related = await relatedParts(part.category, part.id, part.specs);
   const buildHref = startBuildHref(part.category, part.id);
   const sourceUrl = part.specs.find((s) => s.sourceUrl)?.sourceUrl ?? null;
@@ -170,12 +178,28 @@ export default async function PartPage({
           </table>
         )}
 
+        {missingRequired.length > 0 && (
+          <div className="mt-4 rounded border border-amber-400 p-3 text-sm dark:border-amber-600">
+            <p className="font-medium text-amber-700 dark:text-amber-500">
+              호환성 판정에 필요한데 비어 있는 항목 {missingRequired.length}개
+            </p>
+            <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">
+              {missingRequired.map(specLabel).join(', ')}
+            </p>
+            <p className="mt-1 text-xs text-neutral-500">
+              이 값이 없으면 견적에서 &ldquo;판정 불가&rdquo;로 나옵니다. 아시는 값이 있으면
+              아래에서 알려주세요.
+            </p>
+          </div>
+        )}
+
         <div className="mt-4">
           <ReportForm
             partId={part.id}
             slug={part.slug}
             category={part.category}
             specKeys={part.specs.map((s) => s.key)}
+            missingKeys={missingRequired}
           />
         </div>
       </section>
