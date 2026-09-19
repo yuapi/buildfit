@@ -4,9 +4,10 @@ import Link from 'next/link';
 
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, useTransition } from 'react';
 import type { Build, RuleResult } from '@buildfit/compat';
-import { evaluate } from '@buildfit/compat';
+import { SLOT_LABELS, blockingSlots, evaluate } from '@buildfit/compat';
 import { decodeBuildCode, encodeBuildCode } from '@/lib/build-code';
 import { SLOT_META, type SlotName } from '@/lib/categories';
+import { listWithJosa } from '@/lib/korean';
 import {
   getServerStorageSnapshot,
   getStorageSnapshot,
@@ -364,6 +365,11 @@ export function VerdictPanel({
     (a, b) => TONE_RANK[toneOf(a)] - TONE_RANK[toneOf(b)] || a.ruleId - b.ruleId,
   );
 
+  // 아직 고르지 않은 부품 때문에 돌지 못한 규칙. **결측과 다르다.**
+  // 이걸 말하지 않으면 CPU와 보드만 고른 사람이 "통과 4"를 보고 견적이
+  // 확인됐다고 믿는다. 이 도구가 낼 수 있는 가장 나쁜 결과다 (명세 §4.3).
+  const waiting = build ? blockingSlots(build) : [];
+
   return (
     <div className="rounded border border-neutral-300 p-4 dark:border-neutral-700">
       <h2 className="text-lg font-medium">
@@ -382,6 +388,16 @@ export function VerdictPanel({
             {counts.fail > 0 && ` · 문제 ${counts.fail}`}
             {counts.unknown > 0 && ` · 판정 불가 ${counts.unknown}`}
           </p>
+          {waiting.length > 0 && (
+            <p className="mt-1 text-sm text-neutral-500">
+              {listWithJosa(
+                waiting.map((s) => SLOT_LABELS[s]),
+                '을',
+                '를',
+              )}{' '}
+              아직 고르지 않아 검사하지 못한 항목이 있습니다.
+            </p>
+          )}
 
           <ul className="mt-4 space-y-3">
             {sorted.map((r) => {
