@@ -110,8 +110,13 @@ export function toPartRow(
   const chipsetRaw = getPath(record, 'chipset');
   const chipsetName = typeof chipsetRaw === 'string' && chipsetRaw.trim() !== '' ? chipsetRaw : null;
 
+  // 제품명이 이미 제조사로 시작하면 접두어를 겹치지 않는다.
+  // "AMD AMD Ryzen 7 9800X3D" 같은 주소가 나오면 검색 유입에 불리하다 (§5.2).
+  // 원본에 앞뒤 공백이 실재한다 (" GIGASTONE ..."). 비교 전에 다듬는다.
+  const nameStartsWithBrand =
+    brand !== null && modelName.trim().toLowerCase().startsWith(brand.trim().toLowerCase());
   // slug는 opendbId 접미사로 고유성을 보장한다. 동일 모델명 중복이 실재한다 (조사 §4)
-  const slug = `${toSlug([brand, modelName])}-${opendbId.slice(0, 8)}`;
+  const slug = `${toSlug([nameStartsWithBrand ? null : brand, modelName])}-${opendbId.slice(0, 8)}`;
 
   return {
     opendbId,
