@@ -63,7 +63,7 @@ git branch -d feature/1-opendb-schema-research
 **Phase 0a — 유통 매칭만 남음 (막힘)**
 - OpenDB 적재 ✅ 부품 22,962건 (`apps/ingest`)
 - 어드민(빈 필드 보강) ✅ (`/admin`)
-- 국내 유통 매칭 ⛔ **네이버 쇼핑 API 키 대기** (handoff-guide §7의 사용자 작업)
+- 국내 유통 매칭 ⛔ **네이버 쇼핑 API 키 대기** (이슈 #1, handoff-guide §7)
 
 **Phase 0b — 완료**
 - 호환성 규칙 8개 동작 ✅ (`packages/compat`)
@@ -74,8 +74,12 @@ git branch -d feature/1-opendb-schema-research
 **Phase 1 — 진행 중**
 - CPU 쿨러 슬롯 + 규칙 9 (높이 ≤ 케이스 한계) ✅ 공유 코드 v2 (ADR-0012)
 - 규칙 12 (BIOS 업데이트 필요 여부) ✅ Flashback으로 경고/정보를 가른다
-- 전기요금 ⛔ **KEPCO 누진세 표 확보 불가** (이 환경에서 도메인 차단)
-- 스토리지 미착수
+- 전기요금 ⛔ **한전 누진세 표 확보 불가** (이 환경에서 도메인 차단) — 이슈 #2
+- 스토리지 보류 — 전력 상수 확보 후 (이슈 #5)
+- 규칙 10·11·13·14 보류 — OpenDB 스키마에 필드 없음 (이슈 #4)
+
+**남은 작업은 GitHub 이슈에 있다.** 문서의 "이슈 #n"은 handoff-guide §4의
+계획 번호이고 GitHub 번호와 다르다. 대응표는 그 절에 있다.
 
 로드맵: `docs/pc-builder-spec.md` §11
 
