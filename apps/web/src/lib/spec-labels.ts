@@ -6,7 +6,7 @@
  * 라벨이 없다고 값을 숨기지 않는다.
  */
 
-import { PHASE0_REQUIREMENTS } from '@buildfit/compat';
+import { SPEC_REQUIREMENTS } from '@buildfit/compat';
 
 const EXTRA: Readonly<Record<string, string>> = {
   chipset: '칩셋',
@@ -50,7 +50,7 @@ const EXTRA: Readonly<Record<string, string>> = {
 };
 
 const FROM_RULES: Record<string, string> = {};
-for (const req of PHASE0_REQUIREMENTS) FROM_RULES[req.specKey] ??= req.label;
+for (const req of SPEC_REQUIREMENTS) FROM_RULES[req.specKey] ??= req.label;
 
 export function specLabel(key: string): string {
   return EXTRA[key] ?? FROM_RULES[key] ?? key;

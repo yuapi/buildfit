@@ -52,6 +52,7 @@ async function main(): Promise<void> {
       gpu: await find('GPU', 'RTX 5080'),
       pcCase: await find('PCCase', 'O11 Dynamic EVO'),
       psu: await find('PSU', 'RM850x'),
+      cooler: await find('CPUCooler', 'NH-D15'),
     };
 
     const build = await loadBuild(db, sel);
@@ -85,6 +86,7 @@ async function main(): Promise<void> {
       gpu: await pickRandom(db, 'GPU', SAMPLE_BUILDS),
       pcCase: await pickRandom(db, 'PCCase', SAMPLE_BUILDS),
       psu: await pickRandom(db, 'PSU', SAMPLE_BUILDS),
+      cooler: await pickRandom(db, 'CPUCooler', SAMPLE_BUILDS),
     };
 
     const perRule = new Map<number, { pass: number; fail: number; unknown: number }>();
@@ -99,6 +101,7 @@ async function main(): Promise<void> {
         gpu: pools.gpu[i],
         pcCase: pools.pcCase[i],
         psu: pools.psu[i],
+        cooler: pools.cooler[i],
       });
       const v = evaluate(b);
       if (v.counts.unknown > 0) buildsWithUnknown += 1;

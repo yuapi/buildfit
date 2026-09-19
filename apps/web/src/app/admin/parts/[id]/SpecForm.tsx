@@ -75,7 +75,20 @@ export function SpecForm({
       </div>
 
       <div className="mt-3" key={`value-${attempt}`}>
-        {req.valueType === 'string[]' && req.options ? (
+        {req.valueType === 'boolean' ? (
+          // 예/아니오를 라디오가 아니라 select로 둔다. 미선택 상태가 값과
+          // 구분되어야 한다 — 라디오는 "아직 안 고름"을 표현하기 어렵다.
+          <select
+            name="value"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            className="w-full rounded border border-neutral-300 bg-transparent px-2 py-1.5 text-sm dark:border-neutral-700"
+          >
+            <option value="">선택하세요</option>
+            <option value="true">예</option>
+            <option value="false">아니오</option>
+          </select>
+        ) : req.valueType === 'string[]' && req.options ? (
           <fieldset className="flex flex-wrap gap-x-4 gap-y-2">
             {req.options.map((opt) => (
               <label key={opt} className="flex items-center gap-1.5 text-sm">
