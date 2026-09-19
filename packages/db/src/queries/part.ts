@@ -174,3 +174,82 @@ export async function openSpecReports(db: Database, limit = 50): Promise<OpenRep
     .orderBy(sql`${specReports.createdAt} desc`)
     .limit(limit);
 }
+
+// --- 목록·색인 ---------------------------------------------------------------
+
+export interface CategoryCount {
+  readonly category: string;
+  readonly total: number;
+}
+
+/** 카테고리별 부품 수. 목록 진입점과 sitemap 분할에 쓴다. */
+export async function categoryCounts(db: Database): Promise<CategoryCount[]> {
+  const rows = await db
+    .select({ category: parts.category, total: sql<number>`count(*)::int` })
+    .from(parts)
+    .groupBy(parts.category)
+    .orderBy(sql`count(*) desc`);
+  return rows;
+}
+
+export interface PartListItem {
+  readonly slug: string;
+  readonly modelName: string;
+  readonly brand: string | null;
+  readonly releaseYear: number | null;
+  readonly discontinued: boolean;
+}
+
+export interface PartListPage {
+  readonly items: readonly PartListItem[];
+  readonly total: number;
+}
+
+/** 카테고리 목록 한 페이지. */
+export async function partsInCategory(
+  db: Database,
+  category: string,
+  opts: { limit?: number; offset?: number; query?: string } = {},
+): Promise<PartListPage> {
+  const q = (opts.query ?? '').trim();
+  const where =
+    q === ''
+      ? eq(parts.category, category)
+      : and(eq(parts.category, category), sql`${parts.modelName} ilike ${'%' + q + '%'}`);
+
+  const [countRow] = await db
+    .select({ total: sql<number>`count(*)::int` })
+    .from(parts)
+    .where(where);
+
+  const items = await db
+    .select({
+      slug: parts.slug,
+      modelName: parts.modelName,
+      brand: parts.brand,
+      releaseYear: parts.releaseYear,
+      discontinued: parts.discontinued,
+    })
+    .from(parts)
+    .where(where)
+    .orderBy(sql`${parts.releaseYear} desc nulls last`, parts.modelName)
+    .limit(opts.limit ?? 60)
+    .offset(opts.offset ?? 0);
+
+  return { items, total: countRow?.total ?? 0 };
+}
+
+/** sitemap용 slug 목록. 본문 없이 주소만 필요하다. */
+export async function slugsInCategory(
+  db: Database,
+  category: string,
+  opts: { limit?: number; offset?: number } = {},
+): Promise<{ slug: string; updatedAt: Date }[]> {
+  return db
+    .select({ slug: parts.slug, updatedAt: parts.updatedAt })
+    .from(parts)
+    .where(eq(parts.category, category))
+    .orderBy(parts.slug)
+    .limit(opts.limit ?? 5000)
+    .offset(opts.offset ?? 0);
+}
