@@ -312,6 +312,8 @@ slug 규칙: 소문자, 하이픈, 제조사-모델-변형
 2. 국내 유통 판정: §5.7.1 매칭 파이프라인 → skus 생성
 3. 빈 필드 확인: 물리 치수 등 누락 항목 목록화
 4. 2차 보강: 어드민에 제조사 스펙시트 URL 붙여넣기
+   — OpenDB에 주소가 있으면 적재가 `parts.manufacturer_url`에 담아 이 단계를
+   대신한다. 어드민이 링크와 출처 기본값을 함께 제공한다 (4,201건, §5.3.1)
 5. Claude가 페이지를 읽고 빈 필드를 구조화해서 추출
 6. 사람이 확인·수정 후 승인
 7. source_url + verified_at 기록하며 저장
@@ -320,6 +322,28 @@ slug 규칙: 소문자, 하이픈, 제조사-모델-변형
 1~2번이 자동이므로 **수동 작업은 3~7번의 빈 필드 보강으로 한정된다.** 어드민은 여전히 필요하지만 처음부터 전부 입력하는 게 아니라 구멍을 메우는 도구가 된다.
 
 **3~4번을 건너뛰지 않는다.** 스펙 오류는 사용자가 실제로 부품을 잘못 사게 만드는 결과로 이어지므로, 자동 추출을 그대로 신뢰하지 않는다.
+
+#### 5.3.1 제조사 스펙 주소
+
+OpenDB `general_product_information.manufacturer_url`을 `parts.manufacturer_url`에
+적재한다. 보강에서 가장 오래 걸리는 단계가 출처를 찾는 것인데, 이 값이 있으면
+그 단계가 사라진다. 어드민은 이 주소를 **열기 링크**와 **출처 칸의 기본값**으로
+동시에 제공한다.
+
+| 카테고리 | 주소 있음 / 전체 |
+|---|---|
+| CPU | 655 / 789 (83%) |
+| GPU | 938 / 3,837 (24%) |
+| PCCase | 812 / 3,782 (21%) |
+| RAM | 869 / 4,876 (18%) |
+| Motherboard | 560 / 3,701 (15%) |
+| CPUCooler | 278 / 2,404 (12%) |
+| PSU | 89 / 3,297 (3%) |
+
+**기본값을 넣었다고 확인한 것이 되지는 않는다.** 그래서 값을 감추지 않고 편집
+가능한 입력에 그대로 둔다. 작업자가 다른 출처를 썼다면 고칠 수 있어야 한다.
+
+`http(s)`가 아닌 스킴은 적재에서 버린다. 화면에서 링크가 되는 값이다.
 
 이 워크플로를 **Phase 0에서 가장 먼저 만든다.** 견적 도구보다 먼저다. 데이터 입력이 편해야 100개를 채울 수 있고, 데이터가 없으면 도구가 동작하지 않는다.
 
@@ -511,8 +535,8 @@ API도 쿼터도 없다. **리포지토리를 받는 것으로 초기 적재가 
 
 ```
 parts          (id, slug, category, brand, model_name, release_date,
-                discontinued, chip_id NULL, opendb_id NULL,
-                kr_available, kr_checked_at)
+                discontinued, chip_id NULL, opendb_id NULL, mpn NULL,
+                manufacturer_url NULL, kr_available, kr_checked_at)
 part_specs     (part_id, key, value, unit, source_url, verified_at, disputed)
 part_aliases   (part_id, raw_name, confidence, source)
 

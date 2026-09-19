@@ -66,6 +66,15 @@ export const parts = pgTable(
     /** 제조사 파트넘버. 조사 결과 전 카테고리 99% 충전 — 국내 매칭의 우선 키 (조사 §7.6) */
     mpn: text('mpn'),
 
+    /**
+     * 제조사 스펙 페이지 URL. OpenDB `general_product_information.manufacturer_url`.
+     *
+     * 판정에는 쓰지 않는다. **어드민 보강의 1차 출처**다 (§5.3, §5.5).
+     * 빈 필드를 채우려면 출처를 찾는 데 대부분의 시간이 드는데, 이 값이 있으면
+     * 그 단계가 사라진다. 채움률은 카테고리마다 다르다 (CPU 83%, 케이스 22%, PSU 3%).
+     */
+    manufacturerUrl: text('manufacturer_url'),
+
     /** 국내 유통 여부. 유효 SKU >= 1 (§5.7.1 7단계) */
     krAvailable: boolean('kr_available'),
     krCheckedAt: timestamp('kr_checked_at', { withTimezone: true }),

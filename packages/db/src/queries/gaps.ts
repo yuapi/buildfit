@@ -72,6 +72,8 @@ export interface GapPart {
   readonly brand: string | null;
   readonly modelName: string;
   readonly releaseYear: number | null;
+  /** 제조사 스펙 페이지. 보강 작업자가 출처를 찾는 단계를 없앤다 */
+  readonly manufacturerUrl: string | null;
 }
 
 /** 특정 필드가 비어 있는 부품 목록. */
@@ -89,6 +91,7 @@ export async function partsMissingField(
       brand: parts.brand,
       modelName: parts.modelName,
       releaseYear: parts.releaseYear,
+      manufacturerUrl: parts.manufacturerUrl,
     })
     .from(parts)
     .where(
@@ -128,6 +131,7 @@ export async function partWithSpecs(db: Database, id: string): Promise<PartWithS
       brand: parts.brand,
       modelName: parts.modelName,
       releaseYear: parts.releaseYear,
+      manufacturerUrl: parts.manufacturerUrl,
     })
     .from(parts)
     .where(eq(parts.id, id));

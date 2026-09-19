@@ -115,6 +115,7 @@ async function main(): Promise<void> {
             releaseYear: r.releaseYear,
             opendbId: r.opendbId,
             mpn: r.mpn,
+            manufacturerUrl: r.manufacturerUrl,
             chipId:
               r.category === 'GPU' && r.chipsetName
                 ? (chipIdBySlug.get(`chip-${toSlug([r.chipsetName])}`) ?? null)
@@ -134,6 +135,7 @@ async function main(): Promise<void> {
             modelName: sql`excluded.model_name`,
             releaseYear: sql`excluded.release_year`,
             mpn: sql`excluded.mpn`,
+            manufacturerUrl: sql`excluded.manufacturer_url`,
             chipId: sql`excluded.chip_id`,
             updatedAt: sql`now()`,
           },
