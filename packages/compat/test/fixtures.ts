@@ -1,6 +1,6 @@
 /** 테스트용 부품. 전부 채워진 정상 조합을 기준으로 두고 필요한 필드만 덮어쓴다. */
 
-import type { Build, Cpu, Gpu, Motherboard, PcCase, Psu, RamKit } from '../src/parts';
+import type { Build, Cpu, CpuCooler, Gpu, Motherboard, PcCase, Psu, RamKit } from '../src/parts';
 
 export const cpu: Cpu = {
   id: 'cpu-1',
@@ -55,6 +55,14 @@ export const psu: Psu = {
   connectors: { pcie6plus2: 4, pcie12vhpwr: 1 },
 };
 
+export const cooler: CpuCooler = {
+  id: 'cooler-1',
+  name: 'Noctua NH-D15 G2',
+  heightMm: 160,
+  waterCooled: false,
+  supportedSockets: ['AM5', 'LGA1700', 'LGA1851'],
+};
+
 export const goodBuild: Build = {
   cpu,
   motherboard,
@@ -62,6 +70,7 @@ export const goodBuild: Build = {
   gpu,
   pcCase,
   psu,
+  cooler,
 };
 
 /** 기준 견적에서 일부만 바꾼 견적. */

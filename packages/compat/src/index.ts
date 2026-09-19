@@ -28,6 +28,7 @@ export type {
   PcCase,
   Psu,
   PsuConnectors,
+  CpuCooler,
   Build,
 } from './parts';
 
@@ -51,11 +52,23 @@ export {
 } from './case-reference';
 
 export type { Rule } from './rules';
-export { rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8, phase0Rules } from './rules';
+export {
+  rule1,
+  rule2,
+  rule3,
+  rule4,
+  rule5,
+  rule6,
+  rule7,
+  rule8,
+  rule9,
+  phase0Rules,
+  phase1Rules,
+} from './rules';
 
 export type { FieldRequirement } from './requirements';
 export {
-  PHASE0_REQUIREMENTS,
+  SPEC_REQUIREMENTS,
   REQUIREMENT_CATEGORIES,
   requiredKeysFor,
   rulesBlockedBy,

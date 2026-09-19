@@ -8,7 +8,16 @@
  * 어긋나면 값이 있는데도 결측으로 읽혀 판정 불가가 된다.
  */
 
-import type { Build, Cpu, Gpu, Motherboard, PcCase, Psu, RamKit } from '@buildfit/compat';
+import type {
+  Build,
+  Cpu,
+  CpuCooler,
+  Gpu,
+  Motherboard,
+  PcCase,
+  Psu,
+  RamKit,
+} from '@buildfit/compat';
 import { inArray } from 'drizzle-orm';
 import type { Database } from '../client';
 import { partSpecs, parts } from '../schema';
@@ -35,6 +44,15 @@ function num(specs: ReadonlyMap<string, unknown>, key: string): number | null {
 function str(specs: ReadonlyMap<string, unknown>, key: string): string | null {
   const v = specs.get(key);
   return typeof v === 'string' && v.trim() !== '' ? v : null;
+}
+
+function bool(specs: ReadonlyMap<string, unknown>, key: string): boolean | null {
+  const v = specs.get(key);
+  if (typeof v === 'boolean') return v;
+  // JSONB를 문자열로 돌려주는 드라이버 경로가 있다. false를 결측으로 떨구지 않는다.
+  if (v === 'true') return true;
+  if (v === 'false') return false;
+  return null;
 }
 
 function strArray(specs: ReadonlyMap<string, unknown>, key: string): readonly string[] | null {
@@ -167,6 +185,17 @@ function toPsu(p: RawPart): Psu {
   };
 }
 
+function toCpuCooler(p: RawPart): CpuCooler {
+  return {
+    id: p.id,
+    name: p.modelName,
+    slug: p.slug,
+    heightMm: num(p.specs, 'height_mm'),
+    waterCooled: bool(p.specs, 'water_cooled'),
+    supportedSockets: strArray(p.specs, 'cpu_sockets'),
+  };
+}
+
 /** 고르지 않은 부품은 생략하거나 `undefined`로 둔다. */
 export interface BuildSelection {
   readonly cpu?: string | undefined;
@@ -175,6 +204,7 @@ export interface BuildSelection {
   readonly gpu?: string | undefined;
   readonly pcCase?: string | undefined;
   readonly psu?: string | undefined;
+  readonly cooler?: string | undefined;
 }
 
 /**
@@ -190,6 +220,7 @@ export async function loadBuild(db: Database, sel: BuildSelection): Promise<Buil
     sel.gpu,
     sel.pcCase,
     sel.psu,
+    sel.cooler,
     ...(sel.ram ?? []),
   ].filter((v): v is string => typeof v === 'string');
 
@@ -205,6 +236,7 @@ export async function loadBuild(db: Database, sel: BuildSelection): Promise<Buil
   const gpu = pick(sel.gpu, 'GPU');
   const pcCase = pick(sel.pcCase, 'PCCase');
   const psu = pick(sel.psu, 'PSU');
+  const cooler = pick(sel.cooler, 'CPUCooler');
   const ram = (sel.ram ?? [])
     .map((id) => pick(id, 'RAM'))
     .filter((p): p is RawPart => p !== null);
@@ -216,5 +248,6 @@ export async function loadBuild(db: Database, sel: BuildSelection): Promise<Buil
     gpu: gpu ? toGpu(gpu) : null,
     pcCase: pcCase ? toPcCase(pcCase) : null,
     psu: psu ? toPsu(psu) : null,
+    cooler: cooler ? toCpuCooler(cooler) : null,
   };
 }

@@ -28,7 +28,7 @@ export interface FieldRequirement {
   /** 이 키가 없을 때 대신 쓸 수 있는 키. 예: ppt_w ← tdp_w */
   readonly fallbackKey?: string;
   /** 어드민 입력 위젯을 고르는 데 쓴다. */
-  readonly valueType: 'number' | 'string' | 'string[]';
+  readonly valueType: 'number' | 'string' | 'string[]' | 'boolean';
   /**
    * 허용값. **있으면 자유 입력을 막아야 한다.**
    * 규칙 5·6은 이 값들을 문자열 완전 일치로 비교하므로, 오타 하나가 판정을 뒤집는다.
@@ -50,7 +50,8 @@ export const PSU_FORM_FACTORS = [
 
 export const MEMORY_TYPES = ['DDR3', 'DDR4', 'DDR5', 'LPDDR4', 'LPDDR5'] as const;
 
-export const PHASE0_REQUIREMENTS: readonly FieldRequirement[] = [
+// Phase 0의 8개 규칙 + Phase 1의 규칙 9. 규칙이 늘면 여기도 는다.
+export const SPEC_REQUIREMENTS: readonly FieldRequirement[] = [
   // 1. CPU 소켓 = 메인보드 소켓
   { ruleId: 1, category: 'CPU', specKey: 'socket', label: '소켓', severity: 'error', valueType: 'string' },
   { ruleId: 1, category: 'Motherboard', specKey: 'socket', label: '소켓', severity: 'error', valueType: 'string' },
@@ -89,20 +90,25 @@ export const PHASE0_REQUIREMENTS: readonly FieldRequirement[] = [
   { ruleId: 8, category: 'GPU', specKey: 'pcie_12v_2x6', label: '12V-2x6 개수', severity: 'error', valueType: 'number' },
   { ruleId: 8, category: 'PSU', specKey: 'pcie_6_plus_2_pin', label: 'PCIe 6+2핀 커넥터 수', severity: 'error', valueType: 'number' },
   { ruleId: 8, category: 'PSU', specKey: 'pcie_12vhpwr', label: '12VHPWR 커넥터 수', severity: 'error', valueType: 'number' },
+
+  // 9. CPU 쿨러 높이 ≤ 케이스 최대 높이 (Phase 1, 경고 등급)
+  { ruleId: 9, category: 'CPUCooler', specKey: 'water_cooled', label: '수랭 여부', severity: 'warning', valueType: 'boolean' },
+  { ruleId: 9, category: 'CPUCooler', specKey: 'height_mm', label: '높이', severity: 'warning', valueType: 'number' },
+  { ruleId: 9, category: 'PCCase', specKey: 'max_cpu_cooler_height_mm', label: '쿨러 최대 높이', severity: 'warning', valueType: 'number' },
 ];
 
 /** 이 카테고리에서 반드시 필요한 (보조 아닌) 필드들. 어드민의 구멍 계산 대상. */
 export function requiredKeysFor(category: string): readonly FieldRequirement[] {
-  return PHASE0_REQUIREMENTS.filter((r) => r.category === category && r.optional !== true);
+  return SPEC_REQUIREMENTS.filter((r) => r.category === category && r.optional !== true);
 }
 
 /** 이 필드가 없으면 막히는 규칙 번호들. */
 export function rulesBlockedBy(category: string, specKey: string): readonly number[] {
-  return PHASE0_REQUIREMENTS.filter(
+  return SPEC_REQUIREMENTS.filter(
     (r) => r.category === category && r.specKey === specKey && r.optional !== true,
   ).map((r) => r.ruleId);
 }
 
 export const REQUIREMENT_CATEGORIES: readonly string[] = [
-  ...new Set(PHASE0_REQUIREMENTS.map((r) => r.category)),
+  ...new Set(SPEC_REQUIREMENTS.map((r) => r.category)),
 ];

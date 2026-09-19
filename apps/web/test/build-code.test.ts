@@ -15,6 +15,13 @@ const CASE = '44444444-4444-4444-8444-444444444444';
 const PSU = '55555555-5555-4555-8555-555555555555';
 const RAM1 = '66666666-6666-4666-8666-666666666666';
 const RAM2 = '77777777-7777-4777-8777-777777777777';
+const COOLER = '88888888-8888-4888-8888-888888888888';
+
+/**
+ * v1 시절에 만들어진 코드. **이 문자열은 바뀌지 않는다.**
+ * 실제로 v1 인코더가 낸 값이고, 지금도 같은 구성으로 읽혀야 한다.
+ */
+const V1_CPU_MB = 'AQMRERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg';
 
 describe('왕복', () => {
   it('전체 구성을 그대로 복원한다', () => {
@@ -58,24 +65,62 @@ describe('안정성 — 같은 구성은 항상 같은 코드', () => {
   });
 });
 
-describe('v1 포맷 고정 — 바꾸면 기존 링크가 죽는다', () => {
-  it('버전 바이트가 1이다', () => {
+describe('v1 코드는 영원히 읽힌다 — 이미 뿌려진 링크가 있다', () => {
+  it('v1 시절 코드가 같은 구성으로 읽힌다 (회귀 고정)', () => {
+    expect(decodeBuildCode(V1_CPU_MB)).toEqual({ cpu: CPU, motherboard: MB });
+  });
+
+  it('v1 코드의 버전 바이트는 1이다', () => {
+    expect(atob(V1_CPU_MB.replace(/-/g, '+').replace(/_/g, '/')).charCodeAt(0)).toBe(1);
+  });
+
+  it('v1에는 쿨러 슬롯이 없다. 없는 값을 지어내지 않는다', () => {
+    expect(decodeBuildCode(V1_CPU_MB)).not.toHaveProperty('cooler');
+  });
+
+  it('v1 메모리 비트(1<<5)를 v2 배치로 잘못 읽지 않는다', () => {
+    // v1 인코더가 cpu + 메모리 1개를 담은 코드. 마스크는 0b100001 = 33
+    const bytes = [1, 0b100001];
+    for (const hex of [CPU, RAM1]) {
+      if (hex === RAM1) bytes.push(1);
+      for (const b of hex.replace(/-/g, '').match(/../g)!) bytes.push(Number.parseInt(b, 16));
+    }
+    const code = btoa(String.fromCharCode(...bytes))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+    expect(decodeBuildCode(code)).toEqual({ cpu: CPU, ram: [RAM1] });
+  });
+});
+
+describe('v2 포맷 고정 — 바꾸면 기존 링크가 죽는다', () => {
+  it('새 코드의 버전 바이트가 2다', () => {
     const code = encodeBuildCode({ cpu: CPU });
     const bin = atob(code.replace(/-/g, '+').replace(/_/g, '/'));
     expect(bin.charCodeAt(0)).toBe(BUILD_CODE_VERSION);
+    expect(BUILD_CODE_VERSION).toBe(2);
   });
 
-  it('슬롯 순서가 cpu·mb·gpu·case·psu로 고정돼 있다', () => {
+  it('앞의 다섯 슬롯 순서를 v1에서 그대로 물려받는다', () => {
     // cpu(비트0)와 psu(비트4)만 고르면 마스크는 0b10001 = 17
     const code = encodeBuildCode({ cpu: CPU, psu: PSU });
     const bin = atob(code.replace(/-/g, '+').replace(/_/g, '/'));
     expect(bin.charCodeAt(1)).toBe(0b10001);
   });
 
-  it('알려진 코드가 계속 같은 구성으로 읽힌다 (회귀 고정)', () => {
-    const known = encodeBuildCode({ cpu: CPU, motherboard: MB });
-    expect(known).toBe('AQMRERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg');
-    expect(decodeBuildCode(known)).toEqual({ cpu: CPU, motherboard: MB });
+  it('쿨러는 비트 5, 메모리는 비트 6이다', () => {
+    const code = encodeBuildCode({ cooler: COOLER, ram: [RAM1] });
+    const bin = atob(code.replace(/-/g, '+').replace(/_/g, '/'));
+    expect(bin.charCodeAt(1)).toBe(0b1100000);
+  });
+
+  it('쿨러를 포함한 구성이 왕복한다', () => {
+    const sel = { cpu: CPU, motherboard: MB, gpu: GPU, pcCase: CASE, psu: PSU, cooler: COOLER, ram: [RAM1, RAM2] };
+    expect(decodeBuildCode(encodeBuildCode(sel))).toEqual(sel);
+  });
+
+  it('쿨러만 고른 구성도 왕복한다', () => {
+    expect(decodeBuildCode(encodeBuildCode({ cooler: COOLER }))).toEqual({ cooler: COOLER });
   });
 });
 
@@ -84,7 +129,8 @@ describe('깨진 입력 — 던지지 않고 null', () => {
     ['빈 문자열', ''],
     ['base64가 아닌 문자', '!!!not-base64!!!'],
     ['너무 짧음', 'AQ'],
-    ['알 수 없는 버전', 'AgMRERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg'],
+    // v3는 아직 없다. 모르는 버전을 아는 척 읽으면 엉뚱한 부품이 나간다
+    ['알 수 없는 버전', 'AwMRERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg'],
   ])('%s → null', (_label, code) => {
     expect(decodeBuildCode(code)).toBeNull();
   });

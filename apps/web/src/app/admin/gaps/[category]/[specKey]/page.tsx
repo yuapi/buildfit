@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { PHASE0_REQUIREMENTS } from '@buildfit/compat';
+import { SPEC_REQUIREMENTS } from '@buildfit/compat';
 import { partsMissingField } from '@buildfit/db/queries';
 import { getDb } from '@/lib/db';
 
@@ -18,7 +18,7 @@ export default async function GapList({
   const { category, specKey } = await params;
   const { page } = await searchParams;
 
-  const req = PHASE0_REQUIREMENTS.find((r) => r.category === category && r.specKey === specKey);
+  const req = SPEC_REQUIREMENTS.find((r) => r.category === category && r.specKey === specKey);
   if (!req) notFound();
 
   const pageNo = Math.max(1, Number(page ?? '1') || 1);

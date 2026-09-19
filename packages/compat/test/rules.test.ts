@@ -1,7 +1,7 @@
 /**
  * 규칙 엔진 회귀 테스트.
  *
- * 구성은 docs/compat-rules.md §9의 체크리스트를 따른다.
+ * 구성은 docs/compat-rules.md §10의 체크리스트를 따른다.
  * - 규칙마다 pass / fail
  * - 규칙마다 필요 필드를 null로 비운 unknown
  * - 규칙 8의 모순 케이스 ★ 결측 검사로는 잡히지 않는다
@@ -10,7 +10,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { evaluate } from '../src/engine';
-import { rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8 } from '../src/rules';
+import { emptyBuild } from '../src/parts';
+import { rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8, rule9 } from '../src/rules';
 import * as f from './fixtures';
 
 describe('1. CPU 소켓 = 메인보드 소켓', () => {
@@ -387,10 +388,66 @@ describe('8. PCIe 보조전원 커넥터', () => {
   });
 });
 
+describe('9. CPU 쿨러 높이 ≤ 케이스 최대 높이 (Phase 1)', () => {
+  it('한계 안이면 pass', () => {
+    // 기준 견적: 쿨러 160mm / 케이스 한계 167mm
+    const r = rule9(f.goodBuild);
+    expect(r?.verdict).toBe('pass');
+  });
+
+  it('정확히 같으면 pass — 경계는 들어가는 쪽이다', () => {
+    const r = rule9(f.withBuild({ cooler: { ...f.cooler, heightMm: 167 } }));
+    expect(r?.verdict).toBe('pass');
+  });
+
+  it('넘으면 오류가 아니라 경고다', () => {
+    const r = rule9(f.withBuild({ cooler: { ...f.cooler, heightMm: 200 } }));
+    expect(r?.verdict).toBe('fail');
+    expect(r?.severity).toBe('warning');
+  });
+
+  it('수랭이면 판정하지 않고 건너뛴 사실을 남긴다', () => {
+    const r = rule9(f.withBuild({ cooler: { ...f.cooler, waterCooled: true } }));
+    expect(r?.verdict).toBe('unknown');
+    expect(r?.skipped?.length).toBeGreaterThan(0);
+  });
+
+  it('수랭 쿨러를 통과로 표시하지 않는다 — 라디에이터는 아무도 확인하지 않았다', () => {
+    const r = rule9(f.withBuild({ cooler: { ...f.cooler, waterCooled: true, heightMm: 50 } }));
+    expect(r?.verdict).not.toBe('pass');
+  });
+
+  it('수랭 여부가 없으면 높이가 있어도 판정 불가', () => {
+    const r = rule9(f.withBuild({ cooler: { ...f.cooler, waterCooled: null } }));
+    expect(r?.verdict).toBe('unknown');
+    expect(r?.reason?.fields[0]?.field).toBe('수랭 여부');
+  });
+
+  it('쿨러 높이가 없으면 판정 불가', () => {
+    const r = rule9(f.withBuild({ cooler: { ...f.cooler, heightMm: null } }));
+    expect(r?.verdict).toBe('unknown');
+    expect(r?.reason?.kind).toBe('missing');
+  });
+
+  it('케이스 한계가 없으면 판정 불가 — 케이스의 35.2%만 채워져 있다', () => {
+    const r = rule9(f.withBuild({ pcCase: { ...f.pcCase, maxCpuCoolerHeightMm: null } }));
+    expect(r?.verdict).toBe('unknown');
+  });
+
+  it('쿨러를 고르지 않았으면 규칙이 적용되지 않는다', () => {
+    expect(rule9(f.withBuild({ cooler: null }))).toBeNull();
+  });
+
+  it('빠듯해도 경고로 올리지 않는다 — 근거 없는 정밀도를 주장하지 않는다', () => {
+    const r = rule9(f.withBuild({ cooler: { ...f.cooler, heightMm: 166 } }));
+    expect(r?.verdict).toBe('pass');
+  });
+});
+
 describe('엔진', () => {
-  it('정상 견적은 8개 규칙이 전부 통과한다', () => {
+  it('정상 견적은 9개 규칙이 전부 통과한다', () => {
     const v = evaluate(f.goodBuild);
-    expect(v.counts.pass).toBe(8);
+    expect(v.counts.pass).toBe(9);
     expect(v.counts.fail).toBe(0);
     expect(v.counts.unknown).toBe(0);
   });
@@ -402,7 +459,7 @@ describe('엔진', () => {
   });
 
   it('빈 견적은 적용할 규칙이 없다', () => {
-    const v = evaluate({ cpu: null, motherboard: null, ram: [], gpu: null, pcCase: null, psu: null });
+    const v = evaluate(emptyBuild);
     expect(v.results).toHaveLength(0);
   });
 

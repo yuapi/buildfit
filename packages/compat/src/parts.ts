@@ -87,6 +87,18 @@ export interface Psu extends PartRef {
   readonly connectors: PsuConnectors;
 }
 
+/**
+ * CPU 쿨러. 규칙 9 (Phase 1, `docs/compat-rules.md` §9).
+ *
+ * `waterCooled`를 높이와 함께 둔다. AIO에도 `height`가 채워진 레코드가 있어서,
+ * 높이가 있다고 공랭으로 단정하면 라디에이터 문제를 통과로 덮는다.
+ */
+export interface CpuCooler extends PartRef {
+  readonly heightMm: number | null;
+  readonly waterCooled: boolean | null;
+  readonly supportedSockets: readonly string[] | null;
+}
+
 /** 견적. 아직 고르지 않은 부품은 `null`이다 (결측과 구분된다). */
 export interface Build {
   readonly cpu: Cpu | null;
@@ -95,6 +107,7 @@ export interface Build {
   readonly gpu: Gpu | null;
   readonly pcCase: PcCase | null;
   readonly psu: Psu | null;
+  readonly cooler: CpuCooler | null;
 }
 
 export const emptyBuild: Build = {
@@ -104,4 +117,5 @@ export const emptyBuild: Build = {
   gpu: null,
   pcCase: null,
   psu: null,
+  cooler: null,
 };

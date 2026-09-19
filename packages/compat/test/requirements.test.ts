@@ -6,8 +6,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { PHASE0_REQUIREMENTS, requiredKeysFor, rulesBlockedBy } from '../src/requirements';
-import { phase0Rules } from '../src/rules';
+import { SPEC_REQUIREMENTS, requiredKeysFor, rulesBlockedBy } from '../src/requirements';
+import { phase1Rules } from '../src/rules';
 import type { Build } from '../src/parts';
 import * as f from './fixtures';
 
@@ -42,14 +42,18 @@ const BLANK: Record<string, () => Build> = {
     f.withBuild({ psu: { ...f.psu, connectors: { ...f.psu.connectors, pcie6plus2: null } } }),
   'PSU.pcie_12vhpwr': () =>
     f.withBuild({ psu: { ...f.psu, connectors: { ...f.psu.connectors, pcie12vhpwr: null } } }),
+  'CPUCooler.water_cooled': () => f.withBuild({ cooler: { ...f.cooler, waterCooled: null } }),
+  'CPUCooler.height_mm': () => f.withBuild({ cooler: { ...f.cooler, heightMm: null } }),
+  'PCCase.max_cpu_cooler_height_mm': () =>
+    f.withBuild({ pcCase: { ...f.pcCase, maxCpuCoolerHeightMm: null } }),
 };
 
 describe('요구사항 선언 ↔ 규칙 구현 정합성', () => {
-  const required = PHASE0_REQUIREMENTS.filter((r) => r.optional !== true);
+  const required = SPEC_REQUIREMENTS.filter((r) => r.optional !== true);
 
   it('선언된 규칙 번호가 전부 구현되어 있다', () => {
     const implemented = new Set(
-      phase0Rules.map((rule) => rule(f.goodBuild)?.ruleId).filter((id): id is number => id != null),
+      phase1Rules.map((rule) => rule(f.goodBuild)?.ruleId).filter((id): id is number => id != null),
     );
     for (const r of required) {
       expect(implemented, `규칙 ${r.ruleId}이 구현되지 않았다`).toContain(r.ruleId);
@@ -67,7 +71,7 @@ describe('요구사항 선언 ↔ 규칙 구현 정합성', () => {
     (key, ruleId) => {
       const build = BLANK[key]?.();
       expect(build, `${key}의 비우기 정의가 없다`).toBeDefined();
-      const rule = phase0Rules.find((fn) => fn(f.goodBuild)?.ruleId === ruleId);
+      const rule = phase1Rules.find((fn) => fn(f.goodBuild)?.ruleId === ruleId);
       expect(rule, `규칙 ${ruleId} 구현을 찾지 못했다`).toBeDefined();
       const result = rule?.(build!);
       expect(result?.verdict, `${key}를 비웠는데 규칙 ${ruleId}이 ${result?.verdict}였다`).toBe(

@@ -345,4 +345,53 @@ export const rule8: Rule = ({ gpu, psu }) => {
 };
 
 /** 표시 순서를 고정하기 위해 번호순으로 둔다. docs/compat-rules.md §0.3 */
+// --- 9. CPU 쿨러 높이 ≤ 케이스 최대 높이 (Phase 1) --------------------------
+
+export const rule9: Rule = ({ cooler, pcCase }) => {
+  if (!cooler || !pcCase) return null;
+
+  // 수랭 여부를 모르면 판정하지 않는다. 높이가 있다고 공랭으로 단정하면
+  // AIO의 라디에이터 문제를 통과로 덮는다. docs/compat-rules.md §9.2
+  if (!isFilled(cooler.waterCooled)) {
+    return missing(9, '수랭 여부를 알 수 없어 판정하지 못했습니다.', [ref(cooler, '수랭 여부')]);
+  }
+
+  if (cooler.waterCooled === true) {
+    // 통과로 표시하지 않는다. 라디에이터가 들어가는지는 아직 아무도 확인하지 않았다.
+    // 규칙 10이 Phase 2 이후라 지금은 확인할 방법이 없다 (명세 §4.2).
+    return {
+      ruleId: 9,
+      verdict: 'unknown',
+      severity: 'info',
+      message: '수랭 쿨러는 높이가 아니라 라디에이터 장착 위치가 관건입니다.',
+      reason: { kind: 'missing', fields: [ref(pcCase, '라디에이터 장착 위치')] },
+      skipped: ['높이 비교는 공랭에만 적용합니다. 라디에이터 검사는 아직 준비되지 않았습니다.'],
+    };
+  }
+
+  const gaps: FieldRef[] = [];
+  if (!isFilled(cooler.heightMm)) gaps.push(ref(cooler, '높이'));
+  if (!isFilled(pcCase.maxCpuCoolerHeightMm)) gaps.push(ref(pcCase, '쿨러 최대 높이'));
+  if (gaps.length > 0) {
+    return missing(9, '쿨러 높이 정보가 없어 판정하지 못했습니다.', gaps);
+  }
+
+  const height = cooler.heightMm!;
+  const limit = pcCase.maxCpuCoolerHeightMm!;
+  // 오류가 아니라 경고다. 제조사의 최대 높이는 보수성이 제각각이고, 팬 위치를
+  // 옮겨 들어가는 사례가 실재한다. 오류로 단정하면 쓸 수 있는 조합을 막는다. §9.1
+  // 여유 구간을 따로 경고하지는 않는다. 한계값이 35.2%만 채워져 있어 그 위에
+  // 5% 경계를 얹으면 근거 없는 정밀도를 주장하게 된다. §9.3
+  return height <= limit
+    ? pass(9, `쿨러 높이 ${height}mm / 케이스 한계 ${limit}mm.`)
+    : fail(
+        9,
+        'warning',
+        `쿨러 높이 ${height}mm가 케이스 한계 ${limit}mm를 넘습니다. 제조사 스펙을 확인해 주세요.`,
+      );
+};
+
 export const phase0Rules: readonly Rule[] = [rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8];
+
+/** Phase 1에서 추가된 규칙까지. 명세 §4.2 */
+export const phase1Rules: readonly Rule[] = [...phase0Rules, rule9];

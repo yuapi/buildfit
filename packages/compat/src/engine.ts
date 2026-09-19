@@ -6,7 +6,7 @@
  */
 
 import type { Build } from './parts';
-import { phase0Rules, type Rule } from './rules';
+import { phase1Rules, type Rule } from './rules';
 import { type BuildVerdict, summarize } from './verdict';
 
 /**
@@ -15,7 +15,7 @@ import { type BuildVerdict, summarize } from './verdict';
  * 아직 고르지 않은 부품 때문에 적용할 수 없는 규칙은 결과에서 빠진다.
  * 판정에 필요한 데이터가 없는 경우는 빠지는 게 아니라 `unknown`으로 남는다 (ADR-0009).
  */
-export function evaluate(build: Build, rules: readonly Rule[] = phase0Rules): BuildVerdict {
+export function evaluate(build: Build, rules: readonly Rule[] = phase1Rules): BuildVerdict {
   const results = rules.map((rule) => rule(build)).filter((r) => r !== null);
   return summarize(results);
 }

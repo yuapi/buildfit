@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { PHASE0_REQUIREMENTS } from '@buildfit/compat';
+import { SPEC_REQUIREMENTS } from '@buildfit/compat';
 import { saveSpec } from '@buildfit/db/queries';
 import { getDb } from '@/lib/db';
 
@@ -22,7 +22,7 @@ export async function saveSpecAction(_prev: SaveResult | null, form: FormData): 
   const specKey = String(form.get('specKey') ?? '');
   const sourceUrl = String(form.get('sourceUrl') ?? '').trim();
 
-  const req = PHASE0_REQUIREMENTS.find((r) => r.category === category && r.specKey === specKey);
+  const req = SPEC_REQUIREMENTS.find((r) => r.category === category && r.specKey === specKey);
   if (!req) return { ok: false, message: '알 수 없는 필드입니다.' };
 
   if (!sourceUrl) {
@@ -42,6 +42,11 @@ export async function saveSpecAction(_prev: SaveResult | null, form: FormData): 
     if (raw === '' || !Number.isFinite(n)) return { ok: false, message: '숫자를 입력해 주세요.' };
     if (n <= 0) return { ok: false, message: '0 이하는 값으로 받지 않습니다.' };
     value = n;
+  } else if (req.valueType === 'boolean') {
+    const raw = String(form.get('value') ?? '');
+    // 빈 값을 false로 넘기지 않는다. "아직 모름"과 "아니오"는 다른 사실이다.
+    if (raw !== 'true' && raw !== 'false') return { ok: false, message: '예/아니오를 선택해 주세요.' };
+    value = raw === 'true';
   } else if (req.valueType === 'string[]') {
     const picked = form.getAll('value').map(String).filter((v) => v !== '');
     if (picked.length === 0) return { ok: false, message: '최소 하나를 선택해 주세요.' };

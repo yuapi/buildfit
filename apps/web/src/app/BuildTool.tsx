@@ -25,6 +25,7 @@ function toSelection(build: Build) {
     gpu: build.gpu?.id,
     pcCase: build.pcCase?.id,
     psu: build.psu?.id,
+    cooler: build.cooler?.id,
     ram: build.ram.map((k) => k.id),
   };
 }
@@ -42,7 +43,15 @@ function detailHref(build: Build, slot: SlotName): string | null {
   return `/part/${category.toLowerCase()}/${part.slug}`;
 }
 
-const EMPTY: Build = { cpu: null, motherboard: null, ram: [], gpu: null, pcCase: null, psu: null };
+const EMPTY: Build = {
+  cpu: null,
+  motherboard: null,
+  ram: [],
+  gpu: null,
+  pcCase: null,
+  psu: null,
+  cooler: null,
+};
 
 /** 저장·기록에 쓸 기본 이름. 핵심 부품 두 개면 대개 알아본다. */
 function autoLabel(build: Build): string {
@@ -55,7 +64,8 @@ function autoLabel(build: Build): string {
 /** 고른 부품 개수. 저장·기록할 가치가 있는지 판단한다. */
 function pickedCount(build: Build): number {
   return (
-    [build.cpu, build.motherboard, build.gpu, build.pcCase, build.psu].filter(Boolean).length +
+    [build.cpu, build.motherboard, build.gpu, build.pcCase, build.psu, build.cooler].filter(Boolean)
+      .length +
     build.ram.length
   );
 }
@@ -104,6 +114,8 @@ export function BuildTool({ initial }: { initial?: Build }) {
         gpu: sel.gpu,
         pcCase: sel.pcCase,
         psu: sel.psu,
+        // v1 코드에는 쿨러가 없다. 그 경우 undefined가 그대로 들어간다
+        cooler: sel.cooler,
         ram: [...(sel.ram ?? [])],
       });
     },

@@ -5,7 +5,7 @@
  * 여기서 따로 목록을 들고 있지 않는다.
  */
 
-import { PHASE0_REQUIREMENTS, rulesBlockedBy, type FieldRequirement } from '@buildfit/compat';
+import { SPEC_REQUIREMENTS, rulesBlockedBy, type FieldRequirement } from '@buildfit/compat';
 import { and, eq, sql } from 'drizzle-orm';
 import type { Database } from '../client';
 import { partSpecs, parts } from '../schema';
@@ -23,7 +23,7 @@ export interface FieldGap {
 
 /** 카테고리 × 필수 필드별 결측 현황. 어드민 첫 화면. */
 export async function fieldGapSummary(db: Database): Promise<FieldGap[]> {
-  const required = PHASE0_REQUIREMENTS.filter((r) => r.optional !== true);
+  const required = SPEC_REQUIREMENTS.filter((r) => r.optional !== true);
 
   const totals = new Map<string, number>();
   for (const row of await db
@@ -151,7 +151,7 @@ export async function partWithSpecs(db: Database, id: string): Promise<PartWithS
     .orderBy(partSpecs.key);
 
   const have = new Set(specs.map((s) => s.key));
-  const missing = PHASE0_REQUIREMENTS.filter(
+  const missing = SPEC_REQUIREMENTS.filter(
     (r) => r.category === part.category && r.optional !== true && !have.has(r.specKey),
   );
 

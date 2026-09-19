@@ -71,6 +71,11 @@ git branch -d feature/1-opendb-schema-research
 - 공유 링크 ✅ (`/build/[code]`, ADR-0012)
 - 로컬 저장 ✅ (§8A, ADR-0005)
 
+**Phase 1 — 진행 중**
+- CPU 쿨러 슬롯 + 규칙 9 (높이 ≤ 케이스 한계) ✅ 공유 코드 v2 (ADR-0012)
+- 전기요금 ⛔ **KEPCO 누진세 표 확보 불가** (이 환경에서 도메인 차단)
+- 스토리지 미착수
+
 로드맵: `docs/pc-builder-spec.md` §11
 
 **다음 개선 지점**: 판정 불가의 대부분이 케이스 데이터다 (규칙 6, 83.3%).
