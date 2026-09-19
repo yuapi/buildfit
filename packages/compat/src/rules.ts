@@ -391,7 +391,44 @@ export const rule9: Rule = ({ cooler, pcCase }) => {
       );
 };
 
+// --- 12. BIOS 업데이트 필요 여부 (Phase 1) ----------------------------------
+
+export const rule12: Rule = ({ cpu, motherboard }) => {
+  if (!cpu || !motherboard) return null;
+
+  const gaps: FieldRef[] = [];
+  if (!isFilled(cpu.releaseYear)) gaps.push(ref(cpu, '출시 연도'));
+  if (!isFilled(motherboard.releaseYear)) gaps.push(ref(motherboard, '출시 연도'));
+  if (gaps.length > 0) {
+    // 보드 출시 연도는 20.4%만 채워져 있다. 대부분 여기로 온다. docs/compat-rules.md §12.3
+    return missing(12, '출시 연도 정보가 없어 BIOS 업데이트 필요 여부를 판정하지 못했습니다.', gaps);
+  }
+
+  // 보드가 CPU보다 나중이면 말하지 않는다. 그 개체가 구버전 BIOS를 달고 나왔을
+  // 수는 있지만, 판매 시점 보드는 대개 최신이라 경고하면 헛경고가 된다. §12.1
+  if (cpu.releaseYear! <= motherboard.releaseYear!) {
+    return pass(12, `보드가 CPU와 같거나 더 나중입니다 (${motherboard.releaseYear}년).`);
+  }
+
+  // Flashback 결측(0.7%)에서 심각한 쪽으로 가정하지 않는다. §12.2
+  if (!isFilled(motherboard.biosFlashback)) {
+    return missing(12, 'BIOS Flashback 지원 여부를 알 수 없어 판정하지 못했습니다.', [
+      ref(motherboard, 'BIOS Flashback'),
+    ]);
+  }
+
+  const base = `CPU(${cpu.releaseYear}년)가 메인보드(${motherboard.releaseYear}년)보다 나중에 나왔습니다.`;
+  // 연 단위 비교라 같은 해 조합은 가리지 못한다. 그래서 오류가 아니다. §12.1
+  return motherboard.biosFlashback === true
+    ? fail(12, 'info', `${base} BIOS 업데이트가 필요할 수 있습니다. 이 보드는 Flashback을 지원해 CPU 없이 USB로 올릴 수 있습니다.`)
+    : fail(
+        12,
+        'warning',
+        `${base} BIOS 업데이트가 필요할 수 있는데 이 보드는 Flashback을 지원하지 않습니다. 업데이트에 동작하는 다른 CPU가 필요합니다.`,
+      );
+};
+
 export const phase0Rules: readonly Rule[] = [rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8];
 
 /** Phase 1에서 추가된 규칙까지. 명세 §4.2 */
-export const phase1Rules: readonly Rule[] = [...phase0Rules, rule9];
+export const phase1Rules: readonly Rule[] = [...phase0Rules, rule9, rule12];

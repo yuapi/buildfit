@@ -27,6 +27,8 @@ export interface Cpu extends PartRef {
   readonly ppt: number | null;
   /** 지원 메모리 규격. 보조 검사용이라 결측이어도 규칙 2를 막지 않는다. */
   readonly memoryTypes: readonly string[] | null;
+  /** 출시 연도. 규칙 12 (BIOS). 1차 소스가 연 단위만 준다 (ADR/§5.8) */
+  readonly releaseYear: number | null;
 }
 
 export interface Motherboard extends PartRef {
@@ -34,6 +36,15 @@ export interface Motherboard extends PartRef {
   readonly formFactor: string | null;
   readonly memoryType: string | null;
   readonly memorySlots: number | null;
+  /** 출시 연도. 규칙 12. **20.4%만 채워져 있다** — 대부분 판정 불가가 된다 */
+  readonly releaseYear: number | null;
+  /**
+   * BIOS Flashback 지원. CPU 없이 BIOS를 올릴 수 있는가.
+   *
+   * 이 한 필드가 규칙 12의 심각도를 가른다. 없으면 CPU가 있어야 업데이트가
+   * 되는데, 그 CPU가 바로 못 쓰는 CPU다.
+   */
+  readonly biosFlashback: boolean | null;
 }
 
 /** 메모리는 키트 단위로 선택한다. 여러 키트를 담을 수 있다. */

@@ -9,6 +9,7 @@ export const cpu: Cpu = {
   tdp: 120,
   ppt: 162,
   memoryTypes: ['DDR5'],
+  releaseYear: 2024,
 };
 
 export const motherboard: Motherboard = {
@@ -18,6 +19,8 @@ export const motherboard: Motherboard = {
   formFactor: 'ATX',
   memoryType: 'DDR5',
   memorySlots: 4,
+  releaseYear: 2024,
+  biosFlashback: true,
 };
 
 export const ramKit: RamKit = {

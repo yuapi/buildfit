@@ -318,6 +318,9 @@ function PartPicker({ slot, onChoose }: { slot: SlotName; onChoose: (id: string)
 const STYLE = {
   error: { dot: 'bg-red-500', text: 'text-red-700 dark:text-red-400', label: '오류' },
   warning: { dot: 'bg-amber-500', text: 'text-amber-700 dark:text-amber-500', label: '경고' },
+  // 명세 §4.3의 "정보" 등급. 규칙 12에서 Flashback이 있는 경우가 여기다.
+  // 빨간 오류로 보여주면 번거로울 뿐인 상황을 못 쓰는 조합으로 오해시킨다.
+  info: { dot: 'bg-sky-500', text: 'text-sky-700 dark:text-sky-400', label: '정보' },
   unknown: { dot: 'bg-neutral-400', text: 'text-neutral-600 dark:text-neutral-400', label: '판정 불가' },
   pass: { dot: 'bg-green-500', text: 'text-neutral-700 dark:text-neutral-300', label: '통과' },
 } as const;
@@ -327,11 +330,12 @@ type Tone = keyof typeof STYLE;
 function toneOf(r: RuleResult): Tone {
   if (r.verdict === 'unknown') return 'unknown';
   if (r.verdict === 'pass') return 'pass';
-  return r.severity === 'warning' ? 'warning' : 'error';
+  if (r.severity === 'warning') return 'warning';
+  return r.severity === 'info' ? 'info' : 'error';
 }
 
 /** 심각한 것부터 보여준다. */
-const TONE_RANK: Record<Tone, number> = { error: 0, warning: 1, unknown: 2, pass: 3 };
+const TONE_RANK: Record<Tone, number> = { error: 0, warning: 1, info: 2, unknown: 3, pass: 4 };
 
 /** slug로 부품의 카테고리를 되찾는다. 상세 페이지 주소를 만들려면 둘 다 필요하다. */
 function partHref(build: Build | undefined, slug: string | undefined): string | null {
