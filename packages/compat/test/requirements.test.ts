@@ -46,6 +46,10 @@ const BLANK: Record<string, () => Build> = {
   'CPUCooler.height_mm': () => f.withBuild({ cooler: { ...f.cooler, heightMm: null } }),
   'PCCase.max_cpu_cooler_height_mm': () =>
     f.withBuild({ pcCase: { ...f.pcCase, maxCpuCoolerHeightMm: null } }),
+  // 연도가 이미 문제 없으면 flashback을 비워도 pass다. 규칙 12가 그 필드를
+  // 보게 만들려면 CPU가 더 나중인 상황을 함께 만들어야 한다.
+  'Motherboard.bios_flashback': () =>
+    f.withBuild({ motherboard: { ...f.motherboard, releaseYear: 2022, biosFlashback: null } }),
 };
 
 describe('요구사항 선언 ↔ 규칙 구현 정합성', () => {

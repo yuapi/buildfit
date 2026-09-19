@@ -95,6 +95,11 @@ export const SPEC_REQUIREMENTS: readonly FieldRequirement[] = [
   { ruleId: 9, category: 'CPUCooler', specKey: 'water_cooled', label: '수랭 여부', severity: 'warning', valueType: 'boolean' },
   { ruleId: 9, category: 'CPUCooler', specKey: 'height_mm', label: '높이', severity: 'warning', valueType: 'number' },
   { ruleId: 9, category: 'PCCase', specKey: 'max_cpu_cooler_height_mm', label: '쿨러 최대 높이', severity: 'warning', valueType: 'number' },
+
+  // 12. BIOS 업데이트 필요 여부 (Phase 1)
+  // 출시 연도는 part_specs가 아니라 parts 컬럼이라 어드민 보강 대상이 아니다.
+  // 여기 싣는 것은 bios_flashback뿐이다.
+  { ruleId: 12, category: 'Motherboard', specKey: 'bios_flashback', label: 'BIOS Flashback 지원', severity: 'warning', valueType: 'boolean' },
 ];
 
 /** 이 카테고리에서 반드시 필요한 (보조 아닌) 필드들. 어드민의 구멍 계산 대상. */

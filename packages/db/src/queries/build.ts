@@ -27,6 +27,8 @@ interface RawPart {
   readonly category: string;
   readonly modelName: string;
   readonly slug: string;
+  /** 스펙이 아니라 parts 컬럼이다. 규칙 12가 쓴다 */
+  readonly releaseYear: number | null;
   readonly specs: ReadonlyMap<string, unknown>;
 }
 
@@ -73,6 +75,7 @@ async function loadRaw(db: Database, ids: readonly string[]): Promise<Map<string
       category: parts.category,
       modelName: parts.modelName,
       slug: parts.slug,
+      releaseYear: parts.releaseYear,
     })
     .from(parts)
     .where(inArray(parts.id, unique));
@@ -100,6 +103,7 @@ async function loadRaw(db: Database, ids: readonly string[]): Promise<Map<string
         category: r.category,
         modelName: r.modelName,
         slug: r.slug,
+        releaseYear: r.releaseYear,
         specs: specsById.get(r.id) ?? new Map(),
       },
     ]),
@@ -115,6 +119,7 @@ function toCpu(p: RawPart): Cpu {
     tdp: num(p.specs, 'tdp_w'),
     ppt: num(p.specs, 'ppt_w'),
     memoryTypes: strArray(p.specs, 'memory_types'),
+    releaseYear: p.releaseYear,
   };
 }
 
@@ -127,6 +132,8 @@ function toMotherboard(p: RawPart): Motherboard {
     formFactor: str(p.specs, 'form_factor'),
     memoryType: str(p.specs, 'memory_type'),
     memorySlots: num(p.specs, 'memory_slots'),
+    releaseYear: p.releaseYear,
+    biosFlashback: bool(p.specs, 'bios_flashback'),
   };
 }
 

@@ -73,6 +73,7 @@ git branch -d feature/1-opendb-schema-research
 
 **Phase 1 — 진행 중**
 - CPU 쿨러 슬롯 + 규칙 9 (높이 ≤ 케이스 한계) ✅ 공유 코드 v2 (ADR-0012)
+- 규칙 12 (BIOS 업데이트 필요 여부) ✅ Flashback으로 경고/정보를 가른다
 - 전기요금 ⛔ **KEPCO 누진세 표 확보 불가** (이 환경에서 도메인 차단)
 - 스토리지 미착수
 

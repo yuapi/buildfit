@@ -1,7 +1,7 @@
 /**
  * 규칙 엔진 회귀 테스트.
  *
- * 구성은 docs/compat-rules.md §10의 체크리스트를 따른다.
+ * 구성은 docs/compat-rules.md §13의 체크리스트를 따른다.
  * - 규칙마다 pass / fail
  * - 규칙마다 필요 필드를 null로 비운 unknown
  * - 규칙 8의 모순 케이스 ★ 결측 검사로는 잡히지 않는다
@@ -11,7 +11,7 @@
 import { describe, expect, it } from 'vitest';
 import { evaluate } from '../src/engine';
 import { emptyBuild } from '../src/parts';
-import { rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8, rule9 } from '../src/rules';
+import { rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8, rule9, rule12 } from '../src/rules';
 import * as f from './fixtures';
 
 describe('1. CPU 소켓 = 메인보드 소켓', () => {
@@ -444,10 +444,63 @@ describe('9. CPU 쿨러 높이 ≤ 케이스 최대 높이 (Phase 1)', () => {
   });
 });
 
+describe('12. BIOS 업데이트 필요 여부 (Phase 1)', () => {
+  const mb = (patch: Partial<typeof f.motherboard>) =>
+    f.withBuild({ motherboard: { ...f.motherboard, ...patch } });
+
+  it('보드가 CPU와 같은 해면 pass', () => {
+    // 기준 견적: CPU 2024 / 보드 2024
+    expect(rule12(f.goodBuild)?.verdict).toBe('pass');
+  });
+
+  it('보드가 더 나중이면 pass — 헛경고를 만들지 않는다', () => {
+    expect(rule12(mb({ releaseYear: 2025 }))?.verdict).toBe('pass');
+  });
+
+  it('CPU가 더 나중이고 Flashback이 없으면 경고', () => {
+    const r = rule12(mb({ releaseYear: 2022, biosFlashback: false }));
+    expect(r?.verdict).toBe('fail');
+    expect(r?.severity).toBe('warning');
+    expect(r?.message).toContain('다른 CPU가 필요');
+  });
+
+  it('CPU가 더 나중이어도 Flashback이 있으면 정보 등급', () => {
+    const r = rule12(mb({ releaseYear: 2022, biosFlashback: true }));
+    expect(r?.verdict).toBe('fail');
+    expect(r?.severity).toBe('info');
+    expect(r?.message).toContain('Flashback');
+  });
+
+  it('Flashback이 결측이면 심각한 쪽으로 가정하지 않고 판정 불가', () => {
+    const r = rule12(mb({ releaseYear: 2022, biosFlashback: null }));
+    expect(r?.verdict).toBe('unknown');
+    expect(r?.reason?.fields[0]?.field).toBe('BIOS Flashback');
+  });
+
+  it('Flashback 결측이라도 연도가 문제없으면 판정한다 — 불필요하게 막지 않는다', () => {
+    expect(rule12(mb({ releaseYear: 2024, biosFlashback: null }))?.verdict).toBe('pass');
+  });
+
+  it('보드 연도가 없으면 판정 불가 — 전수의 79.6%가 여기 해당한다', () => {
+    const r = rule12(mb({ releaseYear: null }));
+    expect(r?.verdict).toBe('unknown');
+    expect(r?.reason?.kind).toBe('missing');
+  });
+
+  it('CPU 연도가 없어도 판정 불가', () => {
+    const r = rule12(f.withBuild({ cpu: { ...f.cpu, releaseYear: null } }));
+    expect(r?.verdict).toBe('unknown');
+  });
+
+  it('부품을 고르지 않았으면 규칙이 적용되지 않는다', () => {
+    expect(rule12(f.withBuild({ motherboard: null }))).toBeNull();
+  });
+});
+
 describe('엔진', () => {
-  it('정상 견적은 9개 규칙이 전부 통과한다', () => {
+  it('정상 견적은 10개 규칙이 전부 통과한다', () => {
     const v = evaluate(f.goodBuild);
-    expect(v.counts.pass).toBe(9);
+    expect(v.counts.pass).toBe(10);
     expect(v.counts.fail).toBe(0);
     expect(v.counts.unknown).toBe(0);
   });
@@ -455,7 +508,8 @@ describe('엔진', () => {
   it('고르지 않은 부품의 규칙은 결과에서 빠진다', () => {
     const v = evaluate(f.withBuild({ gpu: null, pcCase: null, psu: null }));
     const ids = v.results.map((r) => r.ruleId);
-    expect(ids).toEqual([1, 2, 3]);
+    // 12는 CPU+보드만으로 판정된다. 케이스·GPU·파워를 안 골라도 남는다
+    expect(ids).toEqual([1, 2, 3, 12]);
   });
 
   it('빈 견적은 적용할 규칙이 없다', () => {
