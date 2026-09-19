@@ -11,10 +11,15 @@ on:
   pull_request:
     branches: [develop, main]
 
-# 같은 브랜치에 연달아 push하면 앞 실행을 취소한다. 머지 대기 중 큐가 밀리지 않는다.
+# feature 브랜치에 연달아 push하면 앞 실행을 취소한다. 큐가 밀리지 않는다.
+#
+# **develop·main에서는 취소하지 않는다.** 머지를 연달아 하면 앞 머지 커밋의
+# 검증이 취소되고, 그 커밋은 통합 브랜치에 검증되지 않은 채로 남는다.
+# 실제로 한 번 그랬다 (run #4가 #5에 취소됨). 통합 브랜치의 모든 커밋은
+# 각자 검증 기록을 남겨야 한다.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/develop' && github.ref != 'refs/heads/main' }}
 
 jobs:
   verify:
