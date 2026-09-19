@@ -1,0 +1,14 @@
+{
+  "form_factor": "ATX Mid Tower",
+  "supported_motherboard_form_factors": ["ATX", "Micro ATX"],
+  "supported_power_supply_form_factors": ["ATX"],
+  "max_video_card_length": 360,
+  "max_cpu_cooler_height": 170,
+  "expansion_slots": 7,
+  "metadata": {
+    "name": "Testco Alpha Case",
+    "manufacturer": "Testco",
+    "part_numbers": ["TC-001"]
+  },
+  "general_product_information": { "manufacturer_url": "https://example.com/tc-001" }
+}

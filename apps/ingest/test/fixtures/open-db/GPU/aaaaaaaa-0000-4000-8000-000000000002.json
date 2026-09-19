@@ -1,0 +1,14 @@
+{
+  "chipset": "GeForce RTX 9090",
+  "length": 320,
+  "tdp": 400,
+  "total_slot_width": 0,
+  "pcie_8_pin": 2,
+  "pcie_6_pin": 0,
+  "pcie_12vhpwr": 0,
+  "metadata": {
+    "name": "Testco RTX 9090 OC",
+    "manufacturer": "Testco",
+    "part_numbers": ["TC-9090"]
+  }
+}

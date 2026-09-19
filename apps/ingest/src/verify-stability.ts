@@ -10,8 +10,9 @@
  *
  * 사용: DATABASE_URL=... OPENDB_PATH=... npm run verify -w @buildfit/ingest
  *
- * DB와 OpenDB clone이 필요해 단위 테스트로는 둘 수 없다. 배포 전 검증
- * (`autonomous-pipeline-plan.md` §9.1의 ephemeral 환경)에서 돌린다.
+ * 메커니즘 자체는 `test/id-stability.test.ts`가 CI에서 지킨다 (격리 DB + 픽스처).
+ * 이 스크립트는 다른 일을 한다 — **실제 OpenDB clone 전수**에 대고 돌려서
+ * 2만여 건의 id가 그대로인지 확인한다. 픽스처가 대신할 수 없는 확인이다.
  */
 
 import { createDb, parts } from '@buildfit/db';
