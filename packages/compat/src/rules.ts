@@ -26,7 +26,11 @@ import {
 
 export type Rule = (build: Build) => RuleResult | null;
 
-const ref = (part: { name: string }, field: string): FieldRef => ({ part: part.name, field });
+const ref = (part: { name: string; slug?: string | undefined }, field: string): FieldRef => ({
+  part: part.name,
+  field,
+  slug: part.slug,
+});
 
 // --- 1. CPU 소켓 = 메인보드 소켓 -------------------------------------------
 
