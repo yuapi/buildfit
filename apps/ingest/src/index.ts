@@ -177,6 +177,39 @@ async function main(): Promise<void> {
         });
     }
 
+    // --- 낡은 스펙 정리 ----------------------------------------------------
+    // upsert만 하면 업스트림에서 사라진 필드나 매핑에서 빠진 키가 영원히 남는다.
+    // 예: 0으로 채워져 있던 슬롯 폭을 결측으로 처리하기로 바꿔도 옛 행이 남아
+    // 화면에 "0슬롯"으로 나간다.
+    //
+    // **사람이 넣은 값은 건드리지 않는다.** 어드민 보강(§5.3)으로 채운 값은
+    // source_url이 OpenDB가 아니다. 그것까지 지우면 가장 비싼 데이터를 잃는다.
+    console.log('낡은 스펙 정리 중...');
+    // 임시 테이블은 세션에 묶인다. 커넥션 풀에서는 트랜잭션 하나로 감싸야
+    // 같은 세션에서 만들고 쓰고 지운다.
+    let removed = 0;
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`create temporary table written_specs (part_id uuid, key text)`);
+      for (const batch of chunked(specValues, CHUNK)) {
+        const rows = sql.join(
+          batch.map((v) => sql`(${v.partId}::uuid, ${v.key})`),
+          sql`, `,
+        );
+        await tx.execute(sql`insert into written_specs (part_id, key) values ${rows}`);
+      }
+      await tx.execute(sql`create index on written_specs (part_id, key)`);
+      const result = await tx.execute(sql`
+        delete from ${partSpecs} s
+        where s.source_url like 'https://github.com/buildcores/%'
+          and not exists (
+            select 1 from written_specs w where w.part_id = s.part_id and w.key = s.key
+          )
+      `);
+      removed = Number(result.count ?? 0);
+      await tx.execute(sql`drop table written_specs`);
+    });
+    console.log(`  ${removed}건 제거`);
+
     // --- 표기 변형 --------------------------------------------------------
     console.log('표기 변형 적재 중...');
     const aliasValues = all.flatMap((r) => {

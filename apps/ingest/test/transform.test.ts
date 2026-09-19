@@ -185,3 +185,27 @@ describe('slug 생성 — 검색 유입용 주소 (§5.2)', () => {
     expect(a).not.toBe(b);
   });
 });
+
+describe('슬롯 폭 0 — 그런 그래픽카드는 없다', () => {
+  const keysOf = (pc: Record<string, unknown>) =>
+    (
+      toPartRow('GPU', 'cccccccc-0000-0000-0000-000000000000', {
+        chipset: 'GeForce RTX 4090',
+        tdp: 450,
+        metadata: { name: 'Test GPU', manufacturer: 'X' },
+        ...pc,
+      })?.specs ?? []
+    ).map((s) => s.key);
+
+  it('정상 슬롯 폭은 남는다', () => {
+    const k = keysOf({ total_slot_width: 3, case_expansion_slot_width: 3 });
+    expect(k).toContain('total_slot_width');
+    expect(k).toContain('case_expansion_slot_width');
+  });
+
+  it('0은 버린다 — 비교 화면에 "0슬롯"으로 나가면 안 된다', () => {
+    const k = keysOf({ total_slot_width: 0, case_expansion_slot_width: 0 });
+    expect(k).not.toContain('total_slot_width');
+    expect(k).not.toContain('case_expansion_slot_width');
+  });
+});

@@ -128,6 +128,9 @@ export const CATEGORY_SPECS: Readonly<Record<string, SpecMap>> = {
  */
 export const POSITIVE_ONLY_KEYS: ReadonlySet<string> = new Set([
   'core_count',
+  // 0슬롯을 차지하는 그래픽카드는 없다. 미입력을 0으로 채운 값이다.
+  'total_slot_width',
+  'case_expansion_slot_width',
   'core_base_clock_mhz',
   'core_boost_clock_mhz',
   'memory_bus_bit',
