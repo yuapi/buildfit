@@ -57,6 +57,13 @@ npm run build
 
 Node 20.9 이상이 필요하다.
 
+이 다섯 가지가 CI에서도 그대로 돈다 (`.github/workflows/ci.yml`). 모든 브랜치의
+push와 `develop`·`main`으로 가는 PR에서 실행된다.
+
+**`npm run build`는 DB를 필요로 한다.** sitemap이 SSG라 빌드 중에 부품 slug를
+조회하기 때문이다. DB가 없으면 빌드가 실패한다 — 그래야 빈 색인이 조용히
+배포되지 않는다. CI는 빈 PostgreSQL을 띄우고 마이그레이션만 적용해서 돈다.
+
 ### 데이터 적재
 
 부품 데이터는 [BuildCores OpenDB](https://github.com/buildcores/buildcores-open-db)에서
