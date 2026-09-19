@@ -11,7 +11,7 @@ import {
   useTransition,
 } from 'react';
 import type { Build, RuleResult } from '@buildfit/compat';
-import { SLOT_LABELS, blockingSlots, evaluate } from '@buildfit/compat';
+import { RULE_SUMMARY, SLOT_LABELS, blockingSlots, evaluate } from '@buildfit/compat';
 import { decodeBuildCode, encodeBuildCode } from '@/lib/build-code';
 import { SLOT_META, type SlotName } from '@/lib/categories';
 import { listWithJosa } from '@/lib/korean';
@@ -420,9 +420,24 @@ export function VerdictPanel({
       </div>
 
       {results.length === 0 ? (
-        <p className="mt-2 text-sm text-fg-muted">
-          부품을 두 개 이상 고르면 호환성을 판정합니다.
-        </p>
+        <>
+          <p className="mt-1 text-sm text-fg-muted">
+            부품을 두 개 이상 고르면 판정을 시작합니다.
+          </p>
+          {/* 빈 화면이 무엇을 할 수 있는지 말하지 않으면 고를 이유가 없다.
+              규칙 목록은 packages/compat이 정본이라 여기서 지어내지 않는다. */}
+          <h3 className="mt-4 text-xs font-medium text-fg-subtle">검사하는 항목</h3>
+          <ul className="mt-2 space-y-1.5 text-xs leading-relaxed text-fg-muted">
+            {Object.entries(RULE_SUMMARY)
+              .sort(([a], [b]) => Number(a) - Number(b))
+              .map(([id, text]) => (
+                <li key={id} className="flex gap-2">
+                  <span className="shrink-0 text-fg-subtle tnum">{id}</span>
+                  <span>{text}</span>
+                </li>
+              ))}
+          </ul>
+        </>
       ) : (
         <>
           {worst && (

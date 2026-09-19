@@ -41,6 +41,25 @@ export const RULE_PARTS: Readonly<Record<number, readonly PartSlot[]>> = {
   12: ['cpu', 'motherboard'],
 };
 
+/**
+ * 규칙이 무엇을 보는지 한 줄로. 빈 화면에서 "무엇을 검사하는가"를 보여준다.
+ *
+ * 규칙 설명은 `docs/compat-rules.md`가 정본이고, 여기 있는 것은 그 요약이다.
+ * 문장을 고칠 일이 생기면 문서를 먼저 본다.
+ */
+export const RULE_SUMMARY: Readonly<Record<number, string>> = {
+  1: 'CPU 소켓과 메인보드 소켓이 같은가',
+  2: '메모리 규격(DDR4/DDR5)이 맞는가',
+  3: '메모리 모듈 수가 슬롯 수를 넘지 않는가',
+  4: 'GPU가 케이스에 들어가는 길이인가',
+  5: '메인보드 폼팩터를 케이스가 지원하는가',
+  6: '파워 규격을 케이스가 지원하는가',
+  7: '소비전력에 비해 파워 정격이 충분한가',
+  8: 'GPU 보조전원 커넥터를 파워가 댈 수 있는가',
+  9: 'CPU 쿨러 높이가 케이스 한계 안인가',
+  12: 'CPU가 보드보다 나중에 나와 BIOS 업데이트가 필요한가',
+};
+
 function isPicked(build: Build, slot: PartSlot): boolean {
   return slot === 'ram' ? build.ram.length > 0 : build[slot] !== null;
 }

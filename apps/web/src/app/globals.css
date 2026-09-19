@@ -20,12 +20,17 @@
   --color-surface: #ffffff;
   --color-surface-2: #f4f4f3;
   --color-border: #e4e4e2;
-  --color-border-strong: #c9c9c6;
+  /*
+   * 입력 필드·보조 버튼의 경계에 쓴다. **컨트롤 경계라 3:1을 넘겨야 한다**
+   * (WCAG 1.4.11). 장식용 카드 테두리는 위의 --color-border를 쓴다.
+   */
+  --color-border-strong: #8a8a85;
 
   /* 글자 */
   --color-fg: #16161a;
   --color-fg-muted: #5c5c63;
-  --color-fg-subtle: #8a8a91;
+  /* surface-2(#f4f4f3) 위에서도 4.5:1을 넘긴다. 작은 글씨에 쓰이는 색이다 */
+  --color-fg-subtle: #6f6f77;
 
   /* 동작 — 브랜드 색이 아니라 거의 검정이다 (ADR-0014) */
   --color-action: #16161a;
@@ -69,11 +74,11 @@
     --color-surface: #16161a;
     --color-surface-2: #1e1e23;
     --color-border: #2a2a31;
-    --color-border-strong: #43434d;
+    --color-border-strong: #6a6a75;
 
     --color-fg: #eeeef0;
     --color-fg-muted: #a6a6ae;
-    --color-fg-subtle: #74747d;
+    --color-fg-subtle: #8b8b95;
 
     --color-action: #eeeef0;
     --color-action-fg: #16161a;
@@ -112,11 +117,11 @@
   --color-surface: #16161a;
   --color-surface-2: #1e1e23;
   --color-border: #2a2a31;
-  --color-border-strong: #43434d;
+  --color-border-strong: #6a6a75;
 
   --color-fg: #eeeef0;
   --color-fg-muted: #a6a6ae;
-  --color-fg-subtle: #74747d;
+  --color-fg-subtle: #8b8b95;
 
   --color-action: #eeeef0;
   --color-action-fg: #16161a;

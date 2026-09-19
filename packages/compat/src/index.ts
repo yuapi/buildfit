@@ -52,7 +52,13 @@ export {
 } from './case-reference';
 
 export type { PartSlot, NotApplicable } from './applicability';
-export { RULE_PARTS, SLOT_LABELS, notApplicable, blockingSlots } from './applicability';
+export {
+  RULE_PARTS,
+  RULE_SUMMARY,
+  SLOT_LABELS,
+  notApplicable,
+  blockingSlots,
+} from './applicability';
 
 export type { Rule } from './rules';
 export {
