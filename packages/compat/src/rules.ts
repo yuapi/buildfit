@@ -18,9 +18,10 @@ import {
 } from './verdict';
 import {
   PCIE_SLOT_POWER_W,
-  POWER_CONSTANTS,
+  POWER_ASSUMPTIONS,
   PSU_HEADROOM_MULTIPLIER,
   TIGHT_FIT_RATIO,
+  describeAssumptions,
 } from './power';
 
 export type Rule = (build: Build) => RuleResult | null;
@@ -201,7 +202,7 @@ export const rule6: Rule = ({ psu, pcCase }) => {
       );
 };
 
-// --- 7. 총 소비전력 × 1.3 ≤ PSU 정격 ---------------------------------------
+// --- 7. 소비전력 대비 PSU 정격 (구간 판정) ------------------------------------
 
 export const rule7: Rule = ({ cpu, gpu, psu, ram }) => {
   if (!cpu || !psu) return null;
@@ -209,42 +210,49 @@ export const rule7: Rule = ({ cpu, gpu, psu, ram }) => {
   const gaps: FieldRef[] = [];
   const cpuW = isFilled(cpu.ppt) ? cpu.ppt : cpu.tdp;
   if (!isFilled(cpuW)) gaps.push(ref(cpu, '소비전력(TDP/PPT)'));
+  // GPU를 골랐는데 TDP가 없으면 판정할 수 없다. 안 골랐으면 내장그래픽 구성이다.
   if (gpu && !isFilled(gpu.tdp)) gaps.push(ref(gpu, '소비전력(TDP)'));
   if (!isFilled(psu.wattage)) gaps.push(ref(psu, '정격 출력'));
   if (gaps.length > 0) {
     return missing(7, '소비전력 정보가 없어 판정하지 못했습니다.', gaps);
   }
 
-  // 상수가 확정되기 전에는 계산하지 않는다. 임시값으로 그럴듯한 숫자를 내놓지 않는다.
-  // docs/compat-rules.md §7.2
-  if (POWER_CONSTANTS === null) {
-    return missing(
-      7,
-      '전력 계산에 쓰는 기준값(메인보드·메모리·스토리지·팬)이 아직 확정되지 않아 판정하지 못했습니다.',
-      [{ part: '전력 계산 기준값', field: '출처 확인 중' }],
-    );
-  }
-
+  // 점 값을 고르지 않는다. 가정을 범위로 두고 판정을 세 갈래로 낸다.
+  // docs/compat-rules.md §7.2~7.3
   const modules = ram.reduce((n, kit) => n + (kit.moduleCount ?? 0), 0);
-  const total =
-    (cpuW ?? 0) +
-    (gpu?.tdp ?? 0) +
-    POWER_CONSTANTS.motherboardW +
-    POWER_CONSTANTS.ramPerModuleW * modules;
-  const recommended = Math.ceil(total * PSU_HEADROOM_MULTIPLIER);
+  const base = (cpuW ?? 0) + (gpu?.tdp ?? 0);
+  const a = POWER_ASSUMPTIONS;
+  const minTotal = Math.round(base + a.motherboard.minW + a.ramPerModule.minW * modules);
+  const maxTotal = Math.round(base + a.motherboard.maxW + a.ramPerModule.maxW * modules);
+  const recommended = Math.ceil(maxTotal * PSU_HEADROOM_MULTIPLIER);
   const wattage = psu.wattage ?? 0;
+  const notes = [describeAssumptions(a)];
+  const estimate = `총 소비전력 약 ${minTotal}~${maxTotal}W로 추정됩니다`;
 
-  if (wattage < total) {
-    return fail(7, 'error', `총 소비전력 약 ${total}W인데 파워 정격이 ${wattage}W입니다.`);
+  if (wattage >= recommended) {
+    return {
+      ...pass(7, `${estimate}. 권장 정격 ${recommended}W, 파워 ${wattage}W로 여유가 있습니다.`),
+      notes,
+    };
   }
-  if (wattage < recommended) {
-    return fail(
+  if (wattage < minTotal) {
+    return {
+      ...fail(
+        7,
+        'error',
+        `${estimate}. 가정을 가장 낮게 잡아도 ${minTotal}W가 필요한데 파워 정격이 ${wattage}W입니다.`,
+      ),
+      notes,
+    };
+  }
+  return {
+    ...fail(
       7,
       'warning',
-      `총 소비전력 약 ${total}W, 권장 정격 ${recommended}W입니다. ${wattage}W로 동작은 하지만 여유가 부족합니다.`,
-    );
-  }
-  return pass(7, `총 소비전력 약 ${total}W, 권장 ${recommended}W, 파워 ${wattage}W.`);
+      `${estimate}. 권장 정격은 ${recommended}W인데 ${wattage}W라 가정에 따라 갈립니다. 넉넉한 쪽을 권합니다.`,
+    ),
+    notes,
+  };
 };
 
 // --- 8. PCIe 보조전원 커넥터 수 충족 ---------------------------------------

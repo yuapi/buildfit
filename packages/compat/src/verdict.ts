@@ -43,6 +43,11 @@ export interface RuleResult {
   /** `unknown`일 때만 채운다. */
   readonly reason?: UnknownReason;
   /**
+   * 결과와 함께 보여줄 부연. 예: 규칙 7의 가정 범위와 출처 (docs/compat-rules.md §7.4).
+   * 판정을 바꾸지는 않지만 사용자가 왜 그 판정이 나왔는지 알려면 필요하다.
+   */
+  readonly notes?: readonly string[];
+  /**
    * 보조 검사를 건너뛴 경우 그 사유.
    * 규칙 2에서 CPU 쪽 결측이 전체를 unknown으로 만들지 않되,
    * 건너뛰었다는 사실은 남긴다. docs/compat-rules.md §2

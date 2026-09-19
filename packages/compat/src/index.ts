@@ -33,9 +33,10 @@ export type {
 
 export { emptyBuild } from './parts';
 
-export type { PowerConstants } from './power';
+export type { PowerRange, PowerSource, PowerAssumptions } from './power';
 export {
-  POWER_CONSTANTS,
+  POWER_ASSUMPTIONS,
+  describeAssumptions,
   PCIE_SLOT_POWER_W,
   PSU_HEADROOM_MULTIPLIER,
   TIGHT_FIT_RATIO,
