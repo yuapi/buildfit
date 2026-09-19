@@ -60,6 +60,10 @@ Node 20.9 이상이 필요하다.
 이 다섯 가지가 CI에서도 그대로 돈다 (`.github/workflows/ci.yml`). 모든 브랜치의
 push와 `develop`·`main`으로 가는 PR에서 실행된다.
 
+`DATABASE_URL`이 있으면 `npm run test`에 **DB가 필요한 테스트**가 함께 돈다
+(`parts.id` 안정성 — ADR-0012). 이 테스트는 실행할 때마다 격리된 임시 DB를
+만들고 끝나면 지운다. 개발 DB를 건드리지 않는다. `DATABASE_URL`이 없으면 건너뛴다.
+
 **`npm run build`는 DB를 필요로 한다.** sitemap이 SSG라 빌드 중에 부품 slug를
 조회하기 때문이다. DB가 없으면 빌드가 실패한다 — 그래야 빈 색인이 조용히
 배포되지 않는다. CI는 빈 PostgreSQL을 띄우고 마이그레이션만 적용해서 돈다.

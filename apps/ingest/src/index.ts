@@ -23,13 +23,15 @@ function chunked<T>(items: readonly T[], size: number): T[][] {
   return out;
 }
 
-async function readCategory(root: string, category: string): Promise<PartRow[]> {
+type Logger = (...args: unknown[]) => void;
+
+async function readCategory(root: string, category: string, log: Logger): Promise<PartRow[]> {
   const dir = join(root, 'open-db', category);
   let files: string[];
   try {
     files = await readdir(dir);
   } catch {
-    console.warn(`  ! ${category}: 디렉터리 없음 — 건너뜀`);
+    log(`  ! ${category}: 디렉터리 없음 — 건너뜀`);
     return [];
   }
   const rows: PartRow[] = [];
@@ -47,26 +49,40 @@ async function readCategory(root: string, category: string): Promise<PartRow[]> 
       skipped += 1;
     }
   }
-  console.log(`  ${category.padEnd(12)} ${String(rows.length).padStart(6)}건` + (skipped > 0 ? `  (건너뜀 ${skipped})` : ''));
+  log(`  ${category.padEnd(12)} ${String(rows.length).padStart(6)}건` + (skipped > 0 ? `  (건너뜀 ${skipped})` : ''));
   return rows;
 }
 
-async function main(): Promise<void> {
-  const url = process.env['DATABASE_URL'];
-  const root = process.env['OPENDB_PATH'];
-  if (!url) throw new Error('DATABASE_URL이 필요합니다.');
-  if (!root) throw new Error('OPENDB_PATH가 필요합니다 (OpenDB clone 경로).');
+export interface IngestOptions {
+  readonly url: string;
+  /** OpenDB clone 경로. `open-db/<카테고리>/<opendb_id>.json` 구조를 기대한다 */
+  readonly root: string;
+  /** 진행 로그. 테스트에서는 끈다 */
+  readonly quiet?: boolean;
+}
+
+/**
+ * 적재 본체.
+ *
+ * `main()`과 분리해 둔 이유는 **재적재 후 `parts.id`가 유지되는지를 테스트에서
+ * 검증하기 위해서다** (ADR-0012). 이 보증이 깨지면 이미 뿌려진 공유 링크가
+ * 전부 죽는다. 스크립트를 자식 프로세스로 띄워 확인하는 것보다 직접 부르는 쪽이
+ * CI에서 안정적이다.
+ */
+export async function ingest(opts: IngestOptions): Promise<void> {
+  const { url, root } = opts;
+  const log: Logger = opts.quiet === true ? () => {} : (...args) => console.log(...args);
 
   const { db, client } = createDb(url);
   const started = Date.now();
 
   try {
-    console.log('OpenDB 읽는 중...');
+    log('OpenDB 읽는 중...');
     const all: PartRow[] = [];
     for (const category of CATEGORIES) {
-      all.push(...(await readCategory(root, category)));
+      all.push(...(await readCategory(root, category, log)));
     }
-    console.log(`총 ${all.length}건\n`);
+    log(`총 ${all.length}건\n`);
 
     // --- GPU 칩 레코드를 먼저 만든다 -------------------------------------
     // OpenDB는 AIB 단일 계층이고 칩은 chipset 문자열뿐이다. 그룹핑해 유도한다.
@@ -74,7 +90,7 @@ async function main(): Promise<void> {
     const chipsets = [
       ...new Set(all.filter((r) => r.category === 'GPU' && r.chipsetName).map((r) => r.chipsetName!)),
     ].sort();
-    console.log(`GPU 칩 레코드 ${chipsets.length}종 생성...`);
+    log(`GPU 칩 레코드 ${chipsets.length}종 생성...`);
 
     const chipRows = chipsets.map((name) => ({
       slug: `chip-${toSlug([name])}`,
@@ -101,7 +117,7 @@ async function main(): Promise<void> {
     }
 
     // --- 부품 적재 --------------------------------------------------------
-    console.log('부품 적재 중...');
+    log('부품 적재 중...');
     let done = 0;
     for (const batch of chunked(all, CHUNK)) {
       await db
@@ -141,7 +157,7 @@ async function main(): Promise<void> {
           },
         });
       done += batch.length;
-      if (done % 5000 === 0) console.log(`  ${done} / ${all.length}`);
+      if (done % 5000 === 0) log(`  ${done} / ${all.length}`);
     }
 
     // slug → id
@@ -151,7 +167,7 @@ async function main(): Promise<void> {
     }
 
     // --- 스펙 적재 --------------------------------------------------------
-    console.log('스펙 적재 중...');
+    log('스펙 적재 중...');
     const specValues = all.flatMap((r) => {
       const partId = idBySlug.get(r.slug);
       if (!partId) return [];
@@ -186,7 +202,7 @@ async function main(): Promise<void> {
     //
     // **사람이 넣은 값은 건드리지 않는다.** 어드민 보강(§5.3)으로 채운 값은
     // source_url이 OpenDB가 아니다. 그것까지 지우면 가장 비싼 데이터를 잃는다.
-    console.log('낡은 스펙 정리 중...');
+    log('낡은 스펙 정리 중...');
     // 임시 테이블은 세션에 묶인다. 커넥션 풀에서는 트랜잭션 하나로 감싸야
     // 같은 세션에서 만들고 쓰고 지운다.
     let removed = 0;
@@ -210,10 +226,10 @@ async function main(): Promise<void> {
       removed = Number(result.count ?? 0);
       await tx.execute(sql`drop table written_specs`);
     });
-    console.log(`  ${removed}건 제거`);
+    log(`  ${removed}건 제거`);
 
     // --- 표기 변형 --------------------------------------------------------
-    console.log('표기 변형 적재 중...');
+    log('표기 변형 적재 중...');
     const aliasValues = all.flatMap((r) => {
       const partId = idBySlug.get(r.slug);
       if (!partId) return [];
@@ -234,17 +250,28 @@ async function main(): Promise<void> {
       .from(sql`(select 1) as _`);
 
     const secs = ((Date.now() - started) / 1000).toFixed(1);
-    console.log(`\n완료 (${secs}s)`);
-    console.log(`  parts        ${counts?.parts ?? 0}`);
-    console.log(`  part_specs   ${counts?.specs ?? 0}`);
-    console.log(`  part_aliases ${counts?.aliases ?? 0}`);
-    console.log(`  importers    ${counts?.importers ?? 0}`);
+    log(`\n완료 (${secs}s)`);
+    log(`  parts        ${counts?.parts ?? 0}`);
+    log(`  part_specs   ${counts?.specs ?? 0}`);
+    log(`  part_aliases ${counts?.aliases ?? 0}`);
+    log(`  importers    ${counts?.importers ?? 0}`);
   } finally {
     await client.end();
   }
 }
 
-main().catch((err: unknown) => {
-  console.error(err);
-  process.exitCode = 1;
-});
+async function main(): Promise<void> {
+  const url = process.env['DATABASE_URL'];
+  const root = process.env['OPENDB_PATH'];
+  if (!url) throw new Error('DATABASE_URL이 필요합니다.');
+  if (!root) throw new Error('OPENDB_PATH가 필요합니다 (OpenDB clone 경로).');
+  await ingest({ url, root });
+}
+
+// 테스트가 이 모듈을 import할 때 적재가 돌면 안 된다.
+if (process.argv[1]?.endsWith('index.ts') === true) {
+  main().catch((err: unknown) => {
+    console.error(err);
+    process.exitCode = 1;
+  });
+}
