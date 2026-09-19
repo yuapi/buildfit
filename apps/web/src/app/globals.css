@@ -1,26 +1,322 @@
-@import "tailwindcss";
+@import 'tailwindcss';
+
+/*
+ * 디자인 토큰 — ADR-0014.
+ *
+ * **색은 판정에만 쓴다.** 기본 화면은 무채색이고, 빨강·노랑·파랑·초록은
+ * 각각 오류·경고·정보·통과를 뜻한다. 장식으로 쓰지 않는다.
+ *
+ * 컴포넌트에 색 리터럴을 쓰지 않는다. 여기 있는 토큰만 쓴다.
+ * 다크 모드는 값만 바꾸므로 `dark:` 클래스가 필요 없다.
+ */
+
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+  color-scheme: light;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* 표면 — 뒤에서 앞으로 */
+  --color-bg: #fbfbfa;
+  --color-surface: #ffffff;
+  --color-surface-2: #f4f4f3;
+  --color-border: #e4e4e2;
+  --color-border-strong: #c9c9c6;
+
+  /* 글자 */
+  --color-fg: #16161a;
+  --color-fg-muted: #5c5c63;
+  --color-fg-subtle: #8a8a91;
+
+  /* 동작 — 브랜드 색이 아니라 거의 검정이다 (ADR-0014) */
+  --color-action: #16161a;
+  --color-action-fg: #ffffff;
+  --color-action-hover: #2f2f35;
+
+  /* 판정 — 여기서만 색을 쓴다 */
+  --color-ok: #16794a;
+  --color-ok-bg: #e8f5ee;
+  --color-ok-border: #a8d6bf;
+
+  --color-warn: #8a5a00;
+  --color-warn-bg: #fdf3e2;
+  --color-warn-border: #e8cc94;
+
+  --color-danger: #b02020;
+  --color-danger-bg: #fdecec;
+  --color-danger-border: #f0b5b5;
+
+  --color-info: #15607e;
+  --color-info-bg: #e8f3f8;
+  --color-info-border: #a6cfe0;
+
+  --color-unknown: #5c5c63;
+  --color-unknown-bg: #f1f1f0;
+  --color-unknown-border: #d6d6d3;
+
+  --color-focus: #16161a;
+
+  --radius-card: 12px;
+  --radius-control: 8px;
+  --shadow-card: 0 1px 2px rgb(22 22 26 / 0.05);
+  --shadow-pop: 0 8px 24px -8px rgb(22 22 26 / 0.18);
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+
+    --color-bg: #0e0e10;
+    --color-surface: #16161a;
+    --color-surface-2: #1e1e23;
+    --color-border: #2a2a31;
+    --color-border-strong: #43434d;
+
+    --color-fg: #eeeef0;
+    --color-fg-muted: #a6a6ae;
+    --color-fg-subtle: #74747d;
+
+    --color-action: #eeeef0;
+    --color-action-fg: #16161a;
+    --color-action-hover: #ffffff;
+
+    --color-ok: #67c99a;
+    --color-ok-bg: #12251c;
+    --color-ok-border: #2c5741;
+
+    --color-warn: #e0b263;
+    --color-warn-bg: #261c0c;
+    --color-warn-border: #5b4520;
+
+    --color-danger: #f08a8a;
+    --color-danger-bg: #2a1213;
+    --color-danger-border: #66292c;
+
+    --color-info: #7cc0da;
+    --color-info-bg: #0f2129;
+    --color-info-border: #2b4f5f;
+
+    --color-unknown: #a6a6ae;
+    --color-unknown-bg: #1c1c21;
+    --color-unknown-border: #33333b;
+
+    --color-focus: #eeeef0;
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-pop: 0 8px 24px -8px rgb(0 0 0 / 0.6);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --color-bg: #0e0e10;
+  --color-surface: #16161a;
+  --color-surface-2: #1e1e23;
+  --color-border: #2a2a31;
+  --color-border-strong: #43434d;
+
+  --color-fg: #eeeef0;
+  --color-fg-muted: #a6a6ae;
+  --color-fg-subtle: #74747d;
+
+  --color-action: #eeeef0;
+  --color-action-fg: #16161a;
+  --color-action-hover: #ffffff;
+
+  --color-ok: #67c99a;
+  --color-ok-bg: #12251c;
+  --color-ok-border: #2c5741;
+
+  --color-warn: #e0b263;
+  --color-warn-bg: #261c0c;
+  --color-warn-border: #5b4520;
+
+  --color-danger: #f08a8a;
+  --color-danger-bg: #2a1213;
+  --color-danger-border: #66292c;
+
+  --color-info: #7cc0da;
+  --color-info-bg: #0f2129;
+  --color-info-border: #2b4f5f;
+
+  --color-unknown: #a6a6ae;
+  --color-unknown-bg: #1c1c21;
+  --color-unknown-border: #33333b;
+
+  --color-focus: #eeeef0;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-pop: 0 8px 24px -8px rgb(0 0 0 / 0.6);
+}
+
+@theme inline {
+  --color-bg: var(--color-bg);
+  --color-surface: var(--color-surface);
+  --color-surface-2: var(--color-surface-2);
+  --color-border: var(--color-border);
+  --color-border-strong: var(--color-border-strong);
+
+  --color-fg: var(--color-fg);
+  --color-fg-muted: var(--color-fg-muted);
+  --color-fg-subtle: var(--color-fg-subtle);
+
+  --color-action: var(--color-action);
+  --color-action-fg: var(--color-action-fg);
+  --color-action-hover: var(--color-action-hover);
+
+  --color-ok: var(--color-ok);
+  --color-ok-bg: var(--color-ok-bg);
+  --color-ok-border: var(--color-ok-border);
+  --color-warn: var(--color-warn);
+  --color-warn-bg: var(--color-warn-bg);
+  --color-warn-border: var(--color-warn-border);
+  --color-danger: var(--color-danger);
+  --color-danger-bg: var(--color-danger-bg);
+  --color-danger-border: var(--color-danger-border);
+  --color-info: var(--color-info);
+  --color-info-bg: var(--color-info-bg);
+  --color-info-border: var(--color-info-border);
+  --color-unknown: var(--color-unknown);
+  --color-unknown-bg: var(--color-unknown-bg);
+  --color-unknown-border: var(--color-unknown-border);
+
+  --radius-card: var(--radius-card);
+  --radius-control: var(--radius-control);
+
+  /*
+   * 숫자·모델명은 Geist가 먼저 잡고 한글은 시스템 폰트로 떨어진다.
+   * 한글 웹폰트는 용량이 크고 외부 의존이 생긴다 (ADR-0014).
+   */
+  --font-sans:
+    var(--font-geist-sans), -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo',
+    'Pretendard Variable', Pretendard, 'Noto Sans KR', 'Malgun Gothic', system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    /* 한글은 라틴보다 글자 밀도가 높다. 1.5로는 답답하다 (ADR-0014) */
+    line-height: 1.7;
+    /* 한국어에서 단어 중간이 끊기지 않게 한다 */
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+  }
+
+  /* 포커스가 보여야 키보드로 쓸 수 있다 */
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  h1,
+  h2,
+  h3 {
+    line-height: 1.35;
+    letter-spacing: -0.015em;
+  }
+
+  /* 표 안의 수치는 자리를 맞춰 세로로 읽히게 한다 */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  .card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+  }
+
+  /* 주요 동작. 색이 아니라 명도로 강조한다 (ADR-0014) */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    border-radius: var(--radius-control);
+    padding: 0.5rem 0.875rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.2;
+    border: 1px solid transparent;
+    transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+  }
+
+  .btn-primary {
+    background: var(--color-action);
+    color: var(--color-action-fg);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: var(--color-action-hover);
+  }
+
+  .btn-secondary {
+    background: var(--color-surface);
+    color: var(--color-fg);
+    border-color: var(--color-border-strong);
+  }
+  .btn-secondary:hover:not(:disabled) {
+    background: var(--color-surface-2);
+  }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--color-fg-muted);
+  }
+  .btn-ghost:hover:not(:disabled) {
+    background: var(--color-surface-2);
+    color: var(--color-fg);
+  }
+
+  .btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .field {
+    width: 100%;
+    background: var(--color-surface);
+    color: var(--color-fg);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-control);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.4;
+  }
+  .field::placeholder {
+    color: var(--color-fg-subtle);
+  }
+
+  /* 작은 사실 하나를 담는 표식. 판정이 아닌 것은 무채색이다 */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border-radius: 999px;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface-2);
+    color: var(--color-fg-muted);
+    padding: 0.125rem 0.5rem;
+    font-size: 0.75rem;
+    line-height: 1.5;
+    white-space: nowrap;
+  }
+
+  .link {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-color: var(--color-border-strong);
+    transition: text-decoration-color 120ms ease;
+  }
+  .link:hover {
+    text-decoration-color: currentColor;
+  }
 }
