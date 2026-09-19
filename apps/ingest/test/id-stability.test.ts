@@ -18,6 +18,18 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ingest } from '../src/index';
 
 const ADMIN_URL = process.env['DATABASE_URL'];
+
+/**
+ * CI에서는 건너뛸 수 없다.
+ *
+ * 조용히 건너뛰면 "테스트 통과"라고 표시된 채 이 보증이 사라진다.
+ * 이 프로젝트가 계속 경계해온 실패 방식이다 (빈 sitemap, 거짓 pass).
+ * 로컬에서 DB 없이 돌릴 때만 건너뛴다.
+ */
+if (process.env['CI'] === 'true' && !ADMIN_URL) {
+  throw new Error('CI인데 DATABASE_URL이 없다. parts.id 안정성 검증이 조용히 빠진다.');
+}
+
 const describeIfDb = ADMIN_URL ? describe : describe.skip;
 
 const FIXTURES = fileURLToPath(new URL('./fixtures', import.meta.url));
