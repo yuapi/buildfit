@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, useTransition } from 'react';
 import type { Build, RuleResult } from '@buildfit/compat';
 import { evaluate } from '@buildfit/compat';
@@ -30,6 +32,14 @@ function toSelection(build: Build) {
 function nameOf(build: Build, slot: SlotName): string | null {
   if (slot === 'ram') return build.ram[0]?.name ?? null;
   return build[slot]?.name ?? null;
+}
+
+/** 고른 부품의 상세 페이지 주소. slug가 없으면 링크하지 않는다. */
+function detailHref(build: Build, slot: SlotName): string | null {
+  const part = slot === 'ram' ? build.ram[0] : build[slot];
+  const category = SLOT_META.find((m) => m.slot === slot)?.category;
+  if (!part?.slug || !category) return null;
+  return `/part/${category.toLowerCase()}/${part.slug}`;
 }
 
 const EMPTY: Build = { cpu: null, motherboard: null, ram: [], gpu: null, pcCase: null, psu: null };
@@ -132,6 +142,7 @@ export function BuildTool({ initial }: { initial?: Build }) {
               slot={meta.slot}
               label={meta.label}
               selectedName={nameOf(build, meta.slot)}
+              detailHref={detailHref(build, meta.slot)}
               open={openSlot === meta.slot}
               onToggle={() => setOpenSlot(openSlot === meta.slot ? null : meta.slot)}
               onChoose={(id) => choose(meta.slot, id)}
@@ -164,6 +175,7 @@ function SlotRow({
   slot,
   label,
   selectedName,
+  detailHref,
   open,
   onToggle,
   onChoose,
@@ -172,6 +184,7 @@ function SlotRow({
   slot: SlotName;
   label: string;
   selectedName: string | null;
+  detailHref: string | null;
   open: boolean;
   onToggle: () => void;
   onChoose: (id: string) => void;
@@ -182,7 +195,17 @@ function SlotRow({
       <div className="flex items-baseline gap-3">
         <span className="w-20 shrink-0 text-sm text-neutral-500">{label}</span>
         <span className="min-w-0 flex-1 text-sm">
-          {selectedName ?? <span className="text-neutral-400">아직 고르지 않음</span>}
+          {selectedName ? (
+            detailHref ? (
+              <Link href={detailHref} className="underline underline-offset-2">
+                {selectedName}
+              </Link>
+            ) : (
+              selectedName
+            )
+          ) : (
+            <span className="text-neutral-400">아직 고르지 않음</span>
+          )}
         </span>
         <button
           type="button"

@@ -86,6 +86,7 @@ async function main(): Promise<void> {
       await db
         .insert(parts)
         .values(part)
+        // 칩 레코드는 OpenDB에 원본이 없어 opendb_id가 비어 있다. slug가 식별자다.
         .onConflictDoUpdate({
           target: parts.slug,
           set: { modelName: sql`excluded.model_name`, updatedAt: sql`now()` },
@@ -120,14 +121,18 @@ async function main(): Promise<void> {
                 : null,
           })),
         )
+        // ★ opendb_id 기준으로 올린다. slug가 아니다.
+        // slug는 제품명에서 파생되므로 업스트림이 이름을 고치면 바뀐다. slug를
+        // 충돌 키로 쓰면 그때 새 행이 생기고 parts.id가 바뀌는데, 기존 공유 링크가
+        // 전부 죽는다 (ADR-0012). opendb_id가 이 데이터의 진짜 식별자다.
         .onConflictDoUpdate({
-          target: parts.slug,
+          target: parts.opendbId,
           set: {
+            slug: sql`excluded.slug`,
             category: sql`excluded.category`,
             brand: sql`excluded.brand`,
             modelName: sql`excluded.model_name`,
             releaseYear: sql`excluded.release_year`,
-            opendbId: sql`excluded.opendb_id`,
             mpn: sql`excluded.mpn`,
             chipId: sql`excluded.chip_id`,
             updatedAt: sql`now()`,

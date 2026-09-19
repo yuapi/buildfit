@@ -147,3 +147,41 @@ describe('0이 물리적으로 불가능한 키 (POSITIVE_ONLY_KEYS)', () => {
     expect(k).toContain('pcie_12vhpwr');
   });
 });
+
+describe('slug 생성 — 검색 유입용 주소 (§5.2)', () => {
+  const slugOf = (brand: string | null, name: string) =>
+    toPartRow('CPU', 'abcdef12-0000-0000-0000-000000000000', {
+      socket: 'AM5',
+      metadata: { name, manufacturer: brand },
+    })?.slug;
+
+  it('제조사와 모델명을 잇는다', () => {
+    expect(slugOf('AMD', 'Ryzen 7 9800X3D')).toBe('amd-ryzen-7-9800x3d-abcdef12');
+  });
+
+  it('제품명이 이미 제조사로 시작하면 겹치지 않는다', () => {
+    expect(slugOf('AMD', 'AMD Ryzen 7 9800X3D')).toBe('amd-ryzen-7-9800x3d-abcdef12');
+  });
+
+  it('대소문자가 달라도 겹치지 않는다', () => {
+    expect(slugOf('Gigabyte', 'GIGABYTE B650 AORUS')).toBe('gigabyte-b650-aorus-abcdef12');
+  });
+
+  it('★ 원본에 앞 공백이 있어도 겹치지 않는다 — 실재하는 데이터다', () => {
+    expect(slugOf('Gigastone', ' GIGASTONE Game PRO')).toBe('gigastone-game-pro-abcdef12');
+  });
+
+  it('제조사가 없으면 모델명만 쓴다', () => {
+    expect(slugOf(null, 'Ryzen 7 9800X3D')).toBe('ryzen-7-9800x3d-abcdef12');
+  });
+
+  it('opendb id 접미사로 동명이 부품을 구분한다', () => {
+    const a = toPartRow('CPU', 'aaaaaaaa-0000-0000-0000-000000000000', {
+      metadata: { name: 'Same Name', manufacturer: 'X' },
+    })?.slug;
+    const b = toPartRow('CPU', 'bbbbbbbb-0000-0000-0000-000000000000', {
+      metadata: { name: 'Same Name', manufacturer: 'X' },
+    })?.slug;
+    expect(a).not.toBe(b);
+  });
+});
