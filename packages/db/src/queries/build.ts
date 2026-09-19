@@ -145,6 +145,7 @@ function toPcCase(p: RawPart): PcCase {
     id: p.id,
     name: p.modelName,
     slug: p.slug,
+    formFactor: str(p.specs, 'form_factor'),
     supportedMoboFormFactors: strArray(p.specs, 'supported_mobo_form_factors'),
     supportedPsuFormFactors: strArray(p.specs, 'supported_psu_form_factors'),
     maxGpuLengthMm: num(p.specs, 'max_gpu_length_mm'),

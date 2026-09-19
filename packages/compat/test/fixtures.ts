@@ -40,6 +40,7 @@ export const gpu: Gpu = {
 export const pcCase: PcCase = {
   id: 'case-1',
   name: 'Lian Li O11 Dynamic EVO',
+  formFactor: 'ATX Mid Tower',
   supportedMoboFormFactors: ['ATX', 'Micro ATX', 'Mini-ITX', 'EATX'],
   supportedPsuFormFactors: ['ATX', 'SFX', 'SFX-L'],
   maxGpuLengthMm: 420,

@@ -82,13 +82,24 @@ export function fail(ruleId: number, severity: Severity, message: string): RuleR
   return { ruleId, verdict: 'fail', severity, message };
 }
 
-export function unknown(ruleId: number, message: string, reason: UnknownReason): RuleResult {
-  return { ruleId, verdict: 'unknown', severity: 'info', message, reason };
+export function unknown(
+  ruleId: number,
+  message: string,
+  reason: UnknownReason,
+  notes?: readonly string[],
+): RuleResult {
+  const base: RuleResult = { ruleId, verdict: 'unknown', severity: 'info', message, reason };
+  return notes && notes.length > 0 ? { ...base, notes } : base;
 }
 
 /** 필요한 필드가 비어 있어 판정하지 못한 경우. */
-export function missing(ruleId: number, message: string, fields: readonly FieldRef[]): RuleResult {
-  return unknown(ruleId, message, { kind: 'missing', fields });
+export function missing(
+  ruleId: number,
+  message: string,
+  fields: readonly FieldRef[],
+  notes?: readonly string[],
+): RuleResult {
+  return unknown(ruleId, message, { kind: 'missing', fields }, notes);
 }
 
 /** 값은 있으나 다른 필드와 물리적으로 양립 불가한 경우. docs/compat-rules.md §8.4 */
