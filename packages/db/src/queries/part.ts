@@ -23,6 +23,8 @@ export interface PartDetail {
   readonly modelName: string;
   readonly releaseYear: number | null;
   readonly discontinued: boolean;
+  /** 제조사 스펙 페이지. 없는 부품이 더 많다 (PSU 2.7% ~ CPU 83.1%) */
+  readonly manufacturerUrl: string | null;
   readonly opendbId: string | null;
   readonly mpn: string | null;
   readonly specs: readonly PartSpecRow[];
@@ -38,6 +40,7 @@ export async function partBySlug(db: Database, slug: string): Promise<PartDetail
       modelName: parts.modelName,
       releaseYear: parts.releaseYear,
       discontinued: parts.discontinued,
+      manufacturerUrl: parts.manufacturerUrl,
       opendbId: parts.opendbId,
       mpn: parts.mpn,
     })

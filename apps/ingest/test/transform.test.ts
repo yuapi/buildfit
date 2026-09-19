@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { getPath, isFilled, normalizeReleaseYear, toPartRow, toSlug } from '../src/transform';
+import {
+  getPath,
+  isFilled,
+  normalizeReleaseYear,
+  normalizeUrl,
+  toPartRow,
+  toSlug,
+} from '../src/transform';
 
 describe('getPath', () => {
   it('중첩 경로를 읽는다', () => {
@@ -207,5 +214,41 @@ describe('슬롯 폭 0 — 그런 그래픽카드는 없다', () => {
     const k = keysOf({ total_slot_width: 0, case_expansion_slot_width: 0 });
     expect(k).not.toContain('total_slot_width');
     expect(k).not.toContain('case_expansion_slot_width');
+  });
+});
+
+describe('제조사 URL', () => {
+  it('http(s)만 통과시킨다', () => {
+    expect(normalizeUrl('https://www.msi.com/PC-Case/X/')).toBe('https://www.msi.com/PC-Case/X/');
+    expect(normalizeUrl('http://example.com')).toBe('http://example.com');
+  });
+
+  it('스킴이 위험하거나 URL이 아니면 버린다 — 화면에서 링크가 되는 값이다', () => {
+    expect(normalizeUrl('javascript:alert(1)')).toBeNull();
+    expect(normalizeUrl('data:text/html,<script>')).toBeNull();
+    expect(normalizeUrl('그냥 문자열')).toBeNull();
+  });
+
+  it('앞뒤 공백과 결측을 처리한다', () => {
+    expect(normalizeUrl('  https://example.com  ')).toBe('https://example.com');
+    expect(normalizeUrl('')).toBeNull();
+    expect(normalizeUrl(null)).toBeNull();
+    expect(normalizeUrl(undefined)).toBeNull();
+    expect(normalizeUrl(123)).toBeNull();
+  });
+
+  it('레코드에서 뽑아 PartRow에 담는다', () => {
+    const row = toPartRow('PCCase', 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', {
+      metadata: { name: 'MSI MPG VELOX 300R', manufacturer: 'MSI' },
+      general_product_information: { manufacturer_url: 'https://www.msi.com/PC-Case/X/' },
+    });
+    expect(row?.manufacturerUrl).toBe('https://www.msi.com/PC-Case/X/');
+  });
+
+  it('없으면 null', () => {
+    const row = toPartRow('PCCase', 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', {
+      metadata: { name: 'MSI MPG VELOX 300R', manufacturer: 'MSI' },
+    });
+    expect(row?.manufacturerUrl).toBeNull();
   });
 });

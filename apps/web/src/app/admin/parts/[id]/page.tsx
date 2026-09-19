@@ -44,6 +44,20 @@ export default async function PartEditor({
         {part.brand ? ` · ${part.brand}` : ''}
         {part.releaseYear ? ` · ${part.releaseYear}` : ''}
       </p>
+      {part.manufacturerUrl ? (
+        <a
+          href={part.manufacturerUrl}
+          target="_blank"
+          rel="noreferrer noopener"
+          className="mt-2 inline-block text-sm underline underline-offset-2"
+        >
+          제조사 스펙 페이지 열기 ↗
+        </a>
+      ) : (
+        <p className="mt-2 text-sm text-neutral-500">
+          제조사 스펙 주소가 없습니다. 출처를 직접 찾아야 합니다.
+        </p>
+      )}
 
       <section className="mt-8">
         <h2 className="text-lg font-medium">
@@ -61,6 +75,7 @@ export default async function PartEditor({
               partId={part.id}
               req={req}
               current={byKey.get(req.specKey)?.value ?? null}
+              manufacturerUrl={part.manufacturerUrl}
             />
           ))}
         </div>

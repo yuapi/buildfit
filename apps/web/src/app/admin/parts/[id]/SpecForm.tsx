@@ -15,10 +15,20 @@ export function SpecForm({
   partId,
   req,
   current,
+  manufacturerUrl,
 }: {
   partId: string;
   req: FieldRequirement;
   current: unknown;
+  /**
+   * 제조사 스펙 페이지. 있으면 출처 칸의 기본값으로 넣는다.
+   *
+   * 보강에서 가장 오래 걸리는 단계가 출처를 찾는 것이다. 다만 **기본값을
+   * 넣었다고 확인한 것이 되지는 않는다.** 그래서 값을 감추지 않고 편집 가능한
+   * 입력에 그대로 두고, 바로 옆에 열기 링크를 둔다. 작업자가 페이지를 보고
+   * 다른 출처를 썼다면 고칠 수 있어야 한다.
+   */
+  manufacturerUrl?: string | null;
 }) {
   const [state, action, pending] = useActionState<SaveResult | null, FormData>(saveSpecAction, null);
 
@@ -26,7 +36,7 @@ export function SpecForm({
   const [picked, setPicked] = useState<string[]>(
     Array.isArray(current) ? current.map(String) : [],
   );
-  const [sourceUrl, setSourceUrl] = useState('');
+  const [sourceUrl, setSourceUrl] = useState(manufacturerUrl ?? '');
 
   /**
    * 제출 횟수.
@@ -114,6 +124,16 @@ export function SpecForm({
         <label className="text-sm text-neutral-600 dark:text-neutral-400">
           출처 URL <span className="text-red-600">*</span>
         </label>
+        {manufacturerUrl && (
+          <a
+            href={manufacturerUrl}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="ml-2 text-xs underline underline-offset-2"
+          >
+            제조사 스펙 열기 ↗
+          </a>
+        )}
         <input
           type="url"
           name="sourceUrl"

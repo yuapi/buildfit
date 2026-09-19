@@ -16,9 +16,30 @@ export interface PartRow {
   readonly modelName: string;
   readonly releaseYear: number | null;
   readonly mpn: string | null;
+  /** 제조사 스펙 페이지. 어드민 보강의 1차 출처다 (schema.ts 참조) */
+  readonly manufacturerUrl: string | null;
   readonly chipsetName: string | null;
   readonly specs: readonly SpecRow[];
   readonly aliases: readonly string[];
+}
+
+/**
+ * 제조사 URL 정리.
+ *
+ * http(s)가 아닌 값은 버린다. 이 값은 화면에서 링크가 되므로
+ * `javascript:` 같은 스킴을 그대로 통과시키지 않는다.
+ * 원본에 앞뒤 공백이 있는 레코드가 실재한다.
+ */
+export function normalizeUrl(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (trimmed === '') return null;
+  try {
+    const u = new URL(trimmed);
+    return u.protocol === 'http:' || u.protocol === 'https:' ? trimmed : null;
+  } catch {
+    return null;
+  }
 }
 
 export function getPath(obj: unknown, path: string): unknown {
@@ -126,6 +147,7 @@ export function toPartRow(
     modelName,
     releaseYear: normalizeReleaseYear(getPath(record, 'metadata.releaseYear')),
     mpn: firstMpn(record),
+    manufacturerUrl: normalizeUrl(getPath(record, 'general_product_information.manufacturer_url')),
     chipsetName,
     specs,
     aliases: [...aliases],

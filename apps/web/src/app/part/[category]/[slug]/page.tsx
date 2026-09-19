@@ -262,6 +262,19 @@ export default async function PartPage({
             </a>
           </>
         )}
+        {part.manufacturerUrl && (
+          <>
+            {' '}
+            <a
+              href={part.manufacturerUrl}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="underline underline-offset-2"
+            >
+              제조사 스펙
+            </a>
+          </>
+        )}
         {part.mpn && <span className="ml-2">MPN {part.mpn}</span>}
       </footer>
     </main>
