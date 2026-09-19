@@ -76,6 +76,11 @@ git branch -d feature/1-opendb-schema-research
 **다음 개선 지점**: 판정 불가의 대부분이 케이스 데이터다 (규칙 6, 83.3%).
 `/admin`으로 채우면 그만큼 줄어든다. 근거: `docs/research/opendb-schema-analysis.md` §9.3.1
 
+그때까지의 완화책으로, 판정 불가 3,196건 중 3,056건(95.6%)에 같은 폼팩터의
+**관측된** 지원 분포를 참고로 덧붙였다 (ADR-0013). 판정은 여전히 `unknown`이다.
+form_factor로 추론해 통과시키지 않는다 — Mini ITX Tower는 82%가 SFX 전용이다.
+근거: `docs/research/case-psu-formfactor-distribution.md`
+
 ## 보류 중
 
 `docs/pipeline-plan.md`는 자율 운영 인프라 설계다.

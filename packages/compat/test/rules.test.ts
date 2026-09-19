@@ -192,6 +192,46 @@ describe('6. PSU 폼팩터 ⊂ 케이스 지원', () => {
     const r = rule6(f.withBuild({ pcCase: { ...f.pcCase, supportedPsuFormFactors: [] } }));
     expect(r?.verdict).toBe('unknown');
   });
+
+  // ADR-0013: 판정 불가에 관측된 분포를 덧붙인다. 판정 자체는 바뀌지 않는다.
+  describe('참고 분포 (ADR-0013)', () => {
+    const blind = (formFactor: string | null) =>
+      rule6(f.withBuild({ pcCase: { ...f.pcCase, formFactor, supportedPsuFormFactors: null } }));
+
+    it('표본이 충분한 폼팩터면 참고 분포를 덧붙인다', () => {
+      const r = blind('Mini ITX Tower');
+      expect(r?.verdict).toBe('unknown');
+      expect(r?.notes?.[0]).toContain('SFX 14건(82%)');
+      expect(r?.notes?.[0]).toContain('17건');
+    });
+
+    it('참고 분포는 이 케이스의 사양이 아님을 문장 안에서 밝힌다', () => {
+      expect(blind('ATX Mid Tower')?.notes?.[0]).toContain('이 케이스의 사양이 아니라');
+    });
+
+    it('표본 10건 미만이면 인용하지 않는다', () => {
+      // ATX Mini Tower는 4건뿐이라 표에 싣지 않았다
+      expect(blind('ATX Mini Tower')?.notes).toBeUndefined();
+    });
+
+    it('데이터가 없는 폼팩터면 인용하지 않는다', () => {
+      expect(blind('HTPC')?.notes).toBeUndefined();
+      expect(blind(null)?.notes).toBeUndefined();
+    });
+
+    it('참고 분포가 판정을 pass로 바꾸지 않는다 — 거짓 통과 방지', () => {
+      // ATX Mid Tower는 관측 99%가 ATX다. 그래도 통과시키지 않는다
+      const r = blind('ATX Mid Tower');
+      expect(r?.verdict).toBe('unknown');
+      expect(r?.reason?.kind).toBe('missing');
+    });
+
+    it('값이 채워져 있으면 참고 분포를 붙이지 않는다', () => {
+      const r = rule6(f.withBuild({ pcCase: { ...f.pcCase, formFactor: 'Mini ITX Tower' } }));
+      expect(r?.verdict).toBe('pass');
+      expect(r?.notes).toBeUndefined();
+    });
+  });
 });
 
 describe('7. 소비전력 대비 PSU 정격 — 구간 판정', () => {

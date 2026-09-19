@@ -6,6 +6,7 @@
  * 이것은 `unknown`(판정 불가)과 다르다. 미선택은 판정할 대상이 없는 것이다.
  */
 
+import { describeCaseReference } from './case-reference';
 import type { Build, Gpu } from './parts';
 import {
   type FieldRef,
@@ -187,10 +188,14 @@ export const rule6: Rule = ({ psu, pcCase }) => {
   }
   if (gaps.length > 0) {
     // 현행 세대 케이스의 83.2%가 여기 해당한다. Phase 0 초기에는 흔하다.
+    // 판정은 unknown 그대로 두되, 같은 폼팩터의 관측 분포를 참고로 덧붙인다.
+    // 추론해서 pass를 만들지 않는다. ADR-0013
+    const note = describeCaseReference(pcCase.formFactor);
     return missing(
       6,
       '이 케이스가 지원하는 파워 규격 정보가 아직 없어 판정하지 못했습니다. 제조사 스펙을 직접 확인해 주세요.',
       gaps,
+      note === null ? undefined : [note],
     );
   }
 

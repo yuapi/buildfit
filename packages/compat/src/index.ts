@@ -42,6 +42,14 @@ export {
   TIGHT_FIT_RATIO,
 } from './power';
 
+export type { CaseReference, PsuFormFactorObservation } from './case-reference';
+export {
+  CASE_PSU_REFERENCE,
+  CASE_REFERENCE_SOURCE,
+  MIN_SAMPLE_TO_CITE,
+  describeCaseReference,
+} from './case-reference';
+
 export type { Rule } from './rules';
 export { rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8, phase0Rules } from './rules';
 

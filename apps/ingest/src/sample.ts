@@ -69,6 +69,7 @@ async function main(): Promise<void> {
         const fields = r.reason.fields.map((x) => `${x.part} / ${x.field}`).join('; ');
         console.log(`      사유(${r.reason.kind}) ${fields}`);
       }
+      if (r.notes) for (const n of r.notes) console.log(`      ${n}`);
       if (r.skipped) for (const s of r.skipped) console.log(`      건너뜀: ${s}`);
     }
     console.log(

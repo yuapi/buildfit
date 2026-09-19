@@ -67,6 +67,8 @@ export interface Gpu extends PartRef {
 }
 
 export interface PcCase extends PartRef {
+  /** OpenDB `form_factor` 원문. 예: "ATX Mid Tower". 판정에는 쓰지 않는다 (ADR-0013) */
+  readonly formFactor: string | null;
   readonly supportedMoboFormFactors: readonly string[] | null;
   readonly supportedPsuFormFactors: readonly string[] | null;
   readonly maxGpuLengthMm: number | null;
