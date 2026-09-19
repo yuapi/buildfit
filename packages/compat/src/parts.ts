@@ -12,6 +12,11 @@ export interface PartRef {
   readonly id: string;
   /** 사용자에게 보여줄 이름. 판정 불가 사유에 그대로 실린다. */
   readonly name: string;
+  /**
+   * canonical slug (§5.2). 판정에는 쓰지 않지만 부품 식별의 일부이고,
+   * 화면이 상세 페이지로 링크할 때 필요하다.
+   */
+  readonly slug?: string | undefined;
 }
 
 export interface Cpu extends PartRef {

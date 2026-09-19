@@ -17,6 +17,7 @@ interface RawPart {
   readonly id: string;
   readonly category: string;
   readonly modelName: string;
+  readonly slug: string;
   readonly specs: ReadonlyMap<string, unknown>;
 }
 
@@ -49,7 +50,12 @@ async function loadRaw(db: Database, ids: readonly string[]): Promise<Map<string
   if (unique.length === 0) return new Map();
 
   const rows = await db
-    .select({ id: parts.id, category: parts.category, modelName: parts.modelName })
+    .select({
+      id: parts.id,
+      category: parts.category,
+      modelName: parts.modelName,
+      slug: parts.slug,
+    })
     .from(parts)
     .where(inArray(parts.id, unique));
 
@@ -71,7 +77,13 @@ async function loadRaw(db: Database, ids: readonly string[]): Promise<Map<string
   return new Map(
     rows.map((r) => [
       r.id,
-      { id: r.id, category: r.category, modelName: r.modelName, specs: specsById.get(r.id) ?? new Map() },
+      {
+        id: r.id,
+        category: r.category,
+        modelName: r.modelName,
+        slug: r.slug,
+        specs: specsById.get(r.id) ?? new Map(),
+      },
     ]),
   );
 }
@@ -80,6 +92,7 @@ function toCpu(p: RawPart): Cpu {
   return {
     id: p.id,
     name: p.modelName,
+    slug: p.slug,
     socket: str(p.specs, 'socket'),
     tdp: num(p.specs, 'tdp_w'),
     ppt: num(p.specs, 'ppt_w'),
@@ -91,6 +104,7 @@ function toMotherboard(p: RawPart): Motherboard {
   return {
     id: p.id,
     name: p.modelName,
+    slug: p.slug,
     socket: str(p.specs, 'socket'),
     formFactor: str(p.specs, 'form_factor'),
     memoryType: str(p.specs, 'memory_type'),
@@ -102,6 +116,7 @@ function toRamKit(p: RawPart): RamKit {
   return {
     id: p.id,
     name: p.modelName,
+    slug: p.slug,
     ramType: str(p.specs, 'ram_type'),
     moduleCount: num(p.specs, 'module_count'),
     heightMm: num(p.specs, 'height_mm'),
@@ -112,6 +127,7 @@ function toGpu(p: RawPart): Gpu {
   return {
     id: p.id,
     name: p.modelName,
+    slug: p.slug,
     chipset: str(p.specs, 'chipset'),
     lengthMm: num(p.specs, 'length_mm'),
     tdp: num(p.specs, 'tdp_w'),
@@ -128,6 +144,7 @@ function toPcCase(p: RawPart): PcCase {
   return {
     id: p.id,
     name: p.modelName,
+    slug: p.slug,
     supportedMoboFormFactors: strArray(p.specs, 'supported_mobo_form_factors'),
     supportedPsuFormFactors: strArray(p.specs, 'supported_psu_form_factors'),
     maxGpuLengthMm: num(p.specs, 'max_gpu_length_mm'),
@@ -139,6 +156,7 @@ function toPsu(p: RawPart): Psu {
   return {
     id: p.id,
     name: p.modelName,
+    slug: p.slug,
     wattage: num(p.specs, 'wattage_w'),
     formFactor: str(p.specs, 'form_factor'),
     connectors: {

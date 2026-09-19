@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import { fieldGapSummary } from '@buildfit/db/queries';
+import { openSpecReports } from '@buildfit/db/part';
+import { specLabel } from '@/lib/spec-labels';
 import { getDb } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
@@ -7,7 +9,8 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: '어드민 — 빈 필드 보강' };
 
 export default async function AdminHome() {
-  const gaps = await fieldGapSummary(getDb());
+  const db = getDb();
+  const [gaps, reports] = await Promise.all([fieldGapSummary(db), openSpecReports(db, 20)]);
   const open = gaps.filter((g) => g.missingParts > 0);
   const totalMissing = open.reduce((n, g) => n + g.missingParts, 0);
 
@@ -29,6 +32,39 @@ export default async function AdminHome() {
           <div className="text-xl font-semibold">{totalMissing.toLocaleString()}개</div>
         </div>
       </div>
+
+      {/* 사용자 신고가 가장 값싼 검증 수단이다 (§5.5). 결측 목록보다 먼저 본다. */}
+      {reports.length > 0 && (
+        <section className="mt-8 rounded border border-amber-400 p-4 dark:border-amber-600">
+          <h2 className="font-medium">
+            사용자 신고 <span className="text-sm font-normal text-neutral-500">{reports.length}건</span>
+          </h2>
+          <p className="mt-1 text-xs text-neutral-500">
+            사용자가 실제로 마주친 오류다. 결측 목록보다 우선순위가 높다.
+          </p>
+          <ul className="mt-3 space-y-2 text-sm">
+            {reports.map((r) => (
+              <li key={r.id} className="border-b border-neutral-200 pb-2 dark:border-neutral-800">
+                <Link
+                  href={`/admin/parts/${r.partId}?focus=${r.specKey}`}
+                  className="underline underline-offset-2"
+                >
+                  {r.partName}
+                </Link>
+                <span className="ml-2 text-xs text-neutral-500">
+                  {r.category} · {specLabel(r.specKey)}
+                </span>
+                {r.reportedValue && (
+                  <p className="mt-0.5 text-xs">
+                    맞다는 값: <span className="font-medium">{r.reportedValue}</span>
+                  </p>
+                )}
+                {r.note && <p className="mt-0.5 text-xs text-neutral-500">{r.note}</p>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <table className="mt-8 w-full text-sm">
         <thead className="border-b border-neutral-300 text-left dark:border-neutral-700">

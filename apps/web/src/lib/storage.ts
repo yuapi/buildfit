@@ -268,3 +268,28 @@ export function getServerStorageSnapshot(): StorageSnapshot {
 export function resetStorageSnapshot(): void {
   snapshot = null;
 }
+
+// --- 신고용 브라우저 토큰 ----------------------------------------------------
+
+const CLIENT_TOKEN_KEY = 'client_token';
+
+/**
+ * 브라우저 단위 토큰.
+ *
+ * **개인 식별에 쓰지 않는다.** 같은 브라우저가 같은 필드를 여러 번 신고하는 것만
+ * 막는 용도다 (§5.5, §6.6.5). 로그인이 없으므로(ADR-0001) 이것이 유일한 중복 방지
+ * 수단이고, 지워져도 무방하다.
+ */
+export function getClientToken(): string {
+  const s = store();
+  try {
+    const existing = s?.getItem(CLIENT_TOKEN_KEY);
+    if (existing) return existing;
+    const token = crypto.randomUUID();
+    s?.setItem(CLIENT_TOKEN_KEY, token);
+    return token;
+  } catch {
+    // 저장이 막혀 있으면 매번 새 토큰이다. 중복 방지만 약해질 뿐 동작은 한다.
+    return crypto.randomUUID();
+  }
+}

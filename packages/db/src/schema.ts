@@ -184,3 +184,37 @@ export const skus = pgTable(
     uniqueIndex('skus_mall_product_uq').on(t.mallProductId),
   ],
 );
+
+/**
+ * 스펙 오류 신고 — `pc-builder-spec.md` §5.5.
+ *
+ * > 각 부품 페이지에 **오류 신고 버튼.** 사용자 제보가 가장 값싼 검증 수단이다.
+ * > 신고가 들어오면 해당 필드에 `disputed` 플래그를 세우고, 결과 화면에 "검증 중" 표시
+ *
+ * 로그인이 없으므로(ADR-0001) 신고자를 식별하지 않는다. 브라우저 단위 중복 방지만
+ * 한다 (§6.6.5와 같은 방식).
+ */
+export const specReports = pgTable(
+  'spec_reports',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    partId: uuid('part_id')
+      .notNull()
+      .references(() => parts.id, { onDelete: 'cascade' }),
+    /** 신고 대상 스펙 키. 값이 아예 없는 필드를 신고할 수도 있다. */
+    specKey: text('spec_key').notNull(),
+    /** 사용자가 맞다고 생각하는 값. 비워둘 수 있다. */
+    reportedValue: text('reported_value'),
+    note: text('note'),
+    /** 브라우저 단위 중복 방지용. 개인 식별에 쓰지 않는다. */
+    clientToken: text('client_token'),
+    /** open | resolved | rejected */
+    status: text('status').notNull().default('open'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('spec_reports_part_idx').on(t.partId),
+    index('spec_reports_status_idx').on(t.status),
+    uniqueIndex('spec_reports_dedupe_uq').on(t.partId, t.specKey, t.clientToken),
+  ],
+);

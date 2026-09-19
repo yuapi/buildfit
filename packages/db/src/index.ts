@@ -6,5 +6,5 @@
  */
 
 export * as schema from './schema';
-export { parts, partSpecs, partAliases, importers, skus } from './schema';
+export { parts, partSpecs, partAliases, importers, skus, specReports } from './schema';
 export { createDb, type Database } from './client';
