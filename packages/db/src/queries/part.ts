@@ -253,3 +253,41 @@ export async function slugsInCategory(
     .limit(opts.limit ?? 5000)
     .offset(opts.offset ?? 0);
 }
+
+// --- 비교 ---------------------------------------------------------------------
+
+/**
+ * 비교 후보를 고르는 기준 스펙.
+ *
+ * §8이 "의미 있는 조합만 생성한다"고 한 것에 대한 구현이다. 아무 두 부품이나
+ * 비교 페이지를 만들면 저품질 페이지 양산이 된다. 같은 축을 공유하는 것끼리만 묶는다.
+ */
+const COMPARABLE_BY: Readonly<Record<string, string>> = {
+  GPU: 'chipset', // 같은 칩의 AIB 모델끼리. 길이·클럭 차이가 커서 비교 가치가 높다
+  CPU: 'socket',
+  Motherboard: 'socket',
+  RAM: 'ram_type',
+  PSU: 'form_factor',
+  PCCase: 'form_factor',
+  CPUCooler: 'water_cooled',
+};
+
+/** 이 부품과 비교할 만한 다른 부품들. */
+export async function comparableParts(
+  db: Database,
+  part: { id: string; category: string; specs: readonly { key: string; value: unknown }[] },
+  limit = 6,
+): Promise<RelatedPart[]> {
+  const key = COMPARABLE_BY[part.category];
+  if (!key) return [];
+  const value = part.specs.find((s) => s.key === key)?.value;
+  if (value === undefined || value === null) return [];
+
+  return partsMatchingSpec(db, {
+    category: part.category,
+    specKey: key,
+    value,
+    excludePartId: part.id,
+    limit,
+  });
+}

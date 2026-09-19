@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requiredKeysFor } from '@buildfit/compat';
-import { partBySlug, partsMatchingSpec, type RelatedPart } from '@buildfit/db/part';
+import { comparableParts, partBySlug, partsMatchingSpec, type RelatedPart } from '@buildfit/db/part';
 import { encodeBuildCode } from '@/lib/build-code';
 import { SLOT_META, categoryLabel } from '@/lib/categories';
 import { getDb } from '@/lib/db';
@@ -104,7 +104,10 @@ export default async function PartPage({
     .filter((r) => !have.has(r.specKey))
     .map((r) => r.specKey);
 
-  const related = await relatedParts(part.category, part.id, part.specs);
+  const [related, comparable] = await Promise.all([
+    relatedParts(part.category, part.id, part.specs),
+    comparableParts(getDb(), part),
+  ]);
   const buildHref = startBuildHref(part.category, part.id);
   const sourceUrl = part.specs.find((s) => s.sourceUrl)?.sourceUrl ?? null;
 
@@ -216,6 +219,27 @@ export default async function PartPage({
                   className="underline underline-offset-2"
                 >
                   {r.modelName}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {comparable.length > 0 && (
+        <section className="mt-10">
+          <h2 className="text-lg font-medium">비교해 볼 만한 부품</h2>
+          <p className="mt-1 text-xs text-neutral-500">
+            같은 축을 공유하는 것끼리만 묶습니다. 아무 두 부품이나 비교하지 않습니다.
+          </p>
+          <ul className="mt-3 grid gap-1 sm:grid-cols-2">
+            {comparable.map((c) => (
+              <li key={c.slug} className="truncate text-sm">
+                <Link
+                  href={`/compare/${part.slug}/vs/${c.slug}`}
+                  className="underline underline-offset-2"
+                >
+                  {c.modelName}와 비교
                 </Link>
               </li>
             ))}
