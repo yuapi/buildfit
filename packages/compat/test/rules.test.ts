@@ -11,6 +11,7 @@
 import { describe, expect, it } from 'vitest';
 import { evaluate } from '../src/engine';
 import { emptyBuild } from '../src/parts';
+import { estimatePower } from '../src/power';
 import { rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8, rule9, rule12 } from '../src/rules';
 import * as f from './fixtures';
 
@@ -520,5 +521,37 @@ describe('엔진', () => {
   it('결과는 항상 규칙 번호순이다', () => {
     const ids = evaluate(f.goodBuild).results.map((r) => r.ruleId);
     expect(ids).toEqual([...ids].sort((a, b) => a - b));
+  });
+});
+
+describe('estimatePower — 판정과 화면이 같은 수치를 쓴다', () => {
+  it('규칙 7의 메시지에 나오는 수치와 일치한다', () => {
+    // 기준 견적: CPU PPT 162W + GPU TDP 360W, 메모리 2모듈
+    const est = estimatePower({ cpuW: 162, gpuW: 360, ramModules: 2 });
+    expect(est.minW).toBe(551); // 522 + 25 + 2×2
+    expect(est.maxW).toBe(612); // 522 + 80 + 5×2
+    expect(est.recommendedW).toBe(Math.ceil(612 * 1.3));
+
+    const r = rule7(f.goodBuild);
+    expect(r?.message).toContain(`${est.minW}~${est.maxW}W`);
+    expect(r?.message).toContain(`${est.recommendedW}W`);
+  });
+
+  it('GPU가 없으면 내역에서도 빠진다 — 내장그래픽 구성', () => {
+    const est = estimatePower({ cpuW: 162, gpuW: null, ramModules: 2 });
+    expect(est.parts.map((p) => p.label)).toEqual(['CPU']);
+    expect(est.maxW).toBe(252); // 162 + 80 + 10
+  });
+
+  it('구간은 항상 최소 ≤ 최대 ≤ 권장이다', () => {
+    for (const [cpu, gpu, mods] of [
+      [0, 0, 0],
+      [65, 75, 1],
+      [253, 575, 4],
+    ] as const) {
+      const est = estimatePower({ cpuW: cpu, gpuW: gpu, ramModules: mods });
+      expect(est.minW).toBeLessThanOrEqual(est.maxW);
+      expect(est.maxW).toBeLessThanOrEqual(est.recommendedW);
+    }
   });
 });

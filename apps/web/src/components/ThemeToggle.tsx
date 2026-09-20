@@ -62,7 +62,8 @@ export function ThemeToggle() {
     <button
       type="button"
       onClick={cycle}
-      className="btn btn-ghost text-xs"
+      // 헤더의 어두운 크롬 위에 놓인다. 본문 색 토큰을 쓰면 안 보인다
+      className="flex items-center gap-1.5 rounded-(--radius-control) px-2.5 py-1.5 text-xs text-chrome-muted transition-colors hover:bg-white/10 hover:text-chrome-fg"
       // 아이콘만으로는 현재 상태를 읽을 수 없다. 이름에 상태를 담는다
       aria-label={`화면 테마: ${LABEL[theme]}. 눌러서 변경`}
       title={`화면 테마: ${LABEL[theme]}`}

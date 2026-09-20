@@ -19,10 +19,9 @@ import {
 } from './verdict';
 import {
   PCIE_SLOT_POWER_W,
-  POWER_ASSUMPTIONS,
-  PSU_HEADROOM_MULTIPLIER,
   TIGHT_FIT_RATIO,
   describeAssumptions,
+  estimatePower,
 } from './power';
 
 export type Rule = (build: Build) => RuleResult | null;
@@ -228,14 +227,17 @@ export const rule7: Rule = ({ cpu, gpu, psu, ram }) => {
 
   // 점 값을 고르지 않는다. 가정을 범위로 두고 판정을 세 갈래로 낸다.
   // docs/compat-rules.md §7.2~7.3
-  const modules = ram.reduce((n, kit) => n + (kit.moduleCount ?? 0), 0);
-  const base = (cpuW ?? 0) + (gpu?.tdp ?? 0);
-  const a = POWER_ASSUMPTIONS;
-  const minTotal = Math.round(base + a.motherboard.minW + a.ramPerModule.minW * modules);
-  const maxTotal = Math.round(base + a.motherboard.maxW + a.ramPerModule.maxW * modules);
-  const recommended = Math.ceil(maxTotal * PSU_HEADROOM_MULTIPLIER);
+  // 화면도 같은 함수를 쓴다. 두 벌이 되면 패널의 수치와 판정 기준이 어긋난다.
+  const est = estimatePower({
+    cpuW: cpuW ?? null,
+    gpuW: gpu?.tdp ?? null,
+    ramModules: ram.reduce((n, kit) => n + (kit.moduleCount ?? 0), 0),
+  });
+  const minTotal = est.minW;
+  const maxTotal = est.maxW;
+  const recommended = est.recommendedW;
   const wattage = psu.wattage ?? 0;
-  const notes = [describeAssumptions(a)];
+  const notes = [describeAssumptions()];
   const estimate = `총 소비전력 약 ${minTotal}~${maxTotal}W로 추정됩니다`;
 
   if (wattage >= recommended) {

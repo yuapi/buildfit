@@ -9,10 +9,10 @@ export const metadata = {
 
 export default function Home() {
   return (
-    <Container className="py-10 sm:py-14">
+    <Container className="py-8 sm:py-10">
       <section className="max-w-2xl">
         <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">이 조합, 문제 없나?</h1>
-        <p className="mt-3 text-fg-muted">
+        <p className="mt-2.5 text-fg-muted">
           부품을 고르면 호환성·소비전력·필요 파워를 판정합니다. 가격 비교가 아니라{' '}
           <strong className="font-medium text-fg">판단을 돕는 도구</strong>입니다.
         </p>
@@ -22,7 +22,7 @@ export default function Home() {
         </p>
       </section>
 
-      <div className="mt-10">
+      <div className="mt-7">
         <BuildTool />
       </div>
     </Container>
