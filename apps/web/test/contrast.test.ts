@@ -99,6 +99,29 @@ describe.each([
   });
 });
 
+describe.each([
+  ['라이트', LIGHT],
+  ['다크', DARK],
+] as const)('%s 테마 크롬 대비 (ADR-0015)', (_name, theme) => {
+  // 헤더·푸터는 본문과 다른 배경을 쓴다. 본문 토큰만 검사하면 여기가 조용히 깨진다.
+  it('크롬 글자가 크롬 배경 위에서 4.5:1 이상', () => {
+    expect(contrast(theme['--color-chrome-fg']!, theme['--color-chrome']!)).toBeGreaterThanOrEqual(
+      4.5,
+    );
+  });
+
+  it('크롬의 흐린 글자(네비)도 4.5:1 이상', () => {
+    expect(
+      contrast(theme['--color-chrome-muted']!, theme['--color-chrome']!),
+    ).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('브랜드 색이 크롬 위에서 3:1 이상 — 로고와 경계선에 쓴다', () => {
+    // 글자가 아니라 표식이므로 비문자 기준(WCAG 1.4.11)을 쓴다
+    expect(contrast(theme['--color-brand']!, theme['--color-chrome']!)).toBeGreaterThanOrEqual(3);
+  });
+});
+
 describe('토큰 규율', () => {
   it('라이트와 다크가 같은 토큰 집합을 정의한다', () => {
     // 한쪽에만 있는 토큰은 그 테마에서 값이 비어 색이 사라진다

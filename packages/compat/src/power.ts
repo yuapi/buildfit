@@ -69,3 +69,45 @@ export const PSU_HEADROOM_MULTIPLIER = 1.3;
 
 /** 케이스 GPU 최대 길이 대비 "빠듯함" 경고 임계. pc-builder-spec.md §5.1 */
 export const TIGHT_FIT_RATIO = 0.95;
+
+/**
+ * 견적의 소비전력 추정. 규칙 7이 판정에 쓰고, 화면이 수치로 보여준다.
+ *
+ * **점 값을 내지 않는다.** 메인보드 소비전력은 1차 소스에 필드가 없고 공개
+ * 자료도 25~80W로 3배 차이가 난다 (docs/compat-rules.md §7.1). 구간의 폭이
+ * 곧 신뢰도 표시다.
+ *
+ * 판정과 화면이 같은 함수를 쓴다. 두 벌이 되면 "패널에는 600W인데 판정은
+ * 650W 기준" 같은 어긋남이 생긴다.
+ */
+export interface PowerEstimate {
+  /** 가정을 가장 낮게 잡았을 때 (W) */
+  readonly minW: number;
+  /** 가장 높게 잡았을 때 (W) */
+  readonly maxW: number;
+  /** 권장 PSU 정격 (W). maxW × 여유분 */
+  readonly recommendedW: number;
+  /** 부품별 내역. 화면이 "무엇이 얼마를 먹는가"를 보여줄 때 쓴다 */
+  readonly parts: readonly { readonly label: string; readonly watts: number }[];
+}
+
+export function estimatePower(input: {
+  cpuW: number | null;
+  gpuW: number | null;
+  ramModules: number;
+  assumptions?: PowerAssumptions;
+}): PowerEstimate {
+  const a = input.assumptions ?? POWER_ASSUMPTIONS;
+  const cpuW = input.cpuW ?? 0;
+  const gpuW = input.gpuW ?? 0;
+  const modules = input.ramModules;
+
+  const minW = Math.round(cpuW + gpuW + a.motherboard.minW + a.ramPerModule.minW * modules);
+  const maxW = Math.round(cpuW + gpuW + a.motherboard.maxW + a.ramPerModule.maxW * modules);
+
+  const parts: { label: string; watts: number }[] = [];
+  if (cpuW > 0) parts.push({ label: 'CPU', watts: cpuW });
+  if (gpuW > 0) parts.push({ label: '그래픽카드', watts: gpuW });
+
+  return { minW, maxW, recommendedW: Math.ceil(maxW * PSU_HEADROOM_MULTIPLIER), parts };
+}

@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
+import Link from "next/link";
 
 import {
   useCallback,
@@ -9,12 +9,19 @@ import {
   useState,
   useSyncExternalStore,
   useTransition,
-} from 'react';
-import type { Build, RuleResult } from '@buildfit/compat';
-import { RULE_SUMMARY, SLOT_LABELS, blockingSlots, evaluate } from '@buildfit/compat';
-import { decodeBuildCode, encodeBuildCode } from '@/lib/build-code';
-import { SLOT_META, type SlotName } from '@/lib/categories';
-import { listWithJosa } from '@/lib/korean';
+} from "react";
+import type { Build, RuleResult } from "@buildfit/compat";
+import {
+  RULE_SUMMARY,
+  SLOT_LABELS,
+  blockingSlots,
+  estimatePower,
+  evaluate,
+} from "@buildfit/compat";
+import { decodeBuildCode, encodeBuildCode } from "@/lib/build-code";
+import { PartIcon } from "@/components/Icons";
+import { SLOT_META, type SlotName } from "@/lib/categories";
+import { listWithJosa } from "@/lib/korean";
 import {
   getServerStorageSnapshot,
   getStorageSnapshot,
@@ -22,8 +29,8 @@ import {
   removeBuild,
   saveBuild,
   subscribeStorage,
-} from '@/lib/storage';
-import { fetchBuildParts, searchParts, type PartOption } from './actions';
+} from "@/lib/storage";
+import { fetchBuildParts, searchParts, type PartOption } from "./actions";
 
 /** Build에서 선택 id만 뽑는다. 공유 코드와 서버 조회의 입력이 된다. */
 function toSelection(build: Build) {
@@ -39,13 +46,13 @@ function toSelection(build: Build) {
 }
 
 function nameOf(build: Build, slot: SlotName): string | null {
-  if (slot === 'ram') return build.ram[0]?.name ?? null;
+  if (slot === "ram") return build.ram[0]?.name ?? null;
   return build[slot]?.name ?? null;
 }
 
 /** 고른 부품의 상세 페이지 주소. slug가 없으면 링크하지 않는다. */
 function detailHref(build: Build, slot: SlotName): string | null {
-  const part = slot === 'ram' ? build.ram[0] : build[slot];
+  const part = slot === "ram" ? build.ram[0] : build[slot];
   const category = SLOT_META.find((m) => m.slot === slot)?.category;
   if (!part?.slug || !category) return null;
   return `/part/${category.toLowerCase()}/${part.slug}`;
@@ -64,16 +71,22 @@ const EMPTY: Build = {
 /** 저장·기록에 쓸 기본 이름. 핵심 부품 두 개면 대개 알아본다. */
 function autoLabel(build: Build): string {
   const picked = [build.cpu?.name, build.gpu?.name].filter(Boolean) as string[];
-  if (picked.length > 0) return picked.join(' + ');
+  if (picked.length > 0) return picked.join(" + ");
   const any = SLOT_META.map((m) => nameOf(build, m.slot)).find(Boolean);
-  return any ?? '빈 견적';
+  return any ?? "빈 견적";
 }
 
 /** 고른 부품 개수. 저장·기록할 가치가 있는지 판단한다. */
 function pickedCount(build: Build): number {
   return (
-    [build.cpu, build.motherboard, build.gpu, build.pcCase, build.psu, build.cooler].filter(Boolean)
-      .length + build.ram.length
+    [
+      build.cpu,
+      build.motherboard,
+      build.gpu,
+      build.pcCase,
+      build.psu,
+      build.cooler,
+    ].filter(Boolean).length + build.ram.length
   );
 }
 
@@ -132,7 +145,7 @@ export function BuildTool({ initial }: { initial?: Build }) {
   const choose = useCallback(
     (slot: SlotName, id: string) => {
       const next = { ...selection };
-      if (slot === 'ram') next.ram = [id];
+      if (slot === "ram") next.ram = [id];
       else next[slot] = id;
       setOpenSlot(null);
       apply(next);
@@ -143,7 +156,7 @@ export function BuildTool({ initial }: { initial?: Build }) {
   const clear = useCallback(
     (slot: SlotName) => {
       const next = { ...selection };
-      if (slot === 'ram') next.ram = [];
+      if (slot === "ram") next.ram = [];
       else next[slot] = undefined;
       apply(next);
     },
@@ -153,45 +166,60 @@ export function BuildTool({ initial }: { initial?: Build }) {
   const picked = pickedCount(build);
 
   return (
-    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_23rem] lg:gap-8">
-      <section aria-labelledby="slots-heading">
-        <div className="flex items-baseline justify-between gap-3">
-          <h2 id="slots-heading" className="text-lg font-semibold">
-            부품 선택
-          </h2>
-          <span className="text-sm text-fg-subtle tnum">
-            {picked} / {SLOT_META.length}
-          </span>
-        </div>
+    <div className="space-y-5">
+      {/* 판정을 맨 위 띠로 올린다. 이 도구가 하는 일이 판정이다 (ADR-0015) */}
+      <VerdictBar verdict={verdict} build={build} pending={pending} />
 
-        <ul className="mt-3 space-y-2">
-          {SLOT_META.map((meta) => (
-            <SlotRow
-              key={meta.slot}
-              slot={meta.slot}
-              label={meta.label}
-              selectedName={nameOf(build, meta.slot)}
-              detailHref={detailHref(build, meta.slot)}
-              open={openSlot === meta.slot}
-              onToggle={() => setOpenSlot(openSlot === meta.slot ? null : meta.slot)}
-              onChoose={(id) => choose(meta.slot, id)}
-              onClear={() => clear(meta.slot)}
-            />
-          ))}
-        </ul>
-      </section>
+      {loadError && (
+        <p role="alert" className="verdict-bar verdict-warning text-sm">
+          부품 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요. 고른
+          구성은 그대로 있습니다.
+        </p>
+      )}
 
-      <aside className="space-y-4 lg:sticky lg:top-20">
-        {loadError && (
-          <p
-            role="alert"
-            className="rounded-(--radius-card) border border-warn-border bg-warn-bg p-3 text-sm text-warn"
-          >
-            부품 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요. 고른 구성은 그대로
-            있습니다.
-          </p>
-        )}
-        <VerdictPanel verdict={verdict} pending={pending} build={build} />
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_21rem] lg:gap-6">
+        <section
+          aria-labelledby="slots-heading"
+          className="card overflow-hidden"
+        >
+          <div className="flex items-baseline justify-between gap-3 border-b border-border px-4 py-2.5">
+            <h2 id="slots-heading" className="text-sm font-semibold">
+              부품 선택
+            </h2>
+            <span className="text-xs text-fg-subtle tnum">
+              {picked} / {SLOT_META.length}
+            </span>
+          </div>
+
+          <ul className="divide-y divide-border">
+            {SLOT_META.map((meta) => (
+              <SlotRow
+                key={meta.slot}
+                slot={meta.slot}
+                category={meta.category}
+                label={meta.label}
+                selectedName={nameOf(build, meta.slot)}
+                detailHref={detailHref(build, meta.slot)}
+                open={openSlot === meta.slot}
+                onToggle={() =>
+                  setOpenSlot(openSlot === meta.slot ? null : meta.slot)
+                }
+                onChoose={(id) => choose(meta.slot, id)}
+                onClear={() => clear(meta.slot)}
+              />
+            ))}
+          </ul>
+        </section>
+
+        {/* 판정에 딸린 것만 옆에 둔다. 보관·공유는 아래로 내려 왼쪽 아래가
+            비지 않게 한다 — 빈 칸이 크면 화면이 미완성으로 보인다 (ADR-0015) */}
+        <aside className="space-y-4 lg:sticky lg:top-20">
+          <PowerPanel build={build} />
+          <VerdictPanel verdict={verdict} build={build} />
+        </aside>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
         {anySelected && <ShareBox code={code} />}
         <SaveBox
           code={code}
@@ -199,13 +227,72 @@ export function BuildTool({ initial }: { initial?: Build }) {
           canSave={picked > 0}
           onLoad={loadCode}
         />
-      </aside>
+      </div>
     </div>
+  );
+}
+
+/**
+ * 소비전력 요약.
+ *
+ * 수치를 크게 낸다. PC 견적에서 사람들이 가장 먼저 확인하는 값이고,
+ * 글자 크기가 다 같으면 어디를 봐야 할지 알 수 없다 (ADR-0015).
+ *
+ * **판정과 같은 함수를 쓴다** — 패널의 수치와 규칙 7의 기준이 어긋나면 안 된다.
+ */
+function PowerPanel({ build }: { build: Build }) {
+  const cpuW = build.cpu ? (build.cpu.ppt ?? build.cpu.tdp) : null;
+  const gpuW = build.gpu?.tdp ?? null;
+  const modules = build.ram.reduce((n, k) => n + (k.moduleCount ?? 0), 0);
+  if (cpuW === null && gpuW === null) return null;
+
+  const est = estimatePower({ cpuW, gpuW, ramModules: modules });
+  const psuW = build.psu?.wattage ?? null;
+
+  return (
+    <section className="card p-4 sm:p-5" aria-labelledby="power-heading">
+      <h2 id="power-heading" className="text-sm font-semibold">
+        소비전력
+      </h2>
+      <p className="mt-2 flex items-baseline gap-1.5">
+        <span className="stat text-3xl">{est.minW}</span>
+        <span className="text-fg-subtle">~</span>
+        <span className="stat text-3xl">{est.maxW}</span>
+        <span className="text-sm text-fg-muted">W</span>
+      </p>
+      {/* 구간의 폭이 곧 신뢰도 표시다. 점 값을 내지 않는다 (§7.2) */}
+      <p className="mt-1 text-xs text-fg-subtle">
+        가정 범위. 점 값을 내지 않습니다
+      </p>
+
+      <dl className="mt-4 space-y-1.5 border-t border-border pt-3 text-sm">
+        {est.parts.map((p) => (
+          <div
+            key={p.label}
+            className="flex items-baseline justify-between gap-2"
+          >
+            <dt className="text-fg-muted">{p.label}</dt>
+            <dd className="tnum">{p.watts} W</dd>
+          </div>
+        ))}
+        <div className="flex items-baseline justify-between gap-2">
+          <dt className="text-fg-muted">권장 파워</dt>
+          <dd className="tnum font-medium">{est.recommendedW} W</dd>
+        </div>
+        {psuW !== null && (
+          <div className="flex items-baseline justify-between gap-2">
+            <dt className="text-fg-muted">고른 파워</dt>
+            <dd className="tnum font-medium">{psuW} W</dd>
+          </div>
+        )}
+      </dl>
+    </section>
   );
 }
 
 function SlotRow({
   slot,
+  category,
   label,
   selectedName,
   detailHref,
@@ -215,6 +302,7 @@ function SlotRow({
   onClear,
 }: {
   slot: SlotName;
+  category: string;
   label: string;
   selectedName: string | null;
   detailHref: string | null;
@@ -224,33 +312,55 @@ function SlotRow({
   onClear: () => void;
 }) {
   return (
-    <li className={`card overflow-hidden ${open ? 'ring-1 ring-border-strong' : ''}`}>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2.5 sm:px-4">
-        <span className="w-[5.5rem] shrink-0 text-xs font-medium text-fg-subtle">{label}</span>
-        <span className="min-w-0 flex-1 text-sm">
-          {selectedName ? (
-            detailHref ? (
-              <Link href={detailHref} className="link font-medium">
-                {selectedName}
-              </Link>
+    <li className={open ? "bg-surface-2" : ""}>
+      {/* 카드 더미가 아니라 표의 한 줄이다. 한 화면에 더 많이 들어간다 (ADR-0015) */}
+      <div className="row-grid px-3 py-2 sm:px-4">
+        {/* 넓은 화면에서는 두 칸으로 펼치고(contents), 좁으면 쌓인다 */}
+        <div className="min-w-0 sm:contents">
+          <span className="flex items-center gap-2 text-xs font-medium text-fg-muted">
+            {/* 제품 사진이 없으므로 아이콘이 시각적 닻 노릇을 한다 */}
+            <PartIcon category={category} className="text-fg-subtle" />
+            <span className="truncate">{label}</span>
+          </span>
+          <span className="min-w-0 text-sm">
+            {selectedName ? (
+              detailHref ? (
+                <Link
+                  href={detailHref}
+                  className="link block truncate font-medium"
+                >
+                  {selectedName}
+                </Link>
+              ) : (
+                <span className="block truncate font-medium">
+                  {selectedName}
+                </span>
+              )
             ) : (
-              <span className="font-medium">{selectedName}</span>
-            )
-          ) : (
-            <span className="text-fg-subtle">아직 고르지 않음</span>
-          )}
-        </span>
-        <span className="flex shrink-0 items-center gap-1">
+              <span className="text-fg-subtle">아직 고르지 않음</span>
+            )}
+          </span>
+        </div>
+        <span className="flex shrink-0 items-center gap-0.5 self-center">
           <button
             type="button"
             onClick={onToggle}
             aria-expanded={open}
-            className={selectedName ? 'btn btn-ghost' : 'btn btn-secondary'}
+            className={
+              selectedName
+                ? "btn btn-ghost px-2 py-1 text-xs"
+                : "btn btn-secondary px-2.5 py-1 text-xs"
+            }
           >
-            {open ? '닫기' : selectedName ? '변경' : '선택'}
+            {open ? "닫기" : selectedName ? "변경" : "선택"}
           </button>
           {selectedName && (
-            <button type="button" onClick={onClear} className="btn btn-ghost">
+            <button
+              type="button"
+              onClick={onClear}
+              aria-label={`${label} 제거`}
+              className="btn btn-ghost px-2 py-1 text-xs"
+            >
               제거
             </button>
           )}
@@ -261,8 +371,14 @@ function SlotRow({
   );
 }
 
-function PartPicker({ slot, onChoose }: { slot: SlotName; onChoose: (id: string) => void }) {
-  const [query, setQuery] = useState('');
+function PartPicker({
+  slot,
+  onChoose,
+}: {
+  slot: SlotName;
+  onChoose: (id: string) => void;
+}) {
+  const [query, setQuery] = useState("");
   const [options, setOptions] = useState<PartOption[]>([]);
   const [failed, setFailed] = useState(false);
   const [loading, startSearch] = useTransition();
@@ -284,7 +400,7 @@ function PartPicker({ slot, onChoose }: { slot: SlotName; onChoose: (id: string)
   useEffect(() => {
     let cancelled = false;
     startSearch(async () => {
-      const result = await searchParts(slot, '');
+      const result = await searchParts(slot, "");
       if (cancelled) return;
       setFailed(!result.ok);
       if (result.ok) setOptions(result.data);
@@ -328,8 +444,8 @@ function PartPicker({ slot, onChoose }: { slot: SlotName; onChoose: (id: string)
                 <span className="block truncate">{o.name}</span>
                 {(o.brand || o.releaseYear) && (
                   <span className="mt-0.5 block text-xs text-fg-subtle">
-                    {o.brand ?? ''}
-                    {o.releaseYear ? ` · ${o.releaseYear}년` : ''}
+                    {o.brand ?? ""}
+                    {o.releaseYear ? ` · ${o.releaseYear}년` : ""}
                   </span>
                 )}
               </button>
@@ -347,41 +463,53 @@ function PartPicker({ slot, onChoose }: { slot: SlotName; onChoose: (id: string)
  * 색 리터럴 대신 의미 토큰을 쓴다.
  */
 const STYLE = {
-  error: { dot: 'bg-danger', text: 'text-danger', label: '오류' },
-  warning: { dot: 'bg-warn', text: 'text-warn', label: '경고' },
+  error: { dot: "bg-danger", text: "text-danger", label: "오류" },
+  warning: { dot: "bg-warn", text: "text-warn", label: "경고" },
   // 명세 §4.3의 "정보" 등급. 규칙 12에서 Flashback이 있는 경우가 여기다.
   // 빨간 오류로 보여주면 번거로울 뿐인 상황을 못 쓰는 조합으로 오해시킨다.
-  info: { dot: 'bg-info', text: 'text-info', label: '정보' },
-  unknown: { dot: 'bg-unknown', text: 'text-fg-muted', label: '판정 불가' },
-  pass: { dot: 'bg-ok', text: 'text-fg', label: '통과' },
+  info: { dot: "bg-info", text: "text-info", label: "정보" },
+  unknown: { dot: "bg-unknown", text: "text-fg-muted", label: "판정 불가" },
+  pass: { dot: "bg-ok", text: "text-fg", label: "통과" },
 } as const;
 
 type Tone = keyof typeof STYLE;
 
 function toneOf(r: RuleResult): Tone {
-  if (r.verdict === 'unknown') return 'unknown';
-  if (r.verdict === 'pass') return 'pass';
-  if (r.severity === 'warning') return 'warning';
-  return r.severity === 'info' ? 'info' : 'error';
+  if (r.verdict === "unknown") return "unknown";
+  if (r.verdict === "pass") return "pass";
+  if (r.severity === "warning") return "warning";
+  return r.severity === "info" ? "info" : "error";
 }
 
 /** 심각한 것부터 보여준다. */
-const TONE_RANK: Record<Tone, number> = { error: 0, warning: 1, info: 2, unknown: 3, pass: 4 };
+const TONE_RANK: Record<Tone, number> = {
+  error: 0,
+  warning: 1,
+  info: 2,
+  unknown: 3,
+  pass: 4,
+};
 
 /** 한 줄 요약. 가장 심각한 등급이 견적 전체의 표정이 된다. */
 const HEADLINE: Record<Tone, { text: string; className: string }> = {
-  error: { text: '조립되지 않는 조합입니다', className: 'text-danger' },
-  warning: { text: '확인이 필요합니다', className: 'text-warn' },
-  info: { text: '알아둘 것이 있습니다', className: 'text-info' },
-  unknown: { text: '데이터가 없어 판정하지 못한 항목이 있습니다', className: 'text-fg-muted' },
-  pass: { text: '검사한 항목은 모두 통과했습니다', className: 'text-ok' },
+  error: { text: "조립되지 않는 조합입니다", className: "text-danger" },
+  warning: { text: "확인이 필요합니다", className: "text-warn" },
+  info: { text: "알아둘 것이 있습니다", className: "text-info" },
+  unknown: {
+    text: "데이터가 없어 판정하지 못한 항목이 있습니다",
+    className: "text-fg-muted",
+  },
+  pass: { text: "검사한 항목은 모두 통과했습니다", className: "text-ok" },
 };
 
 /** slug로 부품의 카테고리를 되찾는다. 상세 페이지 주소를 만들려면 둘 다 필요하다. */
-function partHref(build: Build | undefined, slug: string | undefined): string | null {
+function partHref(
+  build: Build | undefined,
+  slug: string | undefined,
+): string | null {
   if (!build || !slug) return null;
   for (const meta of SLOT_META) {
-    const candidates = meta.slot === 'ram' ? build.ram : [build[meta.slot]];
+    const candidates = meta.slot === "ram" ? build.ram : [build[meta.slot]];
     if (candidates.some((p) => p?.slug === slug)) {
       return `/part/${meta.category.toLowerCase()}/${slug}`;
     }
@@ -389,82 +517,112 @@ function partHref(build: Build | undefined, slug: string | undefined): string | 
   return null;
 }
 
+/**
+ * 판정 띠 — ADR-0015.
+ *
+ * 화면에서 가장 큰 요소다. 사이드 카드에 두면 부품 목록이 주인공이 되고,
+ * 그건 가격비교 사이트의 생김새다. 이 도구가 하는 일은 판정이다.
+ *
+ * **색만으로 말하지 않는다.** 등급 라벨과 문장을 함께 낸다 (WCAG 1.4.1).
+ */
+function VerdictBar({
+  verdict,
+  build,
+  pending,
+}: {
+  verdict: ReturnType<typeof evaluate>;
+  build: Build;
+  pending: boolean;
+}) {
+  const { counts, results } = verdict;
+  const worst = [...results].sort(
+    (a, b) => TONE_RANK[toneOf(a)] - TONE_RANK[toneOf(b)],
+  )[0];
+  const waiting = blockingSlots(build);
+
+  if (results.length === 0) {
+    return (
+      <div className="verdict-bar verdict-unknown flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <span className="text-sm font-semibold">판정 대기</span>
+        <span className="text-sm">
+          부품을 두 개 이상 고르면 검사를 시작합니다.
+        </span>
+      </div>
+    );
+  }
+
+  const tone = worst ? toneOf(worst) : "unknown";
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className={`verdict-bar verdict-${tone} flex flex-wrap items-baseline gap-x-4 gap-y-1.5`}
+    >
+      <span className="text-base font-semibold">{HEADLINE[tone].text}</span>
+      <span className="text-sm tnum">
+        통과 {counts.pass}
+        {counts.fail > 0 && ` · 문제 ${counts.fail}`}
+        {counts.unknown > 0 && ` · 판정 불가 ${counts.unknown}`}
+      </span>
+      {waiting.length > 0 && (
+        <span className="text-xs opacity-80">
+          {listWithJosa(
+            waiting.map((x) => SLOT_LABELS[x]),
+            "을",
+            "를",
+          )}{" "}
+          아직 고르지 않음
+        </span>
+      )}
+      {pending && <span className="ml-auto text-xs opacity-70">갱신 중…</span>}
+    </div>
+  );
+}
+
 export function VerdictPanel({
   verdict,
-  pending = false,
   build,
 }: {
   verdict: ReturnType<typeof evaluate>;
+  /** 갱신 중 표시는 판정 띠가 맡는다. 두 곳에서 깜빡이면 산만하다 */
   pending?: boolean;
   build?: Build;
 }) {
-  const { counts, results } = verdict;
+  const { results } = verdict;
   // 심각한 것부터. 같은 등급 안에서는 규칙 번호순 (docs/compat-rules.md §0.3)
   const sorted = [...results].sort(
-    (a, b) => TONE_RANK[toneOf(a)] - TONE_RANK[toneOf(b)] || a.ruleId - b.ruleId,
+    (a, b) =>
+      TONE_RANK[toneOf(a)] - TONE_RANK[toneOf(b)] || a.ruleId - b.ruleId,
   );
-
-  // 아직 고르지 않은 부품 때문에 돌지 못한 규칙. **결측과 다르다.**
-  // 이걸 말하지 않으면 CPU와 보드만 고른 사람이 "통과 4"를 보고 견적이
-  // 확인됐다고 믿는다. 이 도구가 낼 수 있는 가장 나쁜 결과다 (명세 §4.3).
-  const waiting = build ? blockingSlots(build) : [];
-  const worst = sorted[0] ? toneOf(sorted[0]) : null;
 
   return (
     <section className="card p-4 sm:p-5" aria-labelledby="verdict-heading">
-      <div className="flex items-baseline justify-between gap-2">
-        <h2 id="verdict-heading" className="text-lg font-semibold">
-          판정
-        </h2>
-        {pending && <span className="text-xs text-fg-subtle">갱신 중…</span>}
-      </div>
+      <h2 id="verdict-heading" className="text-sm font-semibold">
+        검사 항목{" "}
+        {results.length > 0 && (
+          <span className="text-fg-subtle tnum">{results.length}</span>
+        )}
+      </h2>
 
       {results.length === 0 ? (
-        <>
-          <p className="mt-1 text-sm text-fg-muted">
-            부품을 두 개 이상 고르면 판정을 시작합니다.
-          </p>
-          {/* 빈 화면이 무엇을 할 수 있는지 말하지 않으면 고를 이유가 없다.
-              규칙 목록은 packages/compat이 정본이라 여기서 지어내지 않는다. */}
-          <h3 className="mt-4 text-xs font-medium text-fg-subtle">검사하는 항목</h3>
-          <ul className="mt-2 space-y-1.5 text-xs leading-relaxed text-fg-muted">
-            {Object.entries(RULE_SUMMARY)
-              .sort(([a], [b]) => Number(a) - Number(b))
-              .map(([id, text]) => (
-                <li key={id} className="flex gap-2">
-                  <span className="shrink-0 text-fg-subtle tnum">{id}</span>
-                  <span>{text}</span>
-                </li>
-              ))}
-          </ul>
-        </>
+        /* 빈 화면이 무엇을 할 수 있는지 말하지 않으면 고를 이유가 없다.
+           규칙 목록은 packages/compat이 정본이라 여기서 지어내지 않는다.
+           "두 개 이상 고르세요"는 위의 판정 띠가 이미 말한다. */
+        <ul className="mt-3 space-y-1.5 text-xs leading-relaxed text-fg-muted">
+          {Object.entries(RULE_SUMMARY)
+            .sort(([a], [b]) => Number(a) - Number(b))
+            .map(([id, text]) => (
+              <li key={id} className="flex gap-2">
+                <span className="shrink-0 text-fg-subtle tnum">{id}</span>
+                <span>{text}</span>
+              </li>
+            ))}
+        </ul>
       ) : (
         <>
-          {worst && (
-            <p className={`mt-1 text-sm font-medium ${HEADLINE[worst].className}`}>
-              {HEADLINE[worst].text}
-            </p>
-          )}
-
-          {/* ADR-0009: "모든 검사 통과"라고 쓰지 않는다. 통과와 판정 불가를 나눠 센다. */}
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            <span className="chip tnum">통과 {counts.pass}</span>
-            {counts.fail > 0 && <span className="chip tnum">문제 {counts.fail}</span>}
-            {counts.unknown > 0 && <span className="chip tnum">판정 불가 {counts.unknown}</span>}
-          </div>
-
-          {waiting.length > 0 && (
-            <p className="mt-2.5 text-xs leading-relaxed text-fg-subtle">
-              {listWithJosa(
-                waiting.map((s) => SLOT_LABELS[s]),
-                '을',
-                '를',
-              )}{' '}
-              아직 고르지 않아 검사하지 못한 항목이 있습니다.
-            </p>
-          )}
-
-          <ul className="mt-4 space-y-3 border-t border-border pt-4">
+          {/* 등급 요약과 미선택 안내는 위의 판정 띠가 이미 말한다 (ADR-0015).
+              같은 문장을 두 번 쓰지 않는다. 여기는 항목별 사유만 맡는다. */}
+          <ul className="mt-3 space-y-3">
             {sorted.map((r) => {
               const tone = toneOf(r);
               const s = STYLE[tone];
@@ -476,17 +634,21 @@ export function VerdictPanel({
                   />
                   <div className="min-w-0 flex-1">
                     {/* 색만으로 등급을 구분하지 않는다 (ADR-0014) */}
-                    <span className={`mr-1.5 text-xs font-medium ${s.text}`}>{s.label}</span>
+                    <span className={`mr-1.5 text-xs font-medium ${s.text}`}>
+                      {s.label}
+                    </span>
                     <span className="text-fg">{r.message}</span>
                     {r.reason && (
                       <p className="mt-1 text-xs leading-relaxed text-fg-subtle">
-                        {r.reason.kind === 'missing' ? '없는 정보: ' : '데이터 이상: '}
-                        {r.reason.kind !== 'missing' && `${r.reason.detail} `}
+                        {r.reason.kind === "missing"
+                          ? "없는 정보: "
+                          : "데이터 이상: "}
+                        {r.reason.kind !== "missing" && `${r.reason.detail} `}
                         {r.reason.fields.map((f, i) => {
                           const href = partHref(build, f.slug);
                           return (
                             <span key={`${f.part}-${f.field}`}>
-                              {i > 0 && ', '}
+                              {i > 0 && ", "}
                               {/* 판정 불가를 만난 사람이 그 값을 아는 경우가 있다.
                                   거기서 제보로 이어지는 것이 가장 값싼 보강 경로다 (§5.5). */}
                               {href ? (
@@ -499,18 +661,28 @@ export function VerdictPanel({
                             </span>
                           );
                         })}
-                        {r.reason.fields.some((f) => partHref(build, f.slug)) && (
-                          <span className="ml-1">— 아는 값이 있으면 알려주세요</span>
+                        {r.reason.fields.some((f) =>
+                          partHref(build, f.slug),
+                        ) && (
+                          <span className="ml-1">
+                            — 아는 값이 있으면 알려주세요
+                          </span>
                         )}
                       </p>
                     )}
                     {r.notes?.map((n) => (
-                      <p key={n} className="mt-1 text-xs leading-relaxed text-fg-subtle">
+                      <p
+                        key={n}
+                        className="mt-1 text-xs leading-relaxed text-fg-subtle"
+                      >
                         {n}
                       </p>
                     ))}
                     {r.skipped?.map((n) => (
-                      <p key={n} className="mt-1 text-xs leading-relaxed text-fg-subtle">
+                      <p
+                        key={n}
+                        className="mt-1 text-xs leading-relaxed text-fg-subtle"
+                      >
                         {n}
                       </p>
                     ))}
@@ -528,14 +700,16 @@ export function VerdictPanel({
 function ShareBox({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
   const url =
-    typeof window === 'undefined' ? `/build/${code}` : `${window.location.origin}/build/${code}`;
+    typeof window === "undefined"
+      ? `/build/${code}`
+      : `${window.location.origin}/build/${code}`;
 
   return (
     <section className="card p-4 sm:p-5">
       <h3 className="font-semibold">공유 링크</h3>
       <p className="mt-1 text-xs leading-relaxed text-fg-subtle">
-        이 링크에 견적 내용이 전부 담겨 있습니다. 브라우저 데이터를 지워도 링크만 있으면
-        복원됩니다.
+        이 링크에 견적 내용이 전부 담겨 있습니다. 브라우저 데이터를 지워도
+        링크만 있으면 복원됩니다.
       </p>
       <input
         readOnly
@@ -554,7 +728,7 @@ function ShareBox({ code }: { code: string }) {
         }}
         className="btn btn-primary mt-2 w-full"
       >
-        {copied ? '복사했습니다' : '링크 복사'}
+        {copied ? "복사했습니다" : "링크 복사"}
       </button>
     </section>
   );
@@ -578,16 +752,16 @@ function SaveBox({
     getStorageSnapshot,
     getServerStorageSnapshot,
   );
-  const [label, setLabel] = useState('');
-  const [message, setMessage] = useState('');
+  const [label, setLabel] = useState("");
+  const [message, setMessage] = useState("");
 
   if (!available) {
     return (
       <section className="card p-4 sm:p-5">
         <h3 className="font-semibold">저장</h3>
         <p className="mt-1 text-xs leading-relaxed text-fg-subtle">
-          이 브라우저에서는 저장할 수 없습니다. 시크릿 모드이거나 저장이 차단된 것 같습니다.
-          위의 공유 링크를 복사해 두면 나중에 그대로 복원됩니다.
+          이 브라우저에서는 저장할 수 없습니다. 시크릿 모드이거나 저장이 차단된
+          것 같습니다. 위의 공유 링크를 복사해 두면 나중에 그대로 복원됩니다.
         </p>
       </section>
     );
@@ -597,8 +771,8 @@ function SaveBox({
     <section className="card p-4 sm:p-5">
       <h3 className="font-semibold">저장</h3>
       <p className="mt-1 text-xs leading-relaxed text-fg-subtle">
-        이 브라우저에만 저장됩니다. 브라우저 데이터를 지우면 사라지니 공유 링크도 함께 보관해
-        두세요.
+        이 브라우저에만 저장됩니다. 브라우저 데이터를 지우면 사라지니 공유
+        링크도 함께 보관해 두세요.
       </p>
 
       <div className="mt-2 flex gap-2">
@@ -616,9 +790,11 @@ function SaveBox({
           onClick={() => {
             const ok = saveBuild(code, label || defaultLabel);
             setMessage(
-              ok ? '저장했습니다.' : '저장하지 못했습니다. 저장 공간이 가득 찼을 수 있습니다.',
+              ok
+                ? "저장했습니다."
+                : "저장하지 못했습니다. 저장 공간이 가득 찼을 수 있습니다.",
             );
-            setLabel('');
+            setLabel("");
           }}
           className="btn btn-primary shrink-0"
         >
@@ -633,7 +809,9 @@ function SaveBox({
 
       {builds.length > 0 && (
         <>
-          <h4 className="mt-5 text-xs font-medium text-fg-subtle">저장한 견적 {builds.length}</h4>
+          <h4 className="mt-5 text-xs font-medium text-fg-subtle">
+            저장한 견적 {builds.length}
+          </h4>
           <ul className="mt-1.5 space-y-0.5">
             {builds.map((b) => (
               <li key={b.code} className="flex items-center gap-1">
