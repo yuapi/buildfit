@@ -14,11 +14,13 @@ import type { Build, RuleResult } from "@buildfit/compat";
 import {
   RULE_SUMMARY,
   SLOT_LABELS,
+  TIGHT_FIT_RATIO,
   blockingSlots,
   estimatePower,
   evaluate,
 } from "@buildfit/compat";
 import { decodeBuildCode, encodeBuildCode } from "@/lib/build-code";
+import { FitBar } from "@/components/FitBar";
 import { PartIcon } from "@/components/Icons";
 import { SLOT_META, type SlotName } from "@/lib/categories";
 import { listWithJosa } from "@/lib/korean";
@@ -215,6 +217,7 @@ export function BuildTool({ initial }: { initial?: Build }) {
             비지 않게 한다 — 빈 칸이 크면 화면이 미완성으로 보인다 (ADR-0015) */}
         <aside className="space-y-4 lg:sticky lg:top-20">
           <PowerPanel build={build} />
+          <FitPanel build={build} />
           <VerdictPanel verdict={verdict} build={build} />
         </aside>
       </div>
@@ -229,6 +232,60 @@ export function BuildTool({ initial }: { initial?: Build }) {
         />
       </div>
     </div>
+  );
+}
+
+/**
+ * 치수 여유.
+ *
+ * 제품 사진 대신 **가진 치수를 실척으로** 보여준다
+ * (`docs/research/product-image-sources.md` §6). 규칙 4·9가 문장으로 말하는
+ * 것을 막대로 한 번에 보게 한다. 값이 없으면 아무것도 그리지 않는다 —
+ * 없는 치수를 0으로 그리면 "딱 맞음"으로 읽힌다.
+ */
+function FitPanel({ build }: { build: Build }) {
+  const caseMaxGpu = build.pcCase?.maxGpuLengthMm ?? null;
+  const caseMaxCooler = build.pcCase?.maxCpuCoolerHeightMm ?? null;
+  // 칩만 고른 GPU는 길이를 단정하지 않는다 (규칙 4의 chipOnly와 같은 이유)
+  const gpuLen = build.gpu?.chipOnly === true ? null : (build.gpu?.lengthMm ?? null);
+  // 수랭은 높이가 관건이 아니다 (규칙 9)
+  const coolerH = build.cooler?.waterCooled === true ? null : (build.cooler?.heightMm ?? null);
+
+  // 막대가 판정보다 더 말하면 안 된다. "빠듯함" 기준은 규칙마다 다르다.
+  const rows: { label: string; valueMm: number; limitMm: number; tightRatio: number }[] = [];
+  if (gpuLen && caseMaxGpu) {
+    // 규칙 4는 95% 이상을 빠듯함으로 알린다
+    rows.push({
+      label: '그래픽카드 길이',
+      valueMm: gpuLen,
+      limitMm: caseMaxGpu,
+      tightRatio: TIGHT_FIT_RATIO,
+    });
+  }
+  if (coolerH && caseMaxCooler) {
+    // 규칙 9는 빠듯함을 따로 알리지 않는다 (docs/compat-rules.md §9.3) —
+    // 케이스 한계값이 35.2%만 채워져 있어 그 위에 경계를 얹으면 근거 없는
+    // 정밀도를 주장하게 된다. 막대도 같은 선을 지킨다.
+    rows.push({
+      label: 'CPU 쿨러 높이',
+      valueMm: coolerH,
+      limitMm: caseMaxCooler,
+      tightRatio: 1,
+    });
+  }
+  if (rows.length === 0) return null;
+
+  return (
+    <section className="card p-4 sm:p-5" aria-labelledby="fit-heading">
+      <h2 id="fit-heading" className="text-sm font-semibold">
+        케이스 여유
+      </h2>
+      <div className="mt-3 space-y-4">
+        {rows.map((r) => (
+          <FitBar key={r.label} {...r} />
+        ))}
+      </div>
+    </section>
   );
 }
 
