@@ -6,7 +6,7 @@
  */
 
 import { SPEC_REQUIREMENTS, rulesBlockedBy, type FieldRequirement } from '@buildfit/compat';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { Database } from '../client';
 import { partSpecs, parts } from '../schema';
 
@@ -21,35 +21,48 @@ export interface FieldGap {
   readonly missingPct: number;
 }
 
-/** 카테고리 × 필수 필드별 결측 현황. 어드민 첫 화면. */
+/**
+ * 카테고리 × 필수 필드별 결측 현황.
+ *
+ * 어드민 첫 화면이자 공개 「검사 규칙」 페이지의 근거다.
+ *
+ * **쿼리 두 번으로 끝낸다.** 필드마다 하나씩 돌리면 25번이고 294ms다 (실측).
+ * 공개 페이지가 요청마다 그것을 돌 수는 없다. 대신 "이 키를 가진 부품 수"를
+ * 한 번에 세고 전체에서 뺀다 — 값이 비어 있어도 행이 있으면 있는 것으로
+ * 세는 것은 전과 같다 (판정 쪽에서 결측을 따로 다룬다).
+ */
 export async function fieldGapSummary(db: Database): Promise<FieldGap[]> {
   const required = SPEC_REQUIREMENTS.filter((r) => r.optional !== true);
+  const keys = [...new Set(required.map((r) => r.specKey))];
+  if (keys.length === 0) return [];
 
-  const totals = new Map<string, number>();
-  for (const row of await db
-    .select({ category: parts.category, n: sql<number>`count(*)::int` })
-    .from(parts)
-    .groupBy(parts.category)) {
-    totals.set(row.category, row.n);
-  }
+  const [totalRows, haveRows] = await Promise.all([
+    db
+      .select({ category: parts.category, n: sql<number>`count(*)::int` })
+      .from(parts)
+      .groupBy(parts.category),
+    db
+      .select({
+        category: parts.category,
+        key: partSpecs.key,
+        // 복합 PK(part_id, key)라 한 부품에 같은 키가 두 번 오지 않는다.
+        n: sql<number>`count(*)::int`,
+      })
+      .from(partSpecs)
+      .innerJoin(parts, eq(parts.id, partSpecs.partId))
+      .where(inArray(partSpecs.key, keys))
+      .groupBy(parts.category, partSpecs.key),
+  ]);
+
+  const totals = new Map(totalRows.map((r) => [r.category, r.n]));
+  const have = new Map(haveRows.map((r) => [`${r.category}\u0000${r.key}`, r.n]));
 
   const out: FieldGap[] = [];
   for (const req of required) {
     const total = totals.get(req.category) ?? 0;
+    // 아직 적재하지 않은 카테고리다. 0을 100% 결측으로 내면 표가 거짓말을 한다.
     if (total === 0) continue;
-    const [row] = await db
-      .select({ n: sql<number>`count(*)::int` })
-      .from(parts)
-      .where(
-        and(
-          eq(parts.category, req.category),
-          sql`not exists (
-            select 1 from ${partSpecs} s
-            where s.part_id = ${parts.id} and s.key = ${req.specKey}
-          )`,
-        ),
-      );
-    const missing = row?.n ?? 0;
+    const missing = Math.max(0, total - (have.get(`${req.category}\u0000${req.specKey}`) ?? 0));
     out.push({
       category: req.category,
       specKey: req.specKey,
@@ -57,7 +70,7 @@ export async function fieldGapSummary(db: Database): Promise<FieldGap[]> {
       blocksRules: rulesBlockedBy(req.category, req.specKey),
       totalParts: total,
       missingParts: missing,
-      missingPct: total === 0 ? 0 : Math.round((1000 * missing) / total) / 10,
+      missingPct: Math.round((1000 * missing) / total) / 10,
     });
   }
 

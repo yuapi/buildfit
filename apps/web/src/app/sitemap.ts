@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next';
 import { slugsInCategory } from '@buildfit/db/part';
 import { INDEXED_CATEGORIES } from '@/lib/categories';
 import { getDb } from '@/lib/db';
-import { siteUrl } from '@/lib/site';
+import { PAGES_SITEMAP_ID, STATIC_PAGES, siteUrl } from '@/lib/site';
 
 /**
  * 카테고리마다 sitemap을 하나씩 낸다.
@@ -12,9 +12,15 @@ import { siteUrl } from '@/lib/site';
  *
  * **`/build/[code]`와 `/admin`은 넣지 않는다.** 공유 코드는 사용자가 만든 것이라
  * 색인 대상이 아니고, 어드민은 공개 페이지가 아니다.
+ *
+ * 카테고리 밖의 공개 페이지는 `pages` 하나에 모은다. 그것이 없으면
+ * **첫 화면도 색인 목록에 없다.**
  */
 export async function generateSitemaps() {
-  return INDEXED_CATEGORIES.map((category) => ({ id: category.toLowerCase() }));
+  return [
+    { id: PAGES_SITEMAP_ID },
+    ...INDEXED_CATEGORIES.map((category) => ({ id: category.toLowerCase() })),
+  ];
 }
 
 export default async function sitemap({
@@ -27,6 +33,16 @@ export default async function sitemap({
 }): Promise<MetadataRoute.Sitemap> {
   const base = siteUrl();
   const resolvedId = await id;
+
+  // 정적 페이지는 DB를 보지 않는다. 빌드가 DB 없이도 이 파일을 낼 수 있다.
+  if (resolvedId === PAGES_SITEMAP_ID) {
+    return STATIC_PAGES.map((p) => ({
+      url: `${base}${p.path === '/' ? '' : p.path}`,
+      changeFrequency: 'weekly' as const,
+      priority: p.priority,
+    }));
+  }
+
   const category = INDEXED_CATEGORIES.find((c) => c.toLowerCase() === resolvedId);
   if (!category) return [];
 
