@@ -13,6 +13,7 @@ import { ThemeToggle } from './ThemeToggle';
 const NAV = [
   { href: '/', label: '견적 구성' },
   { href: '/part', label: '부품' },
+  { href: '/rules', label: '검사 규칙' },
 ] as const;
 
 export function SiteHeader() {
@@ -66,7 +67,11 @@ export function SiteFooter() {
         </p>
         <p className="mt-3 max-w-xl">
           판정에 쓰는 값이 비어 있으면 <strong className="font-medium text-chrome-fg">판정 불가</strong>
-          로 표시합니다. 없는 수치를 지어내지 않습니다.
+          로 표시합니다. 없는 수치를 지어내지 않습니다.{' '}
+          {/* 어디가 얼마나 비었는지도 공개한다. 숨기면 판정 불가가 결함으로 읽힌다 */}
+          <Link href="/rules" className="link text-chrome-fg">
+            무엇을 검사하고 무엇을 모르는지
+          </Link>
         </p>
         {/* ODC-By 1.0은 출처 표기가 유일한 조건이다 (명세 §5.7) */}
         <p className="mt-6 border-t border-chrome-line pt-4">
