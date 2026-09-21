@@ -79,6 +79,21 @@ export const parts = pgTable(
     krAvailable: boolean('kr_available'),
     krCheckedAt: timestamp('kr_checked_at', { withTimezone: true }),
 
+    /**
+     * 검색용 평탄화 이름 — ADR-0017. **생성 컬럼이다. 쓰지 않는다.**
+     *
+     * 이름·브랜드·파트넘버를 이어 붙이고 영문 소문자와 숫자만 남긴다.
+     * 띄어쓰기와 하이픈이 사라지므로 `rtx 4070`과 `rtx4070`이 같은 모양이 된다.
+     * 실측으로 `rtx4070`은 0건이었고 `rtx 4070`은 273건이었다 — 같은 것을 찾는
+     * 두 표기였다.
+     *
+     * **`@buildfit/compat`의 `squash()`와 글자 하나까지 같아야 한다.**
+     * 어긋나면 검색이 조용히 빗나간다. 테스트가 두 정의를 함께 고정한다.
+     */
+    searchText: text('search_text').generatedAlwaysAs(
+      sql`regexp_replace(lower(model_name || ' ' || coalesce(brand, '') || ' ' || coalesce(mpn, '')), '[^a-z0-9]', '', 'g')`,
+    ),
+
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -88,6 +103,9 @@ export const parts = pgTable(
     index('parts_category_idx').on(t.category),
     index('parts_chip_id_idx').on(t.chipId),
     index('parts_mpn_idx').on(t.mpn),
+    // 부분 일치라 b-tree가 듣지 않는다. 앞에 와일드카드가 붙으면 b-tree는
+    // 훑기로 떨어진다 — GPU 카테고리에서 192ms였다. trigram으로 3.5ms.
+    index('parts_search_text_trgm_idx').using('gin', t.searchText.op('gin_trgm_ops')),
   ],
 );
 

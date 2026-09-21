@@ -12,6 +12,10 @@ export interface CandidatePage {
   readonly items: readonly PartOption[];
   /** 제약 때문에 빠진 건수 */
   readonly hidden: number;
+  /** 한글을 무엇으로 바꿔 찾았는지 (ADR-0017) */
+  readonly translated: readonly { readonly from: string; readonly to: string }[];
+  /** 뜻을 모르는 한글 조각. 있으면 결과는 0건이다 */
+  readonly unknown: readonly string[];
 }
 
 /**
@@ -64,7 +68,7 @@ export async function searchParts(
   constraints: readonly Constraint[] = [],
 ): Promise<QueryResult<CandidatePage>> {
   const meta = SLOT_META.find((m) => m.slot === slot);
-  if (!meta) return { ok: true, data: { items: [], hidden: 0 } };
+  if (!meta) return { ok: true, data: { items: [], hidden: 0, translated: [], unknown: [] } };
 
   try {
     const page = await searchCandidates(getDb(), {

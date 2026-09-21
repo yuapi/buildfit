@@ -64,6 +64,9 @@ export {
 export type { Constraint } from './picker';
 export { pickerConstraints } from './picker';
 
+export type { KoAlias, Term, SearchTerms } from './search';
+export { KO_ALIASES, OMITTED_ALIASES, squash, searchTerms, isImpossible } from './search';
+
 export type { Rule } from './rules';
 export {
   rule1,
