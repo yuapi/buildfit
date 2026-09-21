@@ -978,7 +978,7 @@ function VerdictBar({
         {counts.unknown > 0 && ` · 판정 불가 ${counts.unknown}`}
       </span>
       {waiting.length > 0 && (
-        <span className="text-xs opacity-80">
+        <span className="verdict-aside text-xs">
           {listWithJosa(
             waiting.map((x) => SLOT_LABELS[x]),
             "을",
@@ -987,7 +987,7 @@ function VerdictBar({
           아직 고르지 않음
         </span>
       )}
-      {pending && <span className="ml-auto text-xs opacity-70">갱신 중…</span>}
+      {pending && <span className="verdict-aside ml-auto text-xs">갱신 중…</span>}
     </div>
   );
 }

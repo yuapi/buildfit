@@ -122,13 +122,29 @@ export default async function CategoryIndex({
       )}
 
       {lastPage > 1 && (
-        <nav aria-label="페이지" className="mt-8 flex items-center gap-2 text-sm">
+        /*
+         * 갈 수 없는 쪽은 **버튼처럼 그리지 않는다.**
+         *
+         * `opacity-40`을 씌우고 있었는데 글자 대비가 라이트 2.55:1,
+         * 다크 3.45:1이었다 (실측). WCAG 1.4.3은 4.5:1을 요구한다.
+         * 진짜 `disabled` 컨트롤은 그 요구에서 빠지지만 이것은 `span`이라
+         * 스크린리더에 그냥 글자로 읽히고, 저시력 사용자에게는 고장으로 보인다.
+         *
+         * 색을 옅게 하는 대신 **모양을 바꾼다.** 버튼이 아니면 버튼처럼 두지 않는다.
+         */
+        <nav aria-label="페이지" className="mt-8 flex flex-wrap items-center gap-2 text-sm">
+          {/* 4,876건이면 82쪽이다. 마지막으로 가려고 81번 누르게 하지 않는다 */}
+          {pageNo > 2 && (
+            <Link href={href(1)} className="btn btn-secondary">
+              처음
+            </Link>
+          )}
           {pageNo > 1 ? (
             <Link href={href(pageNo - 1)} className="btn btn-secondary">
               이전
             </Link>
           ) : (
-            <span className="btn btn-secondary opacity-40">이전</span>
+            <span className="px-2 text-fg-muted">이전</span>
           )}
           <span className="px-2 text-fg-subtle tnum">
             {pageNo} / {lastPage}
@@ -138,7 +154,12 @@ export default async function CategoryIndex({
               다음
             </Link>
           ) : (
-            <span className="btn btn-secondary opacity-40">다음</span>
+            <span className="px-2 text-fg-muted">다음</span>
+          )}
+          {pageNo < lastPage - 1 && (
+            <Link href={href(lastPage)} className="btn btn-secondary">
+              마지막
+            </Link>
           )}
         </nav>
       )}

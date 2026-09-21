@@ -63,6 +63,14 @@ const VERDICT_PAIRS = [
   ['--color-danger', '--color-danger-bg'],
   ['--color-info', '--color-info-bg'],
   ['--color-unknown', '--color-unknown-bg'],
+  // 판정 띠의 곁말(`.verdict-aside`). 무채색이라 다섯 배경 전부에 놓인다.
+  // 전에는 `opacity`로 옅게 했는데 라이트에서 3.38:1이었다 — 투명도는
+  // 토큰만 보는 이 테스트가 못 잡는다.
+  ['--color-fg-muted', '--color-ok-bg'],
+  ['--color-fg-muted', '--color-warn-bg'],
+  ['--color-fg-muted', '--color-danger-bg'],
+  ['--color-fg-muted', '--color-info-bg'],
+  ['--color-fg-muted', '--color-unknown-bg'],
 ] as const;
 
 describe.each([

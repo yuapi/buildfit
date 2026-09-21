@@ -128,6 +128,11 @@ export function QuoteBox({ onApply }: { onApply: (picks: readonly QuotePick[]) =
       />
 
       <div className="mt-2 flex flex-wrap items-center gap-2">
+        {/*
+          * 진짜 `disabled` 버튼이라 옅게 둔다. WCAG 1.4.3은 동작하지 않는
+          * 컨트롤의 대비를 요구하지 않는다 ("Incidental"). 버튼이 아닌 것을
+          * 버튼처럼 옅게 그리는 것과는 다른 경우다 (부품 목록 페이지 주석 참조).
+          */}
         <button
           type="button"
           onClick={check}
