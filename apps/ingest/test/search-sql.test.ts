@@ -29,6 +29,21 @@ const FIXTURES = [
   'Samsung 990 PRO 2TB',
   'be quiet! Pure Base 500DX Black',
   'G.SKILL Trident Z5 RGB 32GB (2x16GB) DDR5-6000',
+
+  /*
+   * ★ 두 정의가 갈릴 수 있는 **유일한 두 글자**다.
+   *
+   * 전 유니코드를 양쪽에서 대조하면, JS `toLowerCase()` 뒤에 `[^a-z0-9]`
+   * 필터를 통과하는 비ASCII는 `İ`(U+0130)와 켈빈 기호 `K`(U+212A)뿐이다.
+   * 나머지(`Ǆ`, `ẞ`, 전각 등)는 양쪽 모두 필터에서 사라져 차이가 남지 않는다.
+   *
+   * 이 둘은 **DB 로케일에 달렸다.** 보통의 UTF-8·ICU 로케일에서는 PG도
+   * `i`·`k`로 낮추지만, 클러스터가 `C`/`POSIX`로 초기화되면 그대로 남아
+   * 필터에 지워진다 — 그러면 검색이 조용히 빗나간다.
+   *
+   * 그래서 여기서 고정한다. CI의 DB가 그런 로케일로 서면 이 테스트가 깨진다.
+   */
+  'Intel İnside K Edition',
 ];
 
 describeIfDb('이름 검색 SQL (ADR-0017)', () => {

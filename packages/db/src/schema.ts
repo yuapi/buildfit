@@ -88,7 +88,13 @@ export const parts = pgTable(
      * 두 표기였다.
      *
      * **`@buildfit/compat`의 `squash()`와 글자 하나까지 같아야 한다.**
-     * 어긋나면 검색이 조용히 빗나간다. 테스트가 두 정의를 함께 고정한다.
+     * 어긋나면 검색이 조용히 빗나간다. 테스트가 두 정의를 함께 고정한다
+     * (`apps/ingest/test/search-sql.test.ts`).
+     *
+     * 한 가지가 **DB 로케일에 달려 있다.** `İ`(U+0130)와 켈빈 기호 `K`(U+212A)는
+     * 보통의 UTF-8·ICU 로케일에서 PG도 `i`·`k`로 낮추지만, 클러스터가
+     * `C`/`POSIX`면 그대로 남아 필터에 지워진다. 그 둘이 두 정의가 갈릴 수 있는
+     * 전부이고, 테스트 픽스처가 그 둘을 포함한다.
      */
     searchText: text('search_text').generatedAlwaysAs(
       sql`regexp_replace(lower(model_name || ' ' || coalesce(brand, '') || ' ' || coalesce(mpn, '')), '[^a-z0-9]', '', 'g')`,
