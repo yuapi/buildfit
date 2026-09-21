@@ -15,8 +15,11 @@ import {
   loadRecentBuilds,
   loadRecentParts,
   isStorageAvailable,
+  clearDraft,
+  loadDraft,
   migrateSavedBuild,
   recordRecentBuild,
+  saveDraft,
   recordRecentPart,
   removeBuild,
   saveBuild,
@@ -250,10 +253,13 @@ describe('최근 기록', () => {
 
 describe('저장 대상 키가 §8A.1과 맞는다', () => {
   it('키 이름이 스펙대로다', () => {
+    // 칸을 더하는 것은 add-only 규칙에 어긋나지 않지만, **문서를 먼저 고쳐야** 한다
+    // (CLAUDE.md 작업 규칙 2). 이 목록이 §8A.1의 표와 같아야 한다.
     expect(Object.values(STORAGE_KEYS)).toEqual([
       'builds',
       'recent_builds',
       'recent_parts',
+      'draft',
       'prefs',
       'schema_version',
     ]);
@@ -301,5 +307,64 @@ describe('React 스냅샷 (useSyncExternalStore)', () => {
   it('저장소가 막혀 있으면 available이 false다', () => {
     installStorage({ throwOnAccess: true });
     expect(getStorageSnapshot().available).toBe(false);
+  });
+});
+
+describe('작업 중인 견적 (draft)', () => {
+  it('적어둔 것을 그대로 읽는다', () => {
+    installStorage();
+    expect(saveDraft(CODE)).toBe(true);
+    expect(loadDraft()).toBe(CODE);
+  });
+
+  it('★ 저장한 견적 목록과 섞이지 않는다', () => {
+    // 칸이 다르다. 섞으면 슬롯을 모두 비운 뒤 새로 고쳤을 때
+    // 방금 비운 것이 되살아난다.
+    installStorage();
+    saveDraft(CODE);
+    expect(loadBuilds()).toEqual([]);
+    expect(loadRecentBuilds()).toEqual([]);
+  });
+
+  it('★ 빈 코드는 적어두지 않고 지운다', () => {
+    installStorage();
+    saveDraft(CODE);
+    expect(saveDraft('')).toBe(true);
+    expect(loadDraft()).toBeNull();
+  });
+
+  it('깨진 코드는 적어두지 않는다 — 복원이 조용히 실패한다', () => {
+    installStorage();
+    saveDraft('!!!not-a-code!!!');
+    expect(loadDraft()).toBeNull();
+  });
+
+  it('깨진 값이 들어 있어도 읽기가 던지지 않는다', () => {
+    const data = installStorage();
+    data.set(STORAGE_KEYS.draft, '{ this is not json');
+    expect(loadDraft()).toBeNull();
+    data.set(STORAGE_KEYS.draft, '[]');
+    expect(loadDraft()).toBeNull();
+    data.set(STORAGE_KEYS.draft, JSON.stringify({ v: 1 }));
+    expect(loadDraft()).toBeNull();
+  });
+
+  it('버전이 더 높아도 거부하지 않는다 (§8A.2 규칙 2)', () => {
+    const data = installStorage();
+    data.set(STORAGE_KEYS.draft, JSON.stringify({ v: 99, code: CODE, at: 'x', 새필드: 1 }));
+    expect(loadDraft()).toBe(CODE);
+  });
+
+  it('저장이 막혀 있어도 던지지 않는다 (§8A.4)', () => {
+    installStorage({ failWrites: true });
+    expect(saveDraft(CODE)).toBe(false);
+    expect(loadDraft()).toBeNull();
+  });
+
+  it('clearDraft가 지운다', () => {
+    installStorage();
+    saveDraft(CODE);
+    expect(clearDraft()).toBe(true);
+    expect(loadDraft()).toBeNull();
   });
 });

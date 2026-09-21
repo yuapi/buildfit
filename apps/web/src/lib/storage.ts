@@ -21,6 +21,17 @@ export const STORAGE_KEYS = {
   builds: 'builds',
   recentBuilds: 'recent_builds',
   recentParts: 'recent_parts',
+  /**
+   * 작업 중인 견적. **저장 버튼과 무관하다.**
+   *
+   * 새로 만든 칸이다. `recent_builds`를 쓰지 않는 이유는 뜻이 다르기 때문이다 —
+   * 그쪽은 "지나간 구성 목록"이고 이쪽은 "지금 하던 것" 하나다. 섞으면
+   * 슬롯을 모두 비운 뒤 새로 고쳤을 때 **방금 비운 것이 되살아난다**
+   * (`recordRecentBuild`는 부품이 둘 이상일 때만 쓰므로 빈 상태가 기록되지 않는다).
+   *
+   * 칸을 **더하는** 것은 add-only 규칙에 어긋나지 않는다. 기존 칸의 뜻은 그대로다.
+   */
+  draft: 'draft',
   prefs: 'prefs',
   schemaVersion: 'schema_version',
 } as const;
@@ -197,6 +208,54 @@ export function recordRecentBuild(code: string, label: string): boolean {
   const ok = writeList(STORAGE_KEYS.recentBuilds, next);
   invalidate();
   return ok;
+}
+
+// --- 작업 중인 견적 ----------------------------------------------------------
+
+/**
+ * 작업 중인 견적을 적어둔다. 새로 고침에 날아가지 않게.
+ *
+ * **저장과 다르다.** 저장은 사용자가 이름을 붙여 남기는 것이고, 이것은
+ * 자동이며 하나뿐이다. 빈 견적이면 지운다 — 남겨두면 새로 고쳤을 때
+ * 방금 비운 것이 되살아난다.
+ */
+export function saveDraft(code: string): boolean {
+  try {
+    const s = store();
+    if (!s) return false;
+    if (code === '' || !decodeBuildCode(code)) {
+      s.removeItem(STORAGE_KEYS.draft);
+      return true;
+    }
+    s.setItem(STORAGE_KEYS.draft, JSON.stringify({ v: RECORD_VERSION, code, at: new Date().toISOString() }));
+    s.setItem(STORAGE_KEYS.schemaVersion, String(STORAGE_SCHEMA_VERSION));
+    return true;
+  } catch {
+    // 저장이 막혀 있으면 이어서 하기만 안 될 뿐 앱은 그대로 동작한다 (§8A.4).
+    return false;
+  }
+}
+
+/**
+ * 작업 중이던 견적의 코드. 없거나 읽히지 않으면 `null`.
+ *
+ * **버전이 더 높아도 거부하지 않는다** — 다른 레코드와 같은 이유다 (§8A.2 규칙 2).
+ */
+export function loadDraft(): string | null {
+  try {
+    const raw = store()?.getItem(STORAGE_KEYS.draft);
+    if (!raw) return null;
+    const o = asRecord(JSON.parse(raw) as unknown);
+    const code = o ? str(o, 'code') : null;
+    // 깨진 코드를 돌려주면 복원이 조용히 실패한다. 읽히는지까지 확인한다.
+    return code !== null && decodeBuildCode(code) ? code : null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearDraft(): boolean {
+  return saveDraft('');
 }
 
 // --- 최근 조회한 부품 --------------------------------------------------------
