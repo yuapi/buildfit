@@ -240,6 +240,21 @@
     overflow-wrap: anywhere;
   }
 
+  /*
+   * 헤더가 sticky라 브라우저가 요소로 스크롤하면 그 밑에 깔린다.
+   * 키보드로 탭 이동할 때 포커스된 버튼이 헤더에 가려 안 보인다.
+   * 헤더 높이(3.5rem)만큼 여유를 준다.
+   */
+  a,
+  button,
+  input,
+  select,
+  textarea,
+  [tabindex],
+  :target {
+    scroll-margin-top: 4.5rem;
+  }
+
   /* 포커스가 보여야 키보드로 쓸 수 있다 */
   :focus-visible {
     outline: 2px solid var(--color-focus);

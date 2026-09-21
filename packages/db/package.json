@@ -9,7 +9,8 @@
     "./schema": "./src/schema.ts",
     "./queries": "./src/queries/gaps.ts",
     "./build": "./src/queries/build.ts",
-    "./part": "./src/queries/part.ts"
+    "./part": "./src/queries/part.ts",
+    "./picker": "./src/queries/picker.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
