@@ -4,12 +4,16 @@ import { openSpecReports } from '@buildfit/db/part';
 import { specLabel } from '@/lib/spec-labels';
 import { Container } from '@/components/SiteShell';
 import { getDb } from '@/lib/db';
+import { requireAdmin } from '@/lib/admin-auth';
 
 export const dynamic = 'force-dynamic';
 
 export const metadata = { title: '어드민 — 빈 필드 보강' };
 
 export default async function AdminHome() {
+  // 데이터를 만지기 전에 막는다. 레이아웃에서만 막으면 늦는다 (ADR-0020).
+  await requireAdmin();
+
   const db = getDb();
   const [gaps, reports] = await Promise.all([fieldGapSummary(db), openSpecReports(db, 20)]);
   const open = gaps.filter((g) => g.missingParts > 0);

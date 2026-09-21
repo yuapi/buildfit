@@ -4,6 +4,7 @@ import { SPEC_REQUIREMENTS } from '@buildfit/compat';
 import { partsMissingField } from '@buildfit/db/queries';
 import { Container } from '@/components/SiteShell';
 import { getDb } from '@/lib/db';
+import { requireAdmin } from '@/lib/admin-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +17,9 @@ export default async function GapList({
   params: Promise<{ category: string; specKey: string }>;
   searchParams: Promise<{ page?: string }>;
 }) {
+  // 데이터를 만지기 전에 막는다. 레이아웃에서만 막으면 늦는다 (ADR-0020).
+  await requireAdmin();
+
   const { category, specKey } = await params;
   const { page } = await searchParams;
 
