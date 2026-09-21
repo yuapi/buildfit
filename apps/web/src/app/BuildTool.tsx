@@ -27,11 +27,14 @@ import { PartIcon } from "@/components/Icons";
 import { SLOT_META, type SlotName } from "@/lib/categories";
 import { listWithJosa } from "@/lib/korean";
 import {
+  clearDraft,
   getServerStorageSnapshot,
   getStorageSnapshot,
+  loadDraft,
   recordRecentBuild,
   removeBuild,
   saveBuild,
+  saveDraft,
   subscribeStorage,
 } from "@/lib/storage";
 import { MAX_LIMIT, PAGE } from "@/lib/picker";
@@ -109,19 +112,41 @@ export function BuildTool({ initial }: { initial?: Build }) {
   );
 
   const [loadError, setLoadError] = useState(false);
+  /**
+   * 지난번 하던 것을 불러왔는가.
+   *
+   * 말없이 채우면 사용자는 부품이 왜 들어 있는지 모른다. 불러왔다고 적고
+   * 비울 길을 같이 준다.
+   */
+  const [restored, setRestored] = useState(false);
 
-  const apply = useCallback((next: ReturnType<typeof toSelection>) => {
-    startTransition(async () => {
-      const result = await fetchBuildParts(next);
-      // 실패하면 이전 구성을 그대로 두고 알린다. 고른 것을 날리지 않는다.
-      if (result.ok) {
-        setBuild(result.data);
-        setLoadError(false);
-      } else {
-        setLoadError(true);
-      }
-    });
-  }, []);
+  /**
+   * 작업 중인 견적을 적어둘 단계인가.
+   *
+   * 복원이 끝나기 전에 쓰면 **마운트 직후의 빈 구성이 지난번 것을 지운다.**
+   * 복원은 서버 왕복이라 즉시 끝나지 않으므로, 끝났다는 신호가 필요하다.
+   */
+  const phase = useRef<"restoring" | "live">(initial === undefined ? "restoring" : "live");
+
+  const apply = useCallback(
+    (next: ReturnType<typeof toSelection>, opts: { restored?: boolean } = {}) => {
+      startTransition(async () => {
+        const result = await fetchBuildParts(next);
+        // 어느 쪽이든 복원 단계는 끝난다. 실패한 채로 멈추면 이후 작업이
+        // 하나도 기록되지 않는다.
+        phase.current = "live";
+        // 실패하면 이전 구성을 그대로 두고 알린다. 고른 것을 날리지 않는다.
+        if (result.ok) {
+          setBuild(result.data);
+          setLoadError(false);
+          if (opts.restored === true) setRestored(true);
+        } else {
+          setLoadError(true);
+        }
+      });
+    },
+    [],
+  );
 
   // 최근 구성 자동 기록. 부품이 둘 이상일 때만 남긴다.
   // 저장 실패는 무시한다 — 편의 기능이라 실패해도 앱은 그대로 동작한다 (§8A.4).
@@ -130,23 +155,72 @@ export function BuildTool({ initial }: { initial?: Build }) {
     recordRecentBuild(encodeBuildCode(toSelection(build)), autoLabel(build));
   }, [build]);
 
+  /**
+   * 작업 중인 것을 계속 적어둔다.
+   *
+   * **복원을 시도하기 전에는 쓰지 않는다.** 마운트 직후의 빈 구성을 먼저 쓰면
+   * 그 순간 지난번 것이 지워진다.
+   */
+  useEffect(() => {
+    if (phase.current === "restoring") return;
+    // 빈 견적은 적어두지 않는다. 빈 코드도 멀쩡한 코드라서, 그대로 쓰면
+    // 「비우고 새로 시작」이 칸을 지우지 않고 "빈 것"을 적어두게 된다.
+    saveDraft(pickedCount(build) === 0 ? "" : encodeBuildCode(toSelection(build)));
+  }, [build]);
+
+  const startOver = useCallback(() => {
+    clearDraft();
+    setRestored(false);
+    setBuild(EMPTY);
+    setOpenSlot(null);
+  }, []);
+
   const loadCode = useCallback(
-    (saved: string) => {
+    (saved: string, opts: { restored?: boolean } = {}) => {
       const sel = decodeBuildCode(saved);
-      if (!sel) return;
-      apply({
-        cpu: sel.cpu,
-        motherboard: sel.motherboard,
-        gpu: sel.gpu,
-        pcCase: sel.pcCase,
-        psu: sel.psu,
-        // v1 코드에는 쿨러가 없다. 그 경우 undefined가 그대로 들어간다
-        cooler: sel.cooler,
-        ram: [...(sel.ram ?? [])],
-      });
+      if (!sel) {
+        // 깨진 코드였다. 복원 단계에 갇히지 않게 풀어준다.
+        phase.current = "live";
+        return;
+      }
+      apply(
+        {
+          cpu: sel.cpu,
+          motherboard: sel.motherboard,
+          gpu: sel.gpu,
+          pcCase: sel.pcCase,
+          psu: sel.psu,
+          // v1 코드에는 쿨러가 없다. 그 경우 undefined가 그대로 들어간다
+          cooler: sel.cooler,
+          ram: [...(sel.ram ?? [])],
+        },
+        opts,
+      );
     },
     [apply],
   );
+
+  /**
+   * 작업 중이던 견적을 이어서 연다.
+   *
+   * 새로 고침 한 번에 고른 것이 전부 날아가고 있었다. 저장 버튼을 눌러야만
+   * 남았는데, 다섯 칸을 채우다 실수로 새로 고치는 것이 바로 그 저장을
+   * 하기 전이다.
+   *
+   * **공유 링크로 들어온 경우(`initial`)는 건드리지 않는다.** 그 주소가
+   * 가리키는 견적이 정본이다 (§8A.3).
+   */
+  useEffect(() => {
+    if (phase.current === "live") return;
+    const draft = loadDraft();
+    if (draft === null) {
+      // 적어둔 것이 없다. 이제부터 쓴다.
+      phase.current = "live";
+      return;
+    }
+    loadCode(draft, { restored: true });
+    // 마운트 때 한 번만 본다. `loadCode`는 안정된 참조다.
+  }, [loadCode]);
 
   const choose = useCallback(
     (slot: SlotName, id: string) => {
@@ -194,6 +268,24 @@ export function BuildTool({ initial }: { initial?: Build }) {
     <div className="space-y-5">
       {/* 판정을 맨 위 띠로 올린다. 이 도구가 하는 일이 판정이다 (ADR-0015) */}
       <VerdictBar verdict={verdict} build={build} pending={pending} />
+
+      {/*
+        * 말없이 채우면 사용자는 부품이 왜 들어 있는지 모른다. 불러왔다고 적고
+        * 비울 길을 같이 준다. `alert`이 아니라 `status`다 — 문제가 아니다.
+        */}
+      {restored && picked > 0 && (
+        <p
+          role="status"
+          className="flex flex-wrap items-baseline justify-between gap-2 rounded-(--radius-card) border border-border bg-surface-2 px-4 py-2.5 text-sm"
+        >
+          <span className="text-fg-muted">
+            지난번 하던 견적을 이어서 엽니다. 이 브라우저에만 남아 있습니다.
+          </span>
+          <button type="button" onClick={startOver} className="btn btn-ghost px-2 py-1 text-xs">
+            비우고 새로 시작
+          </button>
+        </p>
+      )}
 
       {/*
         * 견적서를 이미 들고 온 사람이 많다. 일곱 칸을 손으로 채우게 하지 않는다.
