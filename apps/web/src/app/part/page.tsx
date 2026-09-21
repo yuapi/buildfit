@@ -8,7 +8,7 @@ import { getDb } from '@/lib/db';
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: '부품 목록 — buildfit',
+  title: '부품 목록',
   description: 'CPU·메인보드·메모리·그래픽카드·케이스·파워 스펙과 호환 정보.',
 };
 

@@ -24,7 +24,7 @@ import { getDb } from '@/lib/db';
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: '검사 규칙과 데이터 현황 — buildfit',
+  title: '검사 규칙과 데이터 현황',
   description:
     'buildfit이 부품 조합에서 검사하는 항목과, 각 검사가 쓰는 데이터가 얼마나 채워져 있는지 공개합니다.',
 };

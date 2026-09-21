@@ -57,13 +57,13 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   try {
     const part = await partBySlug(getDb(), slug);
-    if (!part) return { title: '부품을 찾을 수 없습니다 — buildfit' };
+    if (!part) return { title: '부품을 찾을 수 없습니다' };
     return {
-      title: `${part.modelName} 스펙 — buildfit`,
+      title: `${part.modelName} 스펙`,
       description: `${part.modelName}의 스펙과 호환 정보. 조합의 호환성과 소비전력을 판정합니다.`,
     };
   } catch {
-    return { title: 'buildfit' };
+    return { title: { absolute: 'buildfit' } };
   }
 }
 
