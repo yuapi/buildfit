@@ -1044,16 +1044,29 @@ export function VerdictPanel({
         /* 빈 화면이 무엇을 할 수 있는지 말하지 않으면 고를 이유가 없다.
            규칙 목록은 packages/compat이 정본이라 여기서 지어내지 않는다.
            "두 개 이상 고르세요"는 위의 판정 띠가 이미 말한다. */
-        <ul className="mt-3 space-y-1.5 text-xs leading-relaxed text-fg-muted">
-          {Object.entries(RULE_SUMMARY)
-            .sort(([a], [b]) => Number(a) - Number(b))
-            .map(([id, text]) => (
-              <li key={id} className="flex gap-2">
-                <span className="shrink-0 text-fg-subtle tnum">{id}</span>
-                <span>{text}</span>
-              </li>
-            ))}
-        </ul>
+        <>
+          <ul className="mt-3 space-y-1.5 text-xs leading-relaxed text-fg-muted">
+            {Object.entries(RULE_SUMMARY)
+              .sort(([a], [b]) => Number(a) - Number(b))
+              .map(([id, text]) => (
+                <li key={id} className="flex gap-2">
+                  <span className="shrink-0 text-fg-subtle tnum">{id}</span>
+                  <span>{text}</span>
+                </li>
+              ))}
+          </ul>
+          {/*
+            * 「판정 불가」를 결함으로 읽지 않게 하는 곳이 따로 있다.
+            * 결과가 나온 뒤에는 자리가 빠듯하니 빈 화면에서만 건넨다.
+            */}
+          <p className="mt-3 text-xs leading-relaxed text-fg-subtle">
+            각 검사가 쓰는 데이터가 얼마나 비어 있는지도{' '}
+            <Link href="/rules" className="link">
+              공개합니다
+            </Link>
+            .
+          </p>
+        </>
       ) : (
         <>
           {/* 등급 요약과 미선택 안내는 위의 판정 띠가 이미 말한다 (ADR-0015).
