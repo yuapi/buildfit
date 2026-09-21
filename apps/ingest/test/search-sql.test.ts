@@ -134,6 +134,24 @@ describeIfDb('이름 검색 SQL (ADR-0017)', () => {
     expect((await find('GPU', '--- 5080')).items).toHaveLength(1);
   });
 
+  it('★ 몇 개 중 몇 개인지 말한다 — 목록이 전부인 척하지 않는다', async () => {
+    const page = await searchCandidates(db, {
+      category: 'GPU',
+      query: '',
+      constraints: [],
+      limit: 1,
+    });
+    expect(page.items).toHaveLength(1);
+    // 1개만 보여주더라도 맞는 것이 2개라는 사실은 말해야 한다.
+    expect(page.matched).toBe(2);
+  });
+
+  it('matched는 제약을 거친 뒤의 수다 — hidden과 겹쳐 세지 않는다', async () => {
+    const all = await searchCandidates(db, { category: 'GPU', query: '', constraints: [] });
+    expect(all.matched).toBe(2);
+    expect(all.hidden).toBe(0);
+  });
+
   it('카테고리 밖으로 새지 않는다', async () => {
     expect((await find('CPU', '지포스')).items).toHaveLength(0);
   });

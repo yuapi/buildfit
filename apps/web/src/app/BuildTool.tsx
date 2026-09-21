@@ -34,6 +34,7 @@ import {
   saveBuild,
   subscribeStorage,
 } from "@/lib/storage";
+import { MAX_LIMIT, PAGE } from "@/lib/picker";
 import { fetchBuildParts, searchParts, type PartOption } from "./actions";
 
 /** Build에서 선택 id만 뽑는다. 공유 코드와 서버 조회의 입력이 된다. */
@@ -454,6 +455,10 @@ function PartPicker({
   const [query, setQuery] = useState("");
   const [options, setOptions] = useState<PartOption[]>([]);
   const [hidden, setHidden] = useState(0);
+  /** 조건에 맞는 전체 건수. 30개만 보여주면서 그게 전부인 척하지 않는다 */
+  const [matched, setMatched] = useState(0);
+  /** 지금 몇 개까지 불러왔나. 「더 보기」가 늘린다 */
+  const [limit, setLimit] = useState(PAGE);
   /** 한글을 무엇으로 바꿔 찾았는지 (ADR-0017). 말하지 않으면 왜 나왔는지 모른다 */
   const [translated, setTranslated] = useState<readonly { from: string; to: string }[]>([]);
   /** 뜻을 모르는 한글. 결과가 0건인 이유가 이것이면 그렇다고 말한다 */
@@ -494,6 +499,7 @@ function PartPicker({
       if (result.ok) {
         setOptions([...result.data.items]);
         setHidden(result.data.hidden);
+        setMatched(result.data.matched);
         setTranslated(result.data.translated);
         setUnknown(result.data.unknown);
       }
@@ -502,13 +508,13 @@ function PartPicker({
   );
 
   const run = useCallback(
-    (q: string, cons: readonly Constraint[]) => {
+    (q: string, cons: readonly Constraint[], take: number) => {
       const my = ++seq.current;
       // 새 요청을 보내는 순간 옛 건수를 지운다. 안 그러면 새 이유 옆에
       // 옛 제약의 숫자가 잠깐 붙는다.
       setHidden(0);
       startSearch(async () => {
-        apply(my, await searchParts(slot, q, cons));
+        apply(my, await searchParts(slot, q, cons, take));
       });
     },
     [slot, apply],
@@ -521,13 +527,14 @@ function PartPicker({
     startSearch(async () => {
       // effect 본문에서 setState하면 연쇄 렌더가 난다. 요청 콜백 안에서 지운다.
       setHidden(0);
-      apply(my, await searchParts(slot, query, active));
+      apply(my, await searchParts(slot, query, active, limit));
     });
     // query는 입력 때마다 run()이 직접 처리한다. 여기서 보면 글자마다 두 번 돈다.
     // constraints는 내용이 같으면 같은 key가 되므로 배열 대신 key를 본다.
     // 취소는 seq가 맡는다 — effect 안의 플래그로는 run()이 보낸 요청을 못 막는다.
+    // limit은 「더 보기」가 올린다 — 그 경로도 이 effect를 타야 다음 30개가 온다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slot, narrow, key]);
+  }, [slot, narrow, key, limit]);
 
   const reasons = [...new Set(constraints.map((c) => c.because))];
 
@@ -538,7 +545,10 @@ function PartPicker({
         value={query}
         onChange={(e) => {
           setQuery(e.target.value);
-          run(e.target.value, active);
+          // 검색어가 바뀌면 처음 30개부터 다시 본다. 안 그러면 한 글자 칠 때마다
+          // 300건을 끌어온다.
+          setLimit(PAGE);
+          run(e.target.value, active, PAGE);
         }}
         placeholder="모델명·한글 이름으로 검색 (라이젠, 지포스 5080)"
         aria-label="부품 검색"
@@ -588,6 +598,17 @@ function PartPicker({
         </div>
       )}
 
+      {/*
+        * 몇 개 중 몇 개인지 말한다. 2,677개 중 30개를 보여주면서 그게 전부인
+        * 것처럼 두면, 사용자는 찾는 것이 없다고 판단하고 그만둔다.
+        */}
+      {!loading && !failed && matched > options.length && (
+        <p className="mt-2 text-xs text-fg-subtle">
+          <span className="tnum">{matched.toLocaleString()}</span>개 중{' '}
+          <span className="tnum">{options.length}</span>개
+        </p>
+      )}
+
       <ul className="mt-2 max-h-64 space-y-0.5 overflow-y-auto text-sm">
         {loading && <li className="px-1 py-2 text-fg-subtle">찾는 중…</li>}
         {/* "결과 없음"과 "불러오지 못함"은 사용자가 할 행동이 다르다. */}
@@ -621,7 +642,27 @@ function PartPicker({
               </button>
             </li>
           ))}
+        {/* 목록 끝에 둔다. 여기까지 내려온 사람이 다음 것을 찾고 있다 */}
+        {!loading && !failed && matched > options.length && (
+          <li className="pt-1">
+            <button
+              type="button"
+              onClick={() => setLimit((n) => n + PAGE)}
+              className="btn btn-secondary w-full py-1.5 text-xs"
+            >
+              더 보기
+            </button>
+          </li>
+        )}
       </ul>
+
+      {/* 상한에 닿으면 왜 더 안 나오는지 말한다. 말없이 멈추면 고장으로 보인다 */}
+      {!loading && !failed && matched > options.length && options.length >= MAX_LIMIT && (
+        <p className="mt-2 text-xs text-fg-subtle">
+          한 번에 <span className="tnum">{MAX_LIMIT}</span>개까지 봅니다. 검색어를 더 적어
+          보세요.
+        </p>
+      )}
     </div>
   );
 }
