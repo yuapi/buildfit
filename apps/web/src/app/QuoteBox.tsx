@@ -158,7 +158,11 @@ export function QuoteBox({ onApply }: { onApply: (picks: readonly QuotePick[]) =
 
       {state.kind === "done" && (
         <>
-          <ul className="mt-4 max-h-[32rem] divide-y divide-border overflow-y-auto border-t border-border text-sm">
+          {/*
+            * 넓은 화면에서만 높이를 자른다. 좁은 화면에서 안쪽 스크롤을 만들면
+            * 손가락이 바깥 페이지와 목록 중 어느 것을 미는지 알 수 없게 된다.
+            */}
+          <ul className="mt-4 divide-y divide-border border-t border-border text-sm sm:max-h-[32rem] sm:overflow-y-auto">
             {lines.map((l, i) =>
               // 머리글·합계 같은 줄은 한 줄로 모아 아래에서 말한다. 하나씩 늘어놓으면
               // 정작 골라야 할 줄이 묻힌다.

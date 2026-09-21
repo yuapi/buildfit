@@ -31,7 +31,7 @@ export default async function PartIndex() {
         에서 합니다.
       </p>
 
-      <ul className="mt-8 grid gap-2.5 sm:grid-cols-2">
+      <ul className="mt-8 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
         {Object.keys(CATEGORY_LABELS).map((category) => {
           const total = byCategory.get(category) ?? 0;
           return (

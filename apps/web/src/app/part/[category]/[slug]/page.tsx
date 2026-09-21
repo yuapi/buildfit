@@ -205,7 +205,12 @@ export default async function PartPage({
         <section className="mt-12">
           <h2 className="text-lg font-semibold">{related.label}</h2>
           <p className="mt-1 text-xs leading-relaxed text-fg-subtle">{related.note}</p>
-          <ul className="mt-3 grid gap-0.5 sm:grid-cols-2">
+          {/*
+            * `grid-cols-1`을 적어야 한다. 빼면 칸이 max-content로 커져서
+            * `truncate`가 듣지 않고, 390px에서 긴 모델명이 화면 밖으로 30px 나갔다
+            * (Tailwind의 grid-cols-N은 minmax(0, 1fr)이다).
+            */}
+          <ul className="mt-3 grid grid-cols-1 gap-0.5 sm:grid-cols-2">
             {related.items.map((r) => (
               <li key={r.slug}>
                 <Link
@@ -226,7 +231,7 @@ export default async function PartPage({
           <p className="mt-1 text-xs leading-relaxed text-fg-subtle">
             같은 축을 공유하는 것끼리만 묶습니다. 아무 두 부품이나 비교하지 않습니다.
           </p>
-          <ul className="mt-3 grid gap-0.5 sm:grid-cols-2">
+          <ul className="mt-3 grid grid-cols-1 gap-0.5 sm:grid-cols-2">
             {comparable.map((c) => (
               <li key={c.slug}>
                 <Link
