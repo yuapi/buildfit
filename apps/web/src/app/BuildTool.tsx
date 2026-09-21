@@ -448,6 +448,10 @@ function PartPicker({
   const [query, setQuery] = useState("");
   const [options, setOptions] = useState<PartOption[]>([]);
   const [hidden, setHidden] = useState(0);
+  /** 한글을 무엇으로 바꿔 찾았는지 (ADR-0017). 말하지 않으면 왜 나왔는지 모른다 */
+  const [translated, setTranslated] = useState<readonly { from: string; to: string }[]>([]);
+  /** 뜻을 모르는 한글. 결과가 0건인 이유가 이것이면 그렇다고 말한다 */
+  const [unknown, setUnknown] = useState<readonly string[]>([]);
   const [narrow, setNarrow] = useState(true);
   const [failed, setFailed] = useState(false);
   const [loading, startSearch] = useTransition();
@@ -484,6 +488,8 @@ function PartPicker({
       if (result.ok) {
         setOptions([...result.data.items]);
         setHidden(result.data.hidden);
+        setTranslated(result.data.translated);
+        setUnknown(result.data.unknown);
       }
     },
     [],
@@ -528,11 +534,34 @@ function PartPicker({
           setQuery(e.target.value);
           run(e.target.value, active);
         }}
-        placeholder="모델명으로 검색"
+        placeholder="모델명·한글 이름으로 검색 (라이젠, 지포스 5080)"
         aria-label="부품 검색"
         className="field"
         autoFocus
       />
+
+      {/*
+        * 한글을 영문으로 바꿔 찾았으면 그렇다고 말한다. 말하지 않으면
+        * "라이젠"을 쳤는데 "Ryzen"이 나오는 것이 우연처럼 보인다.
+        * aria-live로 두는 이유는 입력 중에 내용이 바뀌기 때문이다.
+        *
+        * **영문 뒤에 조사를 붙이지 않는다.** 로/으로는 읽는 소리로 갈리는데
+        * (geforce→지포스「로」, ryzen→라이젠「으로」) 영문 철자로는 알 수 없다.
+        * `josa()`도 한글이 아니면 짐작하지 않는다. "(으)로"는 이 프로젝트가
+        * 피하려는 바로 그 문장이므로, 조사가 필요 없게 문장을 짠다.
+        */}
+      <div aria-live="polite" className="empty:hidden">
+        {translated.length > 0 && (
+          <p className="mt-1.5 text-xs text-fg-subtle">
+            한글을 바꿔 찾았습니다 — {translated.map((t) => `${t.from} → ${t.to}`).join(', ')}
+          </p>
+        )}
+        {unknown.length > 0 && (
+          <p className="mt-1.5 text-xs text-warn">
+            {unknown.join(', ')}: 카탈로그에서 쓰지 않는 말입니다. 영문 모델명으로 쳐 보세요.
+          </p>
+        )}
+      </div>
 
       {constraints.length > 0 && (
         <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-xs">

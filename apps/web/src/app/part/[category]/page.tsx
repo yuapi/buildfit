@@ -75,7 +75,7 @@ export default async function CategoryIndex({
           type="search"
           name="q"
           defaultValue={q ?? ''}
-          placeholder="모델명으로 검색"
+          placeholder="모델명·한글 이름으로 검색"
           aria-label="모델명으로 검색"
           className="field min-w-0 flex-1"
         />
@@ -83,6 +83,18 @@ export default async function CategoryIndex({
           검색
         </button>
       </form>
+
+      {/* 한글을 영문으로 바꿔 찾았으면 그렇다고 말한다 (ADR-0017) */}
+      {result.translated.length > 0 && (
+        <p className="mt-2 text-xs text-fg-subtle">
+          한글을 바꿔 찾았습니다 — {result.translated.map((t) => `${t.from} → ${t.to}`).join(', ')}
+        </p>
+      )}
+      {result.unknown.length > 0 && (
+        <p className="mt-2 text-xs text-warn">
+          {result.unknown.join(', ')}: 카탈로그에서 쓰지 않는 말입니다. 영문 모델명으로 쳐 보세요.
+        </p>
+      )}
 
       {result.items.length === 0 ? (
         <p className="mt-10 text-sm text-fg-muted">
