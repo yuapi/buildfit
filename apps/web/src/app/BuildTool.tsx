@@ -209,7 +209,7 @@ export function BuildTool({ initial }: { initial?: Build }) {
         </p>
       )}
 
-      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_21rem] lg:gap-6">
+      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_21rem] lg:gap-6">
         <section
           aria-labelledby="slots-heading"
           className="card overflow-hidden"
@@ -253,7 +253,7 @@ export function BuildTool({ initial }: { initial?: Build }) {
         </aside>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {anySelected && <ShareBox code={code} />}
         <SaveBox
           code={code}
