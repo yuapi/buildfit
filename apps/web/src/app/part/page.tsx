@@ -1,8 +1,10 @@
 import Link from 'next/link';
 import { categoryCounts } from '@buildfit/db/part';
+import { searchAcrossCategories, type AcrossCategories } from '@buildfit/db/search';
 import { PartIcon } from '@/components/Icons';
 import { Container } from '@/components/SiteShell';
-import { CATEGORY_LABELS, categoryLabel } from '@/lib/categories';
+import { INDEXED_CATEGORIES, CATEGORY_LABELS, categoryLabel } from '@/lib/categories';
+import { MAX_QUERY_CHARS } from '@/lib/picker';
 import { getDb } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
@@ -12,10 +14,26 @@ export const metadata = {
   description: 'CPU·메인보드·메모리·그래픽카드·케이스·파워 스펙과 호환 정보.',
 };
 
-export default async function PartIndex() {
+export default async function PartIndex({
+  searchParams,
+}: {
+  // Next는 `?q=a&q=b`면 배열을 준다. `string`이라고 적으면 타입이 거짓말한다.
+  searchParams: Promise<{ q?: string | string[] }>;
+}) {
+  const { q: rawQ } = await searchParams;
+  const q = (Array.isArray(rawQ) ? rawQ[0] : rawQ)?.slice(0, MAX_QUERY_CHARS) ?? '';
+
   let counts: { category: string; total: number }[] = [];
+  let found: AcrossCategories | null = null;
   try {
-    counts = await categoryCounts(getDb());
+    const db = getDb();
+    [counts, found] = await Promise.all([
+      categoryCounts(db),
+      // 검색어가 없으면 찾지 않는다. 카테고리를 훑는 화면이 기본이다.
+      q.trim() === ''
+        ? Promise.resolve(null)
+        : searchAcrossCategories(db, { query: q, categories: INDEXED_CATEGORIES }),
+    ]);
   } catch {
     counts = [];
   }
@@ -32,7 +50,29 @@ export default async function PartIndex() {
         에서 합니다.
       </p>
 
-      <ul className="mt-8 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+      {/*
+        * 카테고리를 고르지 않으면 아무것도 찾을 수 없었다. 「9800X3D」가 CPU인
+        * 줄 아는 사람에게만 쓸모 있는 구조다. 여기서 가로질러 찾는다.
+        */}
+      <form action="/part" className="mt-6 flex gap-2">
+        <input
+          type="search"
+          name="q"
+          defaultValue={q}
+          maxLength={MAX_QUERY_CHARS}
+          placeholder="모델명·한글 이름으로 전체 검색 (9800x3d, 리안리)"
+          aria-label="부품 전체 검색"
+          className="field min-w-0 flex-1"
+        />
+        <button type="submit" className="btn btn-primary shrink-0">
+          검색
+        </button>
+      </form>
+
+      {found && <SearchResults q={q} found={found} />}
+
+      <h2 className="mt-10 text-sm font-semibold text-fg-muted">카테고리로 보기</h2>
+      <ul className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
         {Object.keys(CATEGORY_LABELS).map((category) => {
           const total = byCategory.get(category) ?? 0;
           const label = (
@@ -86,5 +126,81 @@ export default async function PartIndex() {
         </p>
       )}
     </Container>
+  );
+}
+
+/**
+ * 가로지른 검색 결과.
+ *
+ * 카테고리마다 몇 개씩만 보여주고, 더 보려면 그 카테고리 목록으로 보낸다 —
+ * 거기가 걸러보기와 쪽 넘기기를 이미 갖고 있다.
+ */
+function SearchResults({ q, found }: { q: string; found: AcrossCategories }) {
+  const total = found.groups.reduce((n, g) => n + g.total, 0);
+
+  return (
+    <section aria-labelledby="search-heading" className="mt-6">
+      <h2 id="search-heading" className="text-sm font-semibold">
+        &ldquo;{q}&rdquo; 검색 결과{' '}
+        <span className="font-normal text-fg-subtle tnum">{total.toLocaleString()}개</span>
+      </h2>
+
+      {/* 한글을 영문으로 바꿔 찾았으면 그렇다고 말한다 (ADR-0017) */}
+      {found.translated.length > 0 && (
+        <p className="mt-1.5 text-xs text-fg-subtle">
+          한글을 바꿔 찾았습니다 — {found.translated.map((t) => `${t.from} → ${t.to}`).join(', ')}
+        </p>
+      )}
+      {found.unknown.length > 0 && (
+        <p className="mt-1.5 text-xs text-warn">
+          {found.unknown.join(', ')}: 카탈로그에서 쓰지 않는 말입니다. 영문 모델명으로 쳐 보세요.
+        </p>
+      )}
+
+      {found.groups.length === 0 ? (
+        <p className="mt-3 text-sm text-fg-muted">해당하는 부품이 없습니다.</p>
+      ) : (
+        <div className="mt-3 space-y-4">
+          {found.groups.map((g) => (
+            <div key={g.category} className="card p-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h3 className="flex items-center gap-2 text-sm font-medium">
+                  <PartIcon category={g.category} className="shrink-0 text-fg-subtle" />
+                  {categoryLabel(g.category)}
+                  <span className="font-normal text-fg-subtle tnum">
+                    {g.total.toLocaleString()}개
+                  </span>
+                </h3>
+                {/* 더 보는 곳은 그 카테고리 목록이다. 거기에 쪽 넘기기가 있다 */}
+                {g.total > g.items.length && (
+                  <Link
+                    href={`/part/${g.category.toLowerCase()}?q=${encodeURIComponent(q)}`}
+                    className="link text-xs"
+                  >
+                    전부 보기
+                  </Link>
+                )}
+              </div>
+              <ul className="mt-2 divide-y divide-border">
+                {g.items.map((p) => (
+                  <li key={p.slug}>
+                    <Link
+                      href={`/part/${g.category.toLowerCase()}/${p.slug}`}
+                      className="-mx-2 flex flex-wrap items-baseline gap-x-2 rounded-(--radius-control) px-2 py-2 transition-colors hover:bg-surface-2"
+                    >
+                      <span className="min-w-0 text-sm">{p.modelName}</span>
+                      <span className="text-xs text-fg-subtle">
+                        {p.brand ?? ''}
+                        {p.releaseYear ? ` · ${p.releaseYear}년` : ''}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
