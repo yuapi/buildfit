@@ -152,6 +152,15 @@ export const KO_ALIASES: readonly KoAlias[] = [
  */
 export const OMITTED_ALIASES = ['티아이'] as const;
 
+/** 사전 표기가 **정확히** 맞을 때만 받는다. 견적서는 타이핑 중이 아니다 */
+export function lookupExact(token: string): readonly string[] {
+  const hits: string[] = [];
+  for (const entry of KO_ALIASES) {
+    if (entry.ko.includes(token) && !hits.includes(entry.en)) hits.push(entry.en);
+  }
+  return hits;
+}
+
 /** 한 검색 조각. `any` 중 **하나라도** 이름에 들어있으면 이 조각은 만족이다 */
 export interface Term {
   readonly raw: string;
@@ -196,7 +205,8 @@ function matchesKey(typed: string, key: string): boolean {
   return stripJong(last) === stripJong(at);
 }
 
-function lookup(token: string): readonly string[] {
+/** 타이핑 중인 한글도 받는 조회. 검색창용이다 — 견적서는 `lookupExact`를 쓴다 */
+export function lookupPrefix(token: string): readonly string[] {
   const hits: string[] = [];
   for (const entry of KO_ALIASES) {
     if (entry.ko.some((key) => matchesKey(token, key)) && !hits.includes(entry.en)) {
@@ -228,7 +238,7 @@ export function searchTerms(query: string): SearchTerms {
       continue;
     }
 
-    const hits = lookup(token);
+    const hits = lookupPrefix(token);
     if (hits.length === 0) {
       unknown.push(token);
       // **버리지 않는다.** 아무것도 안 넣으면 모르는 말을 무시한 채 넓어진다.

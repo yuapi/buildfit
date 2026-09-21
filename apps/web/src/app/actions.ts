@@ -3,9 +3,10 @@
 import type { Build, Constraint } from '@buildfit/compat';
 import { loadBuild } from '@buildfit/db/build';
 import { searchCandidates, type PartOption } from '@buildfit/db/picker';
+import { matchQuote, type QuoteLineResult } from '@buildfit/db/quote';
 import { SLOT_META, type SlotName } from '@/lib/categories';
 import { getDb } from '@/lib/db';
-import { MAX_LIMIT, PAGE } from '@/lib/picker';
+import { MAX_LIMIT, MAX_QUOTE_CHARS, PAGE } from '@/lib/picker';
 
 export type { PartOption };
 
@@ -107,6 +108,22 @@ export async function fetchBuildParts(selection: {
 }): Promise<QueryResult<Build>> {
   try {
     return { ok: true, data: await loadBuild(getDb(), selection) };
+  } catch {
+    return { ok: false };
+  }
+}
+
+/**
+ * 붙여넣은 견적서를 줄 단위로 찾는다 (ADR-0018).
+ *
+ * **아무것도 자동으로 채우지 않는다.** 찾은 것을 돌려줄 뿐이고, 견적에 넣는
+ * 것은 사용자가 화면에서 확인한 뒤다.
+ */
+export async function readQuote(text: string): Promise<QueryResult<QuoteLineResult[]>> {
+  // 클라이언트가 보낸 값이다. 길이를 먼저 자른다 — 줄 수 제한은 그 다음이다.
+  const input = typeof text === 'string' ? text.slice(0, MAX_QUOTE_CHARS) : '';
+  try {
+    return { ok: true, data: await matchQuote(getDb(), input) };
   } catch {
     return { ok: false };
   }

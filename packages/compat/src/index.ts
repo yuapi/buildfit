@@ -67,6 +67,9 @@ export { pickerConstraints } from './picker';
 export type { KoAlias, Term, SearchTerms } from './search';
 export { KO_ALIASES, OMITTED_ALIASES, squash, searchTerms, isImpossible } from './search';
 
+export type { QuoteLabel, QuoteLine, QuoteOptions } from './quote';
+export { QUOTE_LABELS, readQuoteLine } from './quote';
+
 export type { Rule } from './rules';
 export {
   rule1,

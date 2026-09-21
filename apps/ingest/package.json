@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "sample": "tsx src/sample.ts",
-    "verify": "tsx src/verify-stability.ts"
+    "verify": "tsx src/verify-stability.ts",
+    "measure:quote": "tsx src/measure-quote.ts"
   },
   "dependencies": {
     "@buildfit/db": "*",

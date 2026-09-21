@@ -11,7 +11,8 @@
     "./build": "./src/queries/build.ts",
     "./part": "./src/queries/part.ts",
     "./picker": "./src/queries/picker.ts",
-    "./search": "./src/queries/search.ts"
+    "./search": "./src/queries/search.ts",
+    "./quote": "./src/queries/quote.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
