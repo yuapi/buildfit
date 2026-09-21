@@ -5,11 +5,14 @@ import { loadBuild } from '@buildfit/db/build';
 import { searchCandidates, type PartOption } from '@buildfit/db/picker';
 import { SLOT_META, type SlotName } from '@/lib/categories';
 import { getDb } from '@/lib/db';
+import { MAX_LIMIT, PAGE } from '@/lib/picker';
 
 export type { PartOption };
 
 export interface CandidatePage {
   readonly items: readonly PartOption[];
+  /** 조건에 맞는 전체 건수. `items`는 그중 앞에서 몇 개다 */
+  readonly matched: number;
   /** 제약 때문에 빠진 건수 */
   readonly hidden: number;
   /** 한글을 무엇으로 바꿔 찾았는지 (ADR-0017) */
@@ -66,15 +69,21 @@ export async function searchParts(
   slot: SlotName,
   query: string,
   constraints: readonly Constraint[] = [],
+  limit = PAGE,
 ): Promise<QueryResult<CandidatePage>> {
   const meta = SLOT_META.find((m) => m.slot === slot);
-  if (!meta) return { ok: true, data: { items: [], hidden: 0, translated: [], unknown: [] } };
+  if (!meta) {
+    return { ok: true, data: { items: [], matched: 0, hidden: 0, translated: [], unknown: [] } };
+  }
 
   try {
     const page = await searchCandidates(getDb(), {
       category: meta.category,
       query,
       constraints: sanitize(constraints),
+      // 클라이언트가 보낸 값이다. 큰 수를 넣어 목록 전체를 한 번에 끌어가지
+      // 못하게 막는다. 실수로 NaN이 와도 기본값으로 떨어뜨린다.
+      limit: Number.isFinite(limit) ? Math.min(Math.max(PAGE, Math.trunc(limit)), MAX_LIMIT) : PAGE,
     });
     return { ok: true, data: page };
   } catch {

@@ -23,6 +23,13 @@ export interface PartOption {
 
 export interface PickerPage {
   readonly items: readonly PartOption[];
+  /**
+   * 조건에 맞는 전체 건수. `items`는 그중 앞에서 `limit`개다.
+   *
+   * 이걸 말하지 않으면 2,677개 중 30개를 보여주면서 그게 전부인 것처럼 보인다.
+   * 사용자는 자기가 찾는 것이 목록에 없다고 판단하고 그만둔다.
+   */
+  readonly matched: number;
   /** 제약 때문에 빠진 건수. 화면이 "N개를 숨겼습니다"로 쓴다 */
   readonly hidden: number;
   /** 한글을 무엇으로 바꿔 찾았는지. 화면이 그대로 말한다 (ADR-0017) */
@@ -132,5 +139,11 @@ export async function searchCandidates(
 
   const row = counts[0];
   const hidden = row ? Math.max(0, row.total - row.kept) : 0;
-  return { items, hidden, translated: parsed.translated, unknown: parsed.unknown };
+  return {
+    items,
+    matched: row?.kept ?? items.length,
+    hidden,
+    translated: parsed.translated,
+    unknown: parsed.unknown,
+  };
 }
