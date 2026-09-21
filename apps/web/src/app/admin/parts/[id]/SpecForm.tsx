@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from 'react';
 import type { FieldRequirement } from '@buildfit/compat';
+import { SpecValueField } from '@/components/SpecValueField';
 import { saveSpecAction, type SaveResult } from './actions';
 
 /**
@@ -75,62 +76,14 @@ export function SpecForm({
       </div>
 
       <div className="mt-3" key={`value-${attempt}`}>
-        {req.valueType === 'boolean' ? (
-          // 예/아니오를 라디오가 아니라 select로 둔다. 미선택 상태가 값과
-          // 구분되어야 한다 — 라디오는 "아직 안 고름"을 표현하기 어렵다.
-          <select
-            name="value"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            className="field"
-          >
-            <option value="">선택하세요</option>
-            <option value="true">예</option>
-            <option value="false">아니오</option>
-          </select>
-        ) : req.valueType === 'string[]' && req.options ? (
-          <fieldset className="flex flex-wrap gap-x-4 gap-y-2">
-            {req.options.map((opt) => (
-              <label key={opt} className="flex items-center gap-1.5 text-sm">
-                <input
-                  type="checkbox"
-                  name="value"
-                  value={opt}
-                  checked={picked.includes(opt)}
-                  onChange={(e) =>
-                    setPicked((prev) =>
-                      e.target.checked ? [...prev, opt] : prev.filter((v) => v !== opt),
-                    )
-                  }
-                />
-                {opt}
-              </label>
-            ))}
-          </fieldset>
-        ) : req.options ? (
-          <select
-            name="value"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            className="field"
-          >
-            <option value="">선택하세요</option>
-            {req.options.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <input
-            type={req.valueType === 'number' ? 'number' : 'text'}
-            name="value"
-            step="any"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            className="field"
-          />
-        )}
+        {/* 입력칸 모양은 공개 제보 폼과 **한 벌을 쓴다** (SpecValueField 주석) */}
+        <SpecValueField
+          req={req}
+          text={text}
+          picked={picked}
+          onText={setText}
+          onPicked={setPicked}
+        />
       </div>
 
       <div className="mt-3" key={`source-${attempt}`}>

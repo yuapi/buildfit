@@ -1,6 +1,8 @@
 'use client';
 
 import { useActionState, useState } from 'react';
+import { SPEC_REQUIREMENTS } from '@buildfit/compat';
+import { SpecValueField } from '@/components/SpecValueField';
 import { getClientToken } from '@/lib/storage';
 import { specLabel } from '@/lib/spec-labels';
 import { reportSpecAction, type ReportResult } from './actions';
@@ -22,6 +24,19 @@ export function ReportForm({
   const [open, setOpen] = useState(false);
   // 견적에서 넘어온 경우 막고 있던 항목이 먼저 선택돼 있어야 한다.
   const initialKey = missingKeys[0] ?? specKeys[0] ?? '';
+  /**
+   * 고른 항목. **controlled로 둬야 입력칸 모양을 따라 바꿀 수 있다.**
+   *
+   * 항목마다 값의 꼴이 다르다 — 폼팩터는 정해진 목록이고 높이는 숫자다.
+   * 전에는 전부 자유 입력이었고, 그러면 오타 하나가 규칙을 못 읽게 만든다
+   * (`requirements.ts`의 `options` 주석).
+   */
+  const [specKey, setSpecKey] = useState(initialKey);
+  const [text, setText] = useState('');
+  const [picked, setPicked] = useState<string[]>([]);
+
+  /** 고른 항목의 선언. 없으면(카탈로그에만 있는 키) 자유 입력으로 둔다 */
+  const req = SPEC_REQUIREMENTS.find((r) => r.category === category && r.specKey === specKey);
   const [state, action, pending] = useActionState<ReportResult | null, FormData>(
     // 브라우저 토큰은 제출 시점에 읽는다. 렌더에 끌어오면 서버 렌더와 어긋나고,
     // effect로 당겨오면 마운트마다 연쇄 렌더가 난다.
@@ -62,7 +77,14 @@ export function ReportForm({
       <select
         name="specKey"
         required
-        defaultValue={initialKey}
+        value={specKey}
+        onChange={(e) => {
+          setSpecKey(e.target.value);
+          // 항목이 바뀌면 값을 비운다. 폼팩터에 적은 글자가 숫자칸에 남으면
+          // 사용자가 알아차리지 못한 채 엉뚱한 값을 보낸다.
+          setText('');
+          setPicked([]);
+        }}
         className="field mt-1"
       >
         {/* 비어 있는 필수 항목을 먼저 보여준다. 견적을 막고 있는 것이 이쪽이다. */}
@@ -86,14 +108,37 @@ export function ReportForm({
         )}
       </select>
 
-      <label className="mt-3 block text-xs text-fg-muted">
+      <label className="mt-3 block text-xs text-fg-muted" htmlFor="reported-value">
         맞다고 생각하는 값
       </label>
-      <input
-        name="reportedValue"
-        maxLength={200}
-        className="field mt-1"
-      />
+      <div className="mt-1">
+        {req ? (
+          // 어드민과 **같은 한 벌**을 쓴다. 정해진 목록이 있으면 고르게 한다 —
+          // 규칙 5·6은 문자열 완전 일치라 오타 하나가 판정을 뒤집는다.
+          <SpecValueField
+            req={req}
+            name="reportedValue"
+            text={text}
+            picked={picked}
+            onText={setText}
+            onPicked={setPicked}
+          />
+        ) : (
+          <input
+            id="reported-value"
+            name="reportedValue"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            maxLength={200}
+            className="field"
+          />
+        )}
+      </div>
+      {req?.options && (
+        <p className="mt-1 text-xs text-fg-subtle">
+          판정이 이 값을 글자 그대로 비교합니다. 목록에 없으면 아래 설명란에 적어 주세요.
+        </p>
+      )}
 
       <label className="mt-3 block text-xs text-fg-muted">
         설명이나 출처 (선택)
