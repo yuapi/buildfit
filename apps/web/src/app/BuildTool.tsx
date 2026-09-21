@@ -24,7 +24,7 @@ import {
 import { decodeBuildCode, encodeBuildCode } from "@/lib/build-code";
 import { FitBar } from "@/components/FitBar";
 import { PartIcon } from "@/components/Icons";
-import { buildLabel, pickedCount } from "@/lib/build-summary";
+import { buildLabel, filledSlotCount, pickedCount } from "@/lib/build-summary";
 import { MAX_RAM_KITS, addRamKit, removeRamKit } from "@/lib/ram-slots";
 import { SLOT_META, type SlotName } from "@/lib/categories";
 import { NO_CURSOR, nextCursor } from "@/lib/list-cursor";
@@ -304,8 +304,9 @@ export function BuildTool({ initial }: { initial?: Build }) {
             <h2 id="slots-heading" className="text-sm font-semibold">
               부품 선택
             </h2>
+            {/* 칸 수를 센다. 부품 수를 쓰면 메모리 여러 묶음에서 분자가 분모를 넘는다 */}
             <span className="text-xs text-fg-subtle tnum">
-              {picked} / {SLOT_META.length}
+              {filledSlotCount(build)} / {SLOT_META.length}
             </span>
           </div>
 

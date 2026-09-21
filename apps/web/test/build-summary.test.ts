@@ -12,7 +12,12 @@
 import { emptyBuild, evaluate } from '@buildfit/compat';
 import { describe, expect, it } from 'vitest';
 import { cpu, gpu, goodBuild, ramKit, withBuild } from '../../../packages/compat/test/fixtures';
-import { buildLabel, buildSummary, pickedCount } from '../src/lib/build-summary';
+import {
+  buildLabel,
+  buildSummary,
+  filledSlotCount,
+  pickedCount,
+} from '../src/lib/build-summary';
 
 describe('알아볼 이름', () => {
   it('핵심 부품 두 개를 잇는다', () => {
@@ -34,10 +39,27 @@ describe('알아볼 이름', () => {
 });
 
 describe('개수', () => {
-  it('메모리는 묶음마다 하나로 센다', () => {
+  it('부품 수는 묶음마다 하나로 센다', () => {
     expect(pickedCount(goodBuild)).toBe(7);
     expect(pickedCount({ ...emptyBuild, cpu, gpu, ram: [ramKit] })).toBe(3);
     expect(pickedCount(emptyBuild)).toBe(0);
+  });
+
+  it('★ 칸 수는 메모리가 몇 묶음이든 하나다', () => {
+    // 「4 / 7」의 분자에 부품 수를 쓰면 묶음이 늘 때 분모를 넘는다.
+    const many = { ...emptyBuild, ram: [ramKit, { ...ramKit, id: 'ram-2' }] };
+    expect(pickedCount(many)).toBe(2);
+    expect(filledSlotCount(many)).toBe(1);
+  });
+
+  it('★ 칸 수가 칸 개수를 넘지 않는다', () => {
+    const full = {
+      ...goodBuild,
+      ram: [ramKit, { ...ramKit, id: 'r2' }, { ...ramKit, id: 'r3' }, { ...ramKit, id: 'r4' }],
+    };
+    expect(pickedCount(full)).toBe(10);
+    // 칸은 일곱 개뿐이다.
+    expect(filledSlotCount(full)).toBe(7);
   });
 });
 

@@ -16,12 +16,28 @@ import { useCallback, useState, useTransition } from "react";
 import type { QuoteLineResult } from "@buildfit/db/quote";
 import { SLOT_META, categoryLabel, type SlotName } from "@/lib/categories";
 import { MAX_QUOTE_CHARS } from "@/lib/picker";
+import { MAX_RAM_KITS } from "@/lib/ram-slots";
 import { readQuote } from "./actions";
 
 /** 카테고리 → 슬롯. 견적에 넣을 수 없는 카테고리면 undefined */
 function slotOf(category: string): SlotName | undefined {
   return SLOT_META.find((m) => m.category === category)?.slot;
 }
+
+/** 줄을 넣지 못한 이유 */
+export type ConflictReason =
+  /** 그 칸을 앞줄이 이미 채웠다 */
+  | 'taken'
+  /** 메모리 묶음 상한에 닿았다 */
+  | 'full'
+  /** 같은 부품을 앞줄에서 이미 골랐다 */
+  | 'duplicate';
+
+const CONFLICT_TEXT: Readonly<Record<ConflictReason, string>> = {
+  taken: '같은 칸을 앞줄이 이미 채웁니다. 이 줄은 넣지 않습니다.',
+  full: `메모리는 ${MAX_RAM_KITS}묶음까지 넣습니다. 이 줄은 넣지 않습니다.`,
+  duplicate: '앞줄에서 같은 부품을 이미 골랐습니다. 이 줄은 넣지 않습니다.',
+};
 
 export interface QuotePick {
   readonly slot: SlotName;
@@ -63,24 +79,39 @@ export function QuoteBox({ onApply }: { onApply: (picks: readonly QuotePick[]) =
   const lines = state.kind === "done" ? state.lines : [];
 
   /**
-   * 고른 것을 슬롯에 배치한다. **한 슬롯에 하나다.**
+   * 고른 것을 칸에 배치한다.
    *
-   * 같은 슬롯을 두 줄이 가리키면 뒤엣것을 넣지 않고 그렇다고 말한다.
+   * **메모리만 여럿을 받는다.** 견적서에 메모리가 두 줄인 것은 흔하고
+   * (2×16GB + 2×16GB), 규칙 3이 바로 그 합을 본다. 나머지 칸은 하나다 —
+   * 같은 칸을 두 줄이 가리키면 뒤엣것을 넣지 않고 그렇다고 말한다.
    * 조용히 덮으면 사용자는 자기가 고른 것이 사라진 줄 모른다.
    */
-  const assignment = new Map<SlotName, { id: string; lineIndex: number }>();
-  const conflicts = new Set<number>();
+  const assignment = new Map<SlotName, string[]>();
+  /** 넣지 못한 줄과 그 이유. 왜 빠졌는지 말하지 않으면 사라진 줄 모른다 */
+  const conflicts = new Map<number, ConflictReason>();
   lines.forEach((l, i) => {
     const id = picked[i];
     if (id === undefined) return;
     const cat = l.candidates.find((c) => c.id === id)?.category;
     const slot = cat ? slotOf(cat) : undefined;
     if (!slot) return;
-    if (assignment.has(slot)) conflicts.add(i);
-    else assignment.set(slot, { id, lineIndex: i });
+
+    const held = assignment.get(slot) ?? [];
+    if (slot !== 'ram') {
+      // 메모리 말고는 한 칸에 하나다.
+      if (held.length === 0) assignment.set(slot, [id]);
+      else conflicts.set(i, 'taken');
+      return;
+    }
+    // 메모리는 묶음을 더한다. 같은 묶음을 두 번 넣지는 않는다.
+    if (held.includes(id)) conflicts.set(i, 'duplicate');
+    else if (held.length >= MAX_RAM_KITS) conflicts.set(i, 'full');
+    else assignment.set(slot, [...held, id]);
   });
 
-  const picks: QuotePick[] = [...assignment].map(([slot, v]) => ({ slot, id: v.id }));
+  const picks: QuotePick[] = [...assignment].flatMap(([slot, ids]) =>
+    ids.map((id) => ({ slot, id })),
+  );
   const skipped = lines.filter((l) => !l.isPart && l.unsupported === null).length;
 
   if (!open) {
@@ -177,7 +208,7 @@ export function QuoteBox({ onApply }: { onApply: (picks: readonly QuotePick[]) =
                   key={`${i}-${l.line}`}
                   line={l}
                   picked={picked[i]}
-                  conflict={conflicts.has(i)}
+                  conflict={conflicts.get(i)}
                   onPick={(id) =>
                     setPicked((prev) => {
                       const next = { ...prev };
@@ -211,7 +242,7 @@ function QuoteRow({
 }: {
   line: QuoteLineResult;
   picked: string | undefined;
-  conflict: boolean;
+  conflict: ConflictReason | undefined;
   onPick: (id: string | null) => void;
 }) {
   // 견적에 넣을 수 없는 카테고리는 고르게 하지 않는다 (지금은 전부 넣을 수 있다)
@@ -276,10 +307,8 @@ function QuoteRow({
               {usable.length}개가 맞습니다{line.hasMore ? ' (더 있음)' : ''} — 하나를 고르세요.
             </p>
           )}
-          {conflict && (
-            <p className="mt-1 px-1.5 text-xs text-warn">
-              같은 칸을 앞줄이 이미 채웁니다. 이 줄은 넣지 않습니다.
-            </p>
+          {conflict !== undefined && (
+            <p className="mt-1 px-1.5 text-xs text-warn">{CONFLICT_TEXT[conflict]}</p>
           )}
         </>
       )}
