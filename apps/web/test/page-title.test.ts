@@ -38,6 +38,14 @@ describe('제목에 접미사를 두 번 붙이지 않는다', () => {
     const text = readFileSync(file, 'utf8');
     // `title:` 뒤의 문자열 리터럴만 본다. `{ absolute: … }`는 템플릿을 안 탄다.
     for (const m of text.matchAll(/title:\s*(['"`])((?:[^\\]|\\.)*?)\1/g)) {
+      /*
+       * `openGraph.title`은 **템플릿을 타지 않는다.** layout의 `title.template`은
+       * `metadata.title`에만 걸리므로, og 쪽은 접미사를 직접 붙여야 한 번 붙는다.
+       * 앞 글자를 보고 og 블록 안인지 가린다 — 한 줄에 같이 쓰기 때문이다.
+       */
+      const before = text.slice(Math.max(0, m.index - 60), m.index);
+      if (/openGraph:\s*\{[^}]*$/.test(before)) continue;
+
       const value = m[2] ?? '';
       expect(
         value.includes(SUFFIX),

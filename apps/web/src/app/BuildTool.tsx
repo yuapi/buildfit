@@ -24,6 +24,7 @@ import {
 import { decodeBuildCode, encodeBuildCode } from "@/lib/build-code";
 import { FitBar } from "@/components/FitBar";
 import { PartIcon } from "@/components/Icons";
+import { buildLabel, pickedCount } from "@/lib/build-summary";
 import { SLOT_META, type SlotName } from "@/lib/categories";
 import { NO_CURSOR, nextCursor } from "@/lib/list-cursor";
 import { listWithJosa } from "@/lib/korean";
@@ -78,27 +79,12 @@ const EMPTY: Build = {
   cooler: null,
 };
 
-/** 저장·기록에 쓸 기본 이름. 핵심 부품 두 개면 대개 알아본다. */
-function autoLabel(build: Build): string {
-  const picked = [build.cpu?.name, build.gpu?.name].filter(Boolean) as string[];
-  if (picked.length > 0) return picked.join(" + ");
-  const any = SLOT_META.map((m) => nameOf(build, m.slot)).find(Boolean);
-  return any ?? "빈 견적";
-}
-
-/** 고른 부품 개수. 저장·기록할 가치가 있는지 판단한다. */
-function pickedCount(build: Build): number {
-  return (
-    [
-      build.cpu,
-      build.motherboard,
-      build.gpu,
-      build.pcCase,
-      build.psu,
-      build.cooler,
-    ].filter(Boolean).length + build.ram.length
-  );
-}
+/*
+ * 이름과 개수는 `lib/build-summary.ts`가 정본이다.
+ *
+ * 공유 링크 미리보기가 같은 것을 쓴다 — 미리보기에 적힌 이름과 화면의 이름이
+ * 다르면 받은 사람이 다른 견적으로 읽는다.
+ */
 
 export function BuildTool({ initial }: { initial?: Build }) {
   const [build, setBuild] = useState<Build>(initial ?? EMPTY);
@@ -153,7 +139,7 @@ export function BuildTool({ initial }: { initial?: Build }) {
   // 저장 실패는 무시한다 — 편의 기능이라 실패해도 앱은 그대로 동작한다 (§8A.4).
   useEffect(() => {
     if (pickedCount(build) < 2) return;
-    recordRecentBuild(encodeBuildCode(toSelection(build)), autoLabel(build));
+    recordRecentBuild(encodeBuildCode(toSelection(build)), buildLabel(build));
   }, [build]);
 
   /**
@@ -350,7 +336,7 @@ export function BuildTool({ initial }: { initial?: Build }) {
         {anySelected && <ShareBox code={code} />}
         <SaveBox
           code={code}
-          defaultLabel={autoLabel(build)}
+          defaultLabel={buildLabel(build)}
           canSave={picked > 0}
           onLoad={loadCode}
         />
