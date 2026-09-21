@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { SPEC_REQUIREMENTS } from '@buildfit/compat';
 import { saveSpec } from '@buildfit/db/queries';
 import { getDb } from '@/lib/db';
+import { requireAdmin } from '@/lib/admin-auth';
 
 export interface SaveResult {
   readonly ok: boolean;
@@ -17,6 +18,9 @@ export interface SaveResult {
  * 비교하므로 오타 하나가 판정을 뒤집는다.
  */
 export async function saveSpecAction(_prev: SaveResult | null, form: FormData): Promise<SaveResult> {
+  // 서버 동작은 화면과 따로 불릴 수 있다. 화면을 막은 것으로 갈음하지 않는다 (ADR-0020).
+  await requireAdmin();
+
   const partId = String(form.get('partId') ?? '');
   const category = String(form.get('category') ?? '');
   const specKey = String(form.get('specKey') ?? '');
