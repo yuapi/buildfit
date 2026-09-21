@@ -58,6 +58,9 @@ export default async function sitemap({
     return [];
   }
 
+  // 부품이 없으면 목록 주소도 내지 않는다. 빈 페이지가 색인되면 얻는 것이 없다.
+  if (rows.length === 0) return [];
+
   return [
     {
       url: `${base}/part/${resolvedId}`,
