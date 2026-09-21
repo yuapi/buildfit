@@ -5,6 +5,7 @@
 import { and, eq, ne, sql } from 'drizzle-orm';
 import type { Database } from '../client';
 import { partSpecs, parts, specReports } from '../schema';
+import { nameWhere, searchTerms } from './search';
 
 export interface PartSpecRow {
   readonly key: string;
@@ -206,6 +207,10 @@ export interface PartListItem {
 export interface PartListPage {
   readonly items: readonly PartListItem[];
   readonly total: number;
+  /** 한글을 무엇으로 바꿔 찾았는지 (ADR-0017) */
+  readonly translated: readonly { readonly from: string; readonly to: string }[];
+  /** 뜻을 모르는 한글 조각. 있으면 결과는 0건이다 */
+  readonly unknown: readonly string[];
 }
 
 /** 카테고리 목록 한 페이지. */
@@ -214,11 +219,10 @@ export async function partsInCategory(
   category: string,
   opts: { limit?: number; offset?: number; query?: string } = {},
 ): Promise<PartListPage> {
-  const q = (opts.query ?? '').trim();
-  const where =
-    q === ''
-      ? eq(parts.category, category)
-      : and(eq(parts.category, category), sql`${parts.modelName} ilike ${'%' + q + '%'}`);
+  // 고르기와 같은 해석을 쓴다 (ADR-0017). 두 벌이 되면 "고를 땐 나오는데
+  // 목록엔 없다"가 된다.
+  const parsed = searchTerms(opts.query ?? '');
+  const where = and(eq(parts.category, category), ...nameWhere(parsed));
 
   const [countRow] = await db
     .select({ total: sql<number>`count(*)::int` })
@@ -239,7 +243,12 @@ export async function partsInCategory(
     .limit(opts.limit ?? 60)
     .offset(opts.offset ?? 0);
 
-  return { items, total: countRow?.total ?? 0 };
+  return {
+    items,
+    total: countRow?.total ?? 0,
+    translated: parsed.translated,
+    unknown: parsed.unknown,
+  };
 }
 
 /** sitemap용 slug 목록. 본문 없이 주소만 필요하다. */

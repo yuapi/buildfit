@@ -9,9 +9,10 @@
  */
 
 import type { Constraint } from '@buildfit/compat';
-import { type SQL, and, eq, ilike, sql } from 'drizzle-orm';
+import { type SQL, and, eq, sql } from 'drizzle-orm';
 import type { Database } from '../client';
 import { partSpecs, parts } from '../schema';
+import { nameWhere, searchTerms } from './search';
 
 export interface PartOption {
   readonly id: string;
@@ -24,6 +25,10 @@ export interface PickerPage {
   readonly items: readonly PartOption[];
   /** 제약 때문에 빠진 건수. 화면이 "N개를 숨겼습니다"로 쓴다 */
   readonly hidden: number;
+  /** 한글을 무엇으로 바꿔 찾았는지. 화면이 그대로 말한다 (ADR-0017) */
+  readonly translated: readonly { readonly from: string; readonly to: string }[];
+  /** 뜻을 모르는 한글 조각. 있으면 결과는 0건이다 */
+  readonly unknown: readonly string[];
 }
 
 /**
@@ -94,11 +99,9 @@ export async function searchCandidates(
   },
 ): Promise<PickerPage> {
   // 클라이언트가 보낸 값이다. 문자열이 아니면 빈 검색으로 떨어뜨린다.
-  const q = typeof input.query === 'string' ? input.query.trim() : '';
-  const base = q === '' ? [eq(parts.category, input.category)] : [
-    eq(parts.category, input.category),
-    ilike(parts.modelName, `%${q}%`),
-  ];
+  const q = typeof input.query === 'string' ? input.query : '';
+  const parsed = searchTerms(q);
+  const base = [eq(parts.category, input.category), ...nameWhere(parsed)];
 
   // 제약 조건을 따로 들고 있는다. `narrowed.slice(base.length)`로 되찾으면
   // 나중에 base에 조건을 하나 더 넣는 순간 hidden이 조용히 틀린 값을 센다.
@@ -129,5 +132,5 @@ export async function searchCandidates(
 
   const row = counts[0];
   const hidden = row ? Math.max(0, row.total - row.kept) : 0;
-  return { items, hidden };
+  return { items, hidden, translated: parsed.translated, unknown: parsed.unknown };
 }
