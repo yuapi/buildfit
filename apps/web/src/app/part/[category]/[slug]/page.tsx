@@ -3,8 +3,8 @@ import { notFound } from 'next/navigation';
 import { requiredKeysFor } from '@buildfit/compat';
 import { comparableParts, partBySlug, partsMatchingSpec, type RelatedPart } from '@buildfit/db/part';
 import { Container } from '@/components/SiteShell';
-import { encodeBuildCode } from '@/lib/build-code';
-import { SLOT_META, categoryLabel } from '@/lib/categories';
+import { startBuildHref } from '@/lib/build-links';
+import { categoryLabel } from '@/lib/categories';
 import { getDb } from '@/lib/db';
 import { specLabel, specValueText } from '@/lib/spec-labels';
 import { ReportForm } from './ReportForm';
@@ -12,14 +12,6 @@ import { ReportForm } from './ReportForm';
 export const dynamic = 'force-dynamic';
 
 const OPENDB_REPO = 'https://github.com/buildcores/buildcores-open-db';
-
-/** 이 부품 하나만 담은 견적 코드. 상세에서 바로 구성으로 넘어간다. */
-function startBuildHref(category: string, id: string): string | null {
-  const slot = SLOT_META.find((m) => m.category === category)?.slot;
-  if (!slot) return null;
-  const sel = slot === 'ram' ? { ram: [id] } : { [slot]: id };
-  return `/build/${encodeBuildCode(sel)}`;
-}
 
 /**
  * 호환 목록 (§8).
