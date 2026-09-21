@@ -404,10 +404,16 @@ function SlotRow({
           </span>
         </div>
         <span className="flex shrink-0 items-center gap-0.5 self-center">
+          {/*
+            * 글자는 "선택"뿐이지만 이런 버튼이 일곱 개다. 스크린리더로 훑으면
+            * 전부 같은 이름으로 들려 어느 부품의 것인지 알 수 없다 (WCAG 2.4.6).
+            * 눈으로 보는 사람에게는 옆의 라벨이 그 일을 한다.
+            */}
           <button
             type="button"
             onClick={onToggle}
             aria-expanded={open}
+            aria-label={`${label} ${open ? "닫기" : selectedName ? "변경" : "선택"}`}
             className={
               selectedName
                 ? "btn btn-ghost px-2 py-1 text-xs"
