@@ -1,17 +1,43 @@
 'use server';
 
-import type { Build } from '@buildfit/compat';
-import { parts } from '@buildfit/db';
+import type { Build, Constraint } from '@buildfit/compat';
 import { loadBuild } from '@buildfit/db/build';
-import { and, eq, ilike, sql } from 'drizzle-orm';
+import { searchCandidates, type PartOption } from '@buildfit/db/picker';
 import { SLOT_META, type SlotName } from '@/lib/categories';
 import { getDb } from '@/lib/db';
 
-export interface PartOption {
-  readonly id: string;
-  readonly name: string;
-  readonly brand: string | null;
-  readonly releaseYear: number | null;
+export type { PartOption };
+
+export interface CandidatePage {
+  readonly items: readonly PartOption[];
+  /** 제약 때문에 빠진 건수 */
+  readonly hidden: number;
+}
+
+/**
+ * 클라이언트가 보낸 제약을 믿지 않고 형태를 확인한다.
+ *
+ * 값은 전부 파라미터로 들어가므로 주입은 안 되지만, 모양이 어긋나면 쿼리가
+ * 던져서 검색 전체가 죽는다. 이상한 것은 조용히 버린다 — 좁히기가 덜 되는 것이
+ * 검색이 죽는 것보다 낫다.
+ */
+function sanitize(raw: readonly Constraint[]): Constraint[] {
+  const out: Constraint[] = [];
+  for (const c of raw.slice(0, 8)) {
+    if (typeof c?.key !== 'string' || c.key.length > 64) continue;
+    if (typeof c.ruleId !== 'number') continue;
+    if (c.kind === 'equals' || c.kind === 'contains') {
+      if (typeof c.value === 'string' && c.value.length <= 128) out.push(c);
+    } else if (c.kind === 'oneOf') {
+      const values = Array.isArray(c.values)
+        ? c.values.filter((v): v is string => typeof v === 'string' && v.length <= 128).slice(0, 32)
+        : [];
+      if (values.length > 0) out.push({ ...c, values });
+    } else if (c.kind === 'atMost' || c.kind === 'atLeast') {
+      if (Number.isFinite(c.value)) out.push(c);
+    }
+  }
+  return out;
 }
 
 /**
@@ -22,34 +48,27 @@ export interface PartOption {
  */
 export type QueryResult<T> = { readonly ok: true; readonly data: T } | { readonly ok: false };
 
-/** 부품 검색. 카테고리 안에서만 찾는다. */
+/**
+ * 부품 검색. 카테고리 안에서만 찾고, **이미 고른 부품과 아는데 어긋나는 것을 뺀다**
+ * (ADR-0016).
+ *
+ * 값이 비어 있는 부품은 빼지 않는다. 숨기면 사용자가 그 부품을 찾을 방법이 없다.
+ */
 export async function searchParts(
   slot: SlotName,
   query: string,
-): Promise<QueryResult<PartOption[]>> {
+  constraints: readonly Constraint[] = [],
+): Promise<QueryResult<CandidatePage>> {
   const meta = SLOT_META.find((m) => m.slot === slot);
-  if (!meta) return { ok: true, data: [] };
-  const q = query.trim();
-
-  const where =
-    q === ''
-      ? eq(parts.category, meta.category)
-      : and(eq(parts.category, meta.category), ilike(parts.modelName, `%${q}%`));
+  if (!meta) return { ok: true, data: { items: [], hidden: 0 } };
 
   try {
-    const data = await getDb()
-      .select({
-        id: parts.id,
-        name: parts.modelName,
-        brand: parts.brand,
-        releaseYear: parts.releaseYear,
-      })
-      .from(parts)
-      .where(where)
-      // 최신 부품 먼저. 국내 유통 판정(#5) 전에는 이게 가장 쓸모 있는 순서다.
-      .orderBy(sql`${parts.releaseYear} desc nulls last`, parts.modelName)
-      .limit(30);
-    return { ok: true, data };
+    const page = await searchCandidates(getDb(), {
+      category: meta.category,
+      query,
+      constraints: sanitize(constraints),
+    });
+    return { ok: true, data: page };
   } catch {
     return { ok: false };
   }

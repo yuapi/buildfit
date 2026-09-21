@@ -61,6 +61,9 @@ export {
   blockingSlots,
 } from './applicability';
 
+export type { Constraint } from './picker';
+export { pickerConstraints } from './picker';
+
 export type { Rule } from './rules';
 export {
   rule1,

@@ -10,7 +10,7 @@ import {
   useSyncExternalStore,
   useTransition,
 } from "react";
-import type { Build, RuleResult } from "@buildfit/compat";
+import type { Build, Constraint, RuleResult } from "@buildfit/compat";
 import {
   RULE_SUMMARY,
   SLOT_LABELS,
@@ -18,6 +18,7 @@ import {
   blockingSlots,
   estimatePower,
   evaluate,
+  pickerConstraints,
 } from "@buildfit/compat";
 import { decodeBuildCode, encodeBuildCode } from "@/lib/build-code";
 import { FitBar } from "@/components/FitBar";
@@ -202,6 +203,7 @@ export function BuildTool({ initial }: { initial?: Build }) {
                 label={meta.label}
                 selectedName={nameOf(build, meta.slot)}
                 detailHref={detailHref(build, meta.slot)}
+                constraints={pickerConstraints(build, meta.slot)}
                 open={openSlot === meta.slot}
                 onToggle={() =>
                   setOpenSlot(openSlot === meta.slot ? null : meta.slot)
@@ -353,6 +355,7 @@ function SlotRow({
   label,
   selectedName,
   detailHref,
+  constraints,
   open,
   onToggle,
   onChoose,
@@ -363,6 +366,7 @@ function SlotRow({
   label: string;
   selectedName: string | null;
   detailHref: string | null;
+  constraints: readonly Constraint[];
   open: boolean;
   onToggle: () => void;
   onChoose: (id: string) => void;
@@ -423,61 +427,113 @@ function SlotRow({
           )}
         </span>
       </div>
-      {open && <PartPicker slot={slot} onChoose={onChoose} />}
+      {open && (
+        <PartPicker slot={slot} constraints={constraints} onChoose={onChoose} />
+      )}
     </li>
   );
 }
 
 function PartPicker({
   slot,
+  constraints,
   onChoose,
 }: {
   slot: SlotName;
+  /** 이미 고른 부품에서 나온 제약. 비어 있으면 전체를 보여준다 (ADR-0016) */
+  constraints: readonly Constraint[];
   onChoose: (id: string) => void;
 }) {
   const [query, setQuery] = useState("");
   const [options, setOptions] = useState<PartOption[]>([]);
+  const [hidden, setHidden] = useState(0);
+  const [narrow, setNarrow] = useState(true);
   const [failed, setFailed] = useState(false);
   const [loading, startSearch] = useTransition();
 
+  // 제약을 끄면 빈 배열을 보낸다. 서버가 같은 함수로 처리한다.
+  const active = narrow ? constraints : [];
+
+  /**
+   * effect 의존성으로 쓸 안정 키.
+   *
+   * `pickerConstraints`는 호출마다 새 배열을 만든다. 배열을 그대로 의존성에
+   * 넣으면 부모가 리렌더될 때마다 effect가 돌아 **검색이 무한히 반복된다.**
+   * 내용이 같으면 같은 문자열이 되게 해서 그 고리를 끊는다.
+   */
+  const key = JSON.stringify(constraints);
+
   const run = useCallback(
-    (q: string) => {
-      setQuery(q);
+    (q: string, cons: readonly Constraint[]) => {
       startSearch(async () => {
-        const result = await searchParts(slot, q);
+        const result = await searchParts(slot, q, cons);
         setFailed(!result.ok);
-        if (result.ok) setOptions(result.data);
+        if (result.ok) {
+          setOptions([...result.data.items]);
+          setHidden(result.data.hidden);
+        }
       });
     },
     [slot],
   );
 
-  // 열릴 때 한 번 채운다.
+  // 열릴 때, 그리고 제약을 켜고 끌 때 다시 채운다.
   // 렌더 중에 상태를 갱신하면 무한 루프가 난다 — 반드시 effect에서 한다.
   useEffect(() => {
     let cancelled = false;
     startSearch(async () => {
-      const result = await searchParts(slot, "");
+      const result = await searchParts(slot, query, active);
       if (cancelled) return;
       setFailed(!result.ok);
-      if (result.ok) setOptions(result.data);
+      if (result.ok) {
+        setOptions([...result.data.items]);
+        setHidden(result.data.hidden);
+      }
     });
     return () => {
       cancelled = true;
     };
-  }, [slot]);
+    // query는 입력 때마다 run()이 직접 처리한다. 여기서 보면 글자마다 두 번 돈다.
+    // constraints는 내용이 같으면 같은 key가 되므로 배열 대신 key를 본다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slot, narrow, key]);
+
+  const reasons = [...new Set(constraints.map((c) => c.because))];
 
   return (
     <div className="border-t border-border bg-surface-2 px-3 py-3 sm:px-4">
       <input
         type="search"
         value={query}
-        onChange={(e) => run(e.target.value)}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          run(e.target.value, active);
+        }}
         placeholder="모델명으로 검색"
         aria-label="부품 검색"
         className="field"
         autoFocus
       />
+
+      {constraints.length > 0 && (
+        <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-xs">
+          <label className="flex items-center gap-1.5 text-fg-muted">
+            <input
+              type="checkbox"
+              checked={narrow}
+              onChange={(e) => setNarrow(e.target.checked)}
+            />
+            맞는 것만 보기
+          </label>
+          {/* 몇 개를 왜 숨겼는지 말하지 않으면 목록이 짧은 이유를 알 수 없다 */}
+          {narrow && hidden > 0 && (
+            <span className="text-fg-subtle">
+              <span className="tnum">{hidden}</span>개 숨김 — {reasons.join(', ')}
+            </span>
+          )}
+        </div>
+      )}
+
       <ul className="mt-2 max-h-64 space-y-0.5 overflow-y-auto text-sm">
         {loading && <li className="px-1 py-2 text-fg-subtle">찾는 중…</li>}
         {/* "결과 없음"과 "불러오지 못함"은 사용자가 할 행동이 다르다. */}
@@ -487,7 +543,10 @@ function PartPicker({
           </li>
         )}
         {!loading && !failed && options.length === 0 && (
-          <li className="px-1 py-2 text-fg-subtle">결과가 없습니다.</li>
+          <li className="px-1 py-2 text-fg-subtle">
+            결과가 없습니다.
+            {narrow && hidden > 0 && ' 「맞는 것만 보기」를 끄면 더 나옵니다.'}
+          </li>
         )}
         {!loading &&
           !failed &&
