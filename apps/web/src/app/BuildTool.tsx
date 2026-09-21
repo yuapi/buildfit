@@ -25,6 +25,7 @@ import { decodeBuildCode, encodeBuildCode } from "@/lib/build-code";
 import { FitBar } from "@/components/FitBar";
 import { PartIcon } from "@/components/Icons";
 import { SLOT_META, type SlotName } from "@/lib/categories";
+import { NO_CURSOR, nextCursor } from "@/lib/list-cursor";
 import { listWithJosa } from "@/lib/korean";
 import {
   clearDraft,
@@ -555,7 +556,12 @@ function SlotRow({
         </span>
       </div>
       {open && (
-        <PartPicker slot={slot} constraints={constraints} onChoose={onChoose} />
+        <PartPicker
+          slot={slot}
+          constraints={constraints}
+          onChoose={onChoose}
+          onClose={onToggle}
+        />
       )}
     </li>
   );
@@ -565,11 +571,14 @@ function PartPicker({
   slot,
   constraints,
   onChoose,
+  onClose,
 }: {
   slot: SlotName;
   /** 이미 고른 부품에서 나온 제약. 비어 있으면 전체를 보여준다 (ADR-0016) */
   constraints: readonly Constraint[];
   onChoose: (id: string) => void;
+  /** Esc로 닫는다. 열 때 쓴 버튼으로 손이 돌아가지 않게 */
+  onClose: () => void;
 }) {
   const [query, setQuery] = useState("");
   const [options, setOptions] = useState<PartOption[]>([]);
@@ -585,6 +594,15 @@ function PartPicker({
   const [narrow, setNarrow] = useState(true);
   const [failed, setFailed] = useState(false);
   const [loading, startSearch] = useTransition();
+  /**
+   * 방향키로 짚고 있는 항목. 짚은 것이 없으면 -1.
+   *
+   * 초점은 **입력칸에 그대로 둔다** (`aria-activedescendant` 패턴). 항목으로
+   * 초점을 옮기면 계속 타이핑할 수 없고, 글자마다 목록이 바뀌는 이 화면에서는
+   * 초점이 사라진 항목에 남는 일이 생긴다.
+   */
+  const [cursor, setCursor] = useState(NO_CURSOR);
+  const listRef = useRef<HTMLUListElement>(null);
 
   // 제약을 끄면 빈 배열을 보낸다. 서버가 같은 함수로 처리한다.
   const active = narrow ? constraints : [];
@@ -617,6 +635,8 @@ function PartPicker({
       setFailed(!result.ok);
       if (result.ok) {
         setOptions([...result.data.items]);
+        // 목록이 바뀌면 짚은 자리를 놓는다. 그대로 두면 다른 부품을 고르게 된다.
+        setCursor(NO_CURSOR);
         setHidden(result.data.hidden);
         setMatched(result.data.matched);
         setTranslated(result.data.translated);
@@ -657,6 +677,43 @@ function PartPicker({
 
   const reasons = [...new Set(constraints.map((c) => c.because))];
 
+  const listId = `picker-list-${slot}`;
+  const optionId = (i: number) => `picker-opt-${slot}-${i}`;
+
+  /**
+   * 방향키로 목록을 훑고 Enter로 고른다.
+   *
+   * 검색창에 치고 나서 마우스로 옮겨 잡아야 했다. 이 화면은 한 번에 일곱 번
+   * 쓰는 곳이라 그 왕복이 계속 생긴다.
+   *
+   * **초점은 입력칸에 그대로 둔다.** 항목으로 옮기면 계속 타이핑할 수 없다.
+   * 대신 `aria-activedescendant`로 짚은 항목을 알린다 (WAI-ARIA combobox).
+   */
+  const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      onClose();
+      return;
+    }
+    if (options.length === 0) return;
+
+    if (e.key === "Enter" && cursor >= 0) {
+      e.preventDefault();
+      const picked = options[cursor];
+      if (picked) onChoose(picked.id);
+      return;
+    }
+
+    const next = nextCursor(e.key, cursor, options.length);
+    // 우리 키가 아니면 손대지 않는다. preventDefault를 하면 브라우저의
+    // 기본 동작(글자 이동 등)이 사라진다.
+    if (next === null) return;
+    e.preventDefault();
+    setCursor(next);
+    // 짚은 것이 화면 밖이면 스크롤한다. 안 하면 방향키가 먹지 않는 것처럼 보인다.
+    listRef.current?.querySelector(`#${optionId(next)}`)?.scrollIntoView({ block: "nearest" });
+  };
+
   return (
     <div className="border-t border-border bg-surface-2 px-3 py-3 sm:px-4">
       <input
@@ -669,8 +726,14 @@ function PartPicker({
           setLimit(PAGE);
           run(e.target.value, active, PAGE);
         }}
+        onKeyDown={onKeyDown}
         placeholder="모델명·한글 이름으로 검색 (라이젠, 지포스 5080)"
         aria-label="부품 검색"
+        role="combobox"
+        aria-expanded
+        aria-controls={listId}
+        aria-autocomplete="list"
+        aria-activedescendant={cursor >= 0 ? optionId(cursor) : undefined}
         className="field"
         autoFocus
       />
@@ -728,52 +791,72 @@ function PartPicker({
         </p>
       )}
 
-      <ul className="mt-2 max-h-64 space-y-0.5 overflow-y-auto text-sm">
-        {loading && <li className="px-1 py-2 text-fg-subtle">찾는 중…</li>}
+      {/*
+        * 상태 문장은 목록 **밖**에 둔다. `role="listbox"` 안에는 option만
+        * 들어가야 한다 — "찾는 중…"이 항목처럼 읽히면 몇 개가 있는지 헷갈린다.
+        */}
+      <div aria-live="polite" className="empty:hidden">
+        {loading && <p className="mt-2 px-1 text-sm text-fg-subtle">찾는 중…</p>}
         {/* "결과 없음"과 "불러오지 못함"은 사용자가 할 행동이 다르다. */}
         {!loading && failed && (
-          <li className="px-1 py-2 text-warn">
+          <p className="mt-2 px-1 text-sm text-warn">
             부품 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.
-          </li>
+          </p>
         )}
         {!loading && !failed && options.length === 0 && (
-          <li className="px-1 py-2 text-fg-subtle">
+          <p className="mt-2 px-1 text-sm text-fg-subtle">
             결과가 없습니다.
             {narrow && hidden > 0 && ' 「맞는 것만 보기」를 끄면 더 나옵니다.'}
-          </li>
+          </p>
         )}
+      </div>
+
+      <ul
+        ref={listRef}
+        id={listId}
+        role="listbox"
+        aria-label="검색 결과"
+        className="mt-2 max-h-64 space-y-0.5 overflow-y-auto text-sm empty:hidden"
+      >
         {!loading &&
           !failed &&
-          options.map((o) => (
-            <li key={o.id}>
-              <button
-                type="button"
-                onClick={() => onChoose(o.id)}
-                className="w-full rounded-(--radius-control) px-2 py-1.5 text-left hover:bg-surface"
-              >
-                <span className="block truncate">{o.name}</span>
-                {(o.brand || o.releaseYear) && (
-                  <span className="mt-0.5 block text-xs text-fg-subtle">
-                    {o.brand ?? ""}
-                    {o.releaseYear ? ` · ${o.releaseYear}년` : ""}
-                  </span>
-                )}
-              </button>
+          options.map((o, i) => (
+            /*
+             * 항목은 `role="option"`이라 초점을 받지 않는다. 그래서 button이
+             * 아니라 li가 직접 클릭을 받는다 — button을 option으로 만들면
+             * 스크린리더가 두 가지로 읽는다.
+             */
+            <li
+              key={o.id}
+              id={optionId(i)}
+              role="option"
+              aria-selected={cursor === i}
+              onClick={() => onChoose(o.id)}
+              className={`cursor-pointer rounded-(--radius-control) px-2 py-1.5 hover:bg-surface ${
+                cursor === i ? "option-active" : ""
+              }`}
+            >
+              <span className="block truncate">{o.name}</span>
+              {(o.brand || o.releaseYear) && (
+                <span className="mt-0.5 block text-xs text-fg-subtle">
+                  {o.brand ?? ""}
+                  {o.releaseYear ? ` · ${o.releaseYear}년` : ""}
+                </span>
+              )}
             </li>
           ))}
-        {/* 목록 끝에 둔다. 여기까지 내려온 사람이 다음 것을 찾고 있다 */}
-        {!loading && !failed && matched > options.length && (
-          <li className="pt-1">
-            <button
-              type="button"
-              onClick={() => setLimit((n) => n + PAGE)}
-              className="btn btn-secondary w-full py-1.5 text-xs"
-            >
-              더 보기
-            </button>
-          </li>
-        )}
       </ul>
+
+      {/* 목록 뒤에 둔다. 여기까지 내려온 사람이 다음 것을 찾고 있다 */}
+      {!loading && !failed && matched > options.length && (
+        <button
+          type="button"
+          onClick={() => setLimit((n) => n + PAGE)}
+          className="btn btn-secondary mt-1.5 w-full py-1.5 text-xs"
+        >
+          더 보기
+        </button>
+      )}
 
       {/* 상한에 닿으면 왜 더 안 나오는지 말한다. 말없이 멈추면 고장으로 보인다 */}
       {!loading && !failed && matched > options.length && options.length >= MAX_LIMIT && (
