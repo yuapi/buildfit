@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { partBySlug, type PartSpecRow } from '@buildfit/db/part';
+import { partBySlug } from '@buildfit/db/part';
 import { Container } from '@/components/SiteShell';
+import { startBuildHref } from '@/lib/build-links';
+import { alignSpecs } from '@/lib/compare';
 import { categoryLabel } from '@/lib/categories';
 import { getDb } from '@/lib/db';
 import { specLabel, specValueText } from '@/lib/spec-labels';
@@ -21,20 +23,6 @@ export async function generateMetadata({ params }: { params: Promise<{ a: string
   } catch {
     return { title: 'buildfit' };
   }
-}
-
-/** 두 부품의 스펙을 한 줄씩 맞춘다. 한쪽에만 있는 항목도 빠뜨리지 않는다. */
-function alignSpecs(left: readonly PartSpecRow[], right: readonly PartSpecRow[]) {
-  const byKeyL = new Map(left.map((s) => [s.key, s]));
-  const byKeyR = new Map(right.map((s) => [s.key, s]));
-  const keys = [...new Set([...byKeyL.keys(), ...byKeyR.keys()])].sort();
-  return keys.map((key) => {
-    const l = byKeyL.get(key);
-    const r = byKeyR.get(key);
-    const lText = l ? specValueText(l.value, l.unit) : null;
-    const rText = r ? specValueText(r.value, r.unit) : null;
-    return { key, l, r, lText, rText, differs: lText !== rText };
-  });
 }
 
 export default async function ComparePage({
@@ -64,9 +52,11 @@ export default async function ComparePage({
   if (left.category !== right.category) notFound();
   if (left.slug === right.slug) notFound();
 
-  const rows = alignSpecs(left.specs, right.specs);
+  const rows = alignSpecs(left.specs, right.specs, (r) => specValueText(r.value, r.unit));
   const differing = rows.filter((r) => r.differs).length;
   const catPath = left.category.toLowerCase();
+  const leftBuild = startBuildHref(left.category, left.id);
+  const rightBuild = startBuildHref(right.category, right.id);
 
   return (
     <Container className="py-10 sm:py-14">
@@ -119,6 +109,8 @@ export default async function ComparePage({
               >
                 <th scope="row" className="px-4 py-2.5 text-left align-top font-normal text-fg-subtle">
                   {specLabel(row.key)}
+                  {/* 굵은 글씨만으로 차이를 표시하면 훑을 때 놓친다. 글자로 적는다 */}
+                  {row.differs && <span className="chip mt-1 block w-fit">다름</span>}
                 </th>
                 <td className={`px-3 py-2.5 align-top break-words ${row.differs ? 'font-medium text-fg' : ''}`}>
                   {/* 한쪽에만 있는 항목은 "없음"이 아니라 "정보 없음"이다.
@@ -132,6 +124,23 @@ export default async function ComparePage({
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/*
+        * 비교만 하고 떠나게 두지 않는다. 이 도구가 하는 일은 판정이고,
+        * 비교는 그 앞 단계다. 부품 상세 페이지와 같은 길을 여기도 둔다.
+        */}
+      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {leftBuild && (
+          <Link href={leftBuild} className="btn btn-secondary justify-start">
+            <span className="truncate">{left.modelName}로 견적 시작</span>
+          </Link>
+        )}
+        {rightBuild && (
+          <Link href={rightBuild} className="btn btn-secondary justify-start">
+            <span className="truncate">{right.modelName}로 견적 시작</span>
+          </Link>
+        )}
       </div>
     </Container>
   );
