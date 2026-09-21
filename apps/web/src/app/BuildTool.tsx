@@ -6,6 +6,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
   useTransition,
@@ -463,38 +464,56 @@ function PartPicker({
    */
   const key = JSON.stringify(constraints);
 
-  const run = useCallback(
-    (q: string, cons: readonly Constraint[]) => {
-      startSearch(async () => {
-        const result = await searchParts(slot, q, cons);
-        setFailed(!result.ok);
-        if (result.ok) {
-          setOptions([...result.data.items]);
-          setHidden(result.data.hidden);
-        }
-      });
-    },
-    [slot],
-  );
+  /**
+   * 요청 번호. **두 경로가 같은 번호를 쓴다.**
+   *
+   * 글자를 칠 때마다 요청이 하나씩 나가는데 순서대로 돌아오지 않는다.
+   * 게다가 짧은 접두사일수록 느리다 — 숨긴 건수를 세느라 이름이 걸린 집합
+   * 전체를 훑기 때문이다 (실측: q='' 13ms vs q='ryzen 7 9800' 2.3ms).
+   * 그래서 "ryzen 7 9800"을 빨리 치면 'r'의 결과가 나중에 도착해 화면을 덮는다.
+   *
+   * 토글을 끄는 effect와 타이핑 run()도 서로를 덮는다. 번호를 공유해야
+   * **마지막에 보낸 요청이 이긴다.**
+   */
+  const seq = useRef(0);
 
-  // 열릴 때, 그리고 제약을 켜고 끌 때 다시 채운다.
-  // 렌더 중에 상태를 갱신하면 무한 루프가 난다 — 반드시 effect에서 한다.
-  useEffect(() => {
-    let cancelled = false;
-    startSearch(async () => {
-      const result = await searchParts(slot, query, active);
-      if (cancelled) return;
+  const apply = useCallback(
+    (my: number, result: Awaited<ReturnType<typeof searchParts>>) => {
+      if (my !== seq.current) return;
       setFailed(!result.ok);
       if (result.ok) {
         setOptions([...result.data.items]);
         setHidden(result.data.hidden);
       }
+    },
+    [],
+  );
+
+  const run = useCallback(
+    (q: string, cons: readonly Constraint[]) => {
+      const my = ++seq.current;
+      // 새 요청을 보내는 순간 옛 건수를 지운다. 안 그러면 새 이유 옆에
+      // 옛 제약의 숫자가 잠깐 붙는다.
+      setHidden(0);
+      startSearch(async () => {
+        apply(my, await searchParts(slot, q, cons));
+      });
+    },
+    [slot, apply],
+  );
+
+  // 열릴 때, 그리고 제약을 켜고 끌 때 다시 채운다.
+  // 렌더 중에 상태를 갱신하면 무한 루프가 난다 — 반드시 effect에서 한다.
+  useEffect(() => {
+    const my = ++seq.current;
+    startSearch(async () => {
+      // effect 본문에서 setState하면 연쇄 렌더가 난다. 요청 콜백 안에서 지운다.
+      setHidden(0);
+      apply(my, await searchParts(slot, query, active));
     });
-    return () => {
-      cancelled = true;
-    };
     // query는 입력 때마다 run()이 직접 처리한다. 여기서 보면 글자마다 두 번 돈다.
     // constraints는 내용이 같으면 같은 key가 되므로 배열 대신 key를 본다.
+    // 취소는 seq가 맡는다 — effect 안의 플래그로는 run()이 보낸 요청을 못 막는다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slot, narrow, key]);
 

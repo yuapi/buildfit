@@ -15,6 +15,10 @@
  * 규칙 엔진과 같은 사실을 쓰되 코드는 따로 둔다. 규칙은 `Build`를 받고
  * 이쪽은 아직 고르지 않은 후보를 상대하므로 입력이 다르다. 대신 **어느 규칙에서
  * 온 제약인지**를 `ruleId`로 달아 둘이 어긋나면 테스트가 잡게 한다.
+ *
+ * **오류를 내는 규칙에서만 제약을 유도한다.** 경고까지만 내는 규칙(9·12)으로
+ * 목록을 빼면, 규칙이 "확인이 필요하다"고 말한 것을 화면이 "없다"로 바꾼다.
+ * 규칙 4도 오류 경계(한계 초과)만 쓰고 빠듯함 경고 구간은 쓰지 않는다.
  */
 
 import type { PartSlot } from './applicability';
@@ -48,7 +52,7 @@ function filled<T>(v: T | null | undefined): v is T {
  */
 export function pickerConstraints(build: Build, slot: PartSlot): Constraint[] {
   const out: Constraint[] = [];
-  const { cpu, motherboard, gpu, pcCase, psu, cooler } = build;
+  const { cpu, motherboard, gpu, pcCase, psu } = build;
 
   // --- 규칙 1: 소켓 ---
   if (slot === 'cpu' && motherboard && filled(motherboard.socket)) {
@@ -142,26 +146,18 @@ export function pickerConstraints(build: Build, slot: PartSlot): Constraint[] {
     });
   }
 
-  // --- 규칙 9: 쿨러 높이 ---
-  // 수랭은 높이가 관건이 아니다 (규칙 9.2)
-  if (slot === 'cooler' && pcCase && filled(pcCase.maxCpuCoolerHeightMm)) {
-    out.push({
-      kind: 'atMost',
-      key: 'height_mm',
-      value: pcCase.maxCpuCoolerHeightMm,
-      ruleId: 9,
-      because: `${pcCase.name}의 쿨러 한계 ${pcCase.maxCpuCoolerHeightMm}mm`,
-    });
-  }
-  if (slot === 'pcCase' && cooler && cooler.waterCooled !== true && filled(cooler.heightMm)) {
-    out.push({
-      kind: 'atLeast',
-      key: 'max_cpu_cooler_height_mm',
-      value: cooler.heightMm,
-      ruleId: 9,
-      because: `${cooler.name} 높이 ${cooler.heightMm}mm`,
-    });
-  }
+  // --- 규칙 9(쿨러 높이)에서는 제약을 만들지 않는다 ---
+  //
+  // 규칙 9는 **경고까지만** 낸다. 오류가 없다. 근거는 그 규칙 자신이 적어뒀다 —
+  // "제조사의 최대 높이는 보수성이 제각각이고, 팬 위치를 옮겨 들어가는 사례가
+  // 실재한다. 오류로 단정하면 쓸 수 있는 조합을 막는다" (docs/compat-rules.md §9.1).
+  //
+  // 목록에서 빼는 것은 단정보다 강하다. 사용자가 경고를 볼 기회조차 없어진다.
+  // 실제로 NZXT H1처럼 한계가 45mm인 케이스에서 수랭 쿨러 대부분이 사라졌다 —
+  // 저장된 height_mm가 라디에이터 높이라 그렇다. SFF에서 AIO를 찾는 사람이
+  // 바로 그 경우다.
+  //
+  // **제약은 오류를 내는 규칙에서만 유도한다.** 테스트가 이 선을 고정한다.
 
   return out;
 }

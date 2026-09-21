@@ -22,6 +22,8 @@ export interface CandidatePage {
  * 검색이 죽는 것보다 낫다.
  */
 function sanitize(raw: readonly Constraint[]): Constraint[] {
+  // 기본값은 undefined만 막는다. null이 오면 slice가 던져 검색이 통째로 죽는다.
+  if (!Array.isArray(raw)) return [];
   const out: Constraint[] = [];
   for (const c of raw.slice(0, 8)) {
     if (typeof c?.key !== 'string' || c.key.length > 64) continue;
@@ -30,7 +32,9 @@ function sanitize(raw: readonly Constraint[]): Constraint[] {
       if (typeof c.value === 'string' && c.value.length <= 128) out.push(c);
     } else if (c.kind === 'oneOf') {
       const values = Array.isArray(c.values)
-        ? c.values.filter((v): v is string => typeof v === 'string' && v.length <= 128).slice(0, 32)
+        ? (c.values as unknown[])
+            .filter((v): v is string => typeof v === 'string' && v.length <= 128)
+            .slice(0, 32)
         : [];
       if (values.length > 0) out.push({ ...c, values });
     } else if (c.kind === 'atMost' || c.kind === 'atLeast') {

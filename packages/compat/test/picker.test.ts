@@ -79,14 +79,44 @@ describe('★ 값이 없으면 좁히지 않는다', () => {
     );
   });
 
-  it('수랭 쿨러는 케이스 높이를 좁히지 않는다 (§9.2)', () => {
-    const aio = f.withBuild({
-      pcCase: null,
-      cooler: { ...f.cooler, waterCooled: true, heightMm: 60 },
-    });
+  it('쿨러는 어느 방향으로도 좁히지 않는다 — 규칙 9는 경고까지만 낸다', () => {
+    // 목록에서 빼는 것은 "오류로 단정"보다 강하다. 규칙 9는 오류를 내지 않는다.
+    // 실제로 한계 45mm 케이스에서 수랭 쿨러 대부분이 사라졌었다 —
+    // 저장된 height_mm가 라디에이터 높이라 그렇다 (ADR-0016).
+    expect(pickerConstraints(f.goodBuild, 'cooler')).toEqual([]);
     expect(
-      pickerConstraints(aio, 'pcCase').some((c) => c.key === 'max_cpu_cooler_height_mm'),
+      pickerConstraints(f.withBuild({ pcCase: null }), 'pcCase').some(
+        (c) => c.key === 'max_cpu_cooler_height_mm',
+      ),
     ).toBe(false);
+  });
+});
+
+describe('★ 오류를 내는 규칙에서만 제약을 유도한다', () => {
+  /**
+   * 경고까지만 내는 규칙으로 목록을 빼면, 규칙이 "확인이 필요하다"고 말한 것을
+   * 화면이 "없다"로 바꾼다. 사용자는 경고를 볼 기회조차 없어진다.
+   *
+   * - 규칙 9(쿨러 높이): 경고만. 오류 경계가 없다 (§9.1)
+   * - 규칙 12(BIOS): 경고·정보만
+   * - 규칙 4: 오류 경계(한계 초과)만 쓰고 빠듯함 경고 구간은 쓰지 않는다 (§4)
+   */
+  const ERROR_CAPABLE = new Set([1, 2, 3, 4, 5, 6, 7, 8]);
+
+  it('제약의 ruleId가 전부 오류를 낼 수 있는 규칙이다', () => {
+    const slots = ['cpu', 'motherboard', 'ram', 'gpu', 'pcCase', 'psu', 'cooler'] as const;
+    const ids = new Set(slots.flatMap((s) => pickerConstraints(f.goodBuild, s)).map((c) => c.ruleId));
+    expect(ids.size).toBeGreaterThan(0);
+    for (const id of ids) {
+      expect(ERROR_CAPABLE.has(id), `규칙 ${id}은 경고까지만 내는데 목록을 빼고 있다`).toBe(true);
+    }
+  });
+
+  it('규칙 4는 오류 경계만 쓴다 — 빠듯함(95%)으로 빼지 않는다', () => {
+    const c = pickerConstraints(f.withBuild({ gpu: null }), 'gpu');
+    const len = c.find((x) => x.key === 'length_mm');
+    // 케이스 한계 420mm 그대로. 420×0.95 = 399가 아니다.
+    expect(len).toMatchObject({ kind: 'atMost', value: 420 });
   });
 });
 

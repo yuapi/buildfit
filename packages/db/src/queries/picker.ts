@@ -29,18 +29,25 @@ export interface PickerPage {
 /**
  * 제약 하나를 "어긋나는 스펙이 존재하는가"로 옮긴다.
  *
- * 숫자 비교 전에 `jsonb_typeof`로 막는다. OpenDB에 문자열로 들어온 값이 섞이면
- * 캐스팅이 던지고 검색 전체가 죽는다.
+ * **타입이 기대와 다르거나 비어 있으면 어긋남으로 세지 않는다.**
+ * `'null'::jsonb #>> '{}'`는 SQL NULL이고 `NULL is distinct from 'AM5'`는 참이라,
+ * 막지 않으면 값이 없는 행이 "어긋남"으로 잡혀 부품이 사라진다. ADR-0016이
+ * 세운 선("아는데 어긋나는 것만 뺀다")이 바로 여기서 깨진다.
+ *
+ * 지금 데이터에는 그런 행이 없지만(196,854행 전수 확인) 스키마가 허용한다.
+ * 이 SQL이 유일한 강제 지점이다.
  */
 function conflicts(c: Constraint): SQL {
   const key = sql`${partSpecs.key} = ${c.key}`;
   const text = sql`${partSpecs.value} #>> '{}'`;
   const num = sql`(${partSpecs.value} #>> '{}')::numeric`;
   const isNum = sql`jsonb_typeof(${partSpecs.value}) = 'number'`;
+  // 빈 문자열은 값이 아니다. build.ts의 str()도 ''를 결측으로 본다.
+  const isText = sql`jsonb_typeof(${partSpecs.value}) = 'string' and btrim(${text}) <> ''`;
 
   switch (c.kind) {
     case 'equals':
-      return sql`${key} and ${text} is distinct from ${c.value}`;
+      return sql`${key} and ${isText} and ${text} is distinct from ${c.value}`;
     case 'oneOf': {
       // 배열을 파라미터 하나로 넘기면 PG가 배열 리터럴로 읽지 못한다.
       // NULL이면 NOT IN이 NULL이라 이 행은 "어긋남"에 걸리지 않는다 — 남기는 쪽이라 맞다.
@@ -48,11 +55,15 @@ function conflicts(c: Constraint): SQL {
         c.values.map((v) => sql`${v}`),
         sql`, `,
       );
-      return sql`${key} and ${text} not in (${list})`;
+      return sql`${key} and ${isText} and ${text} not in (${list})`;
     }
     case 'contains':
       // 배열 스펙. jsonb ? 는 배열 원소를 본다. 배열이 아니면 건드리지 않는다.
-      return sql`${key} and jsonb_typeof(${partSpecs.value}) = 'array' and not (${partSpecs.value} ? ${c.value})`;
+      // 빈 배열은 아무것도 말하지 않는다 — picker.ts의 filled()도 그렇게 본다.
+      return sql`${key}
+        and jsonb_typeof(${partSpecs.value}) = 'array'
+        and jsonb_array_length(${partSpecs.value}) > 0
+        and not (${partSpecs.value} ? ${c.value})`;
     case 'atMost':
       return sql`${key} and ${isNum} and ${num} > ${c.value}`;
     case 'atLeast':
@@ -82,13 +93,17 @@ export async function searchCandidates(
     limit?: number;
   },
 ): Promise<PickerPage> {
-  const q = input.query.trim();
+  // 클라이언트가 보낸 값이다. 문자열이 아니면 빈 검색으로 떨어뜨린다.
+  const q = typeof input.query === 'string' ? input.query.trim() : '';
   const base = q === '' ? [eq(parts.category, input.category)] : [
     eq(parts.category, input.category),
     ilike(parts.modelName, `%${q}%`),
   ];
 
-  const narrowed = [...base, ...input.constraints.map(constraintWhere)];
+  // 제약 조건을 따로 들고 있는다. `narrowed.slice(base.length)`로 되찾으면
+  // 나중에 base에 조건을 하나 더 넣는 순간 hidden이 조용히 틀린 값을 센다.
+  const constraintSql = input.constraints.map(constraintWhere);
+  const narrowed = [...base, ...constraintSql];
 
   const [items, counts] = await Promise.all([
     db
@@ -106,7 +121,7 @@ export async function searchCandidates(
     db
       .select({
         total: sql<number>`count(*)::int`,
-        kept: sql<number>`count(*) filter (where ${and(...narrowed.slice(base.length)) ?? sql`true`})::int`,
+        kept: sql<number>`count(*) filter (where ${and(...constraintSql) ?? sql`true`})::int`,
       })
       .from(parts)
       .where(and(...base)),
