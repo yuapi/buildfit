@@ -61,7 +61,12 @@ export interface QuoteLine {
   readonly label: QuoteLabel | null;
   /** 전부 만족해야 한다 (AND) */
   readonly terms: readonly Term[];
-  /** 뜻을 몰라 뺀 한글 조각 */
+  /**
+   * 뺀 조각.
+   *
+   * 사전에 없는 한글, 그리고 **붙일 자리가 없어 버린 짧은 영문**이다.
+   * 조용히 버리면 왜 그 줄이 그렇게 나왔는지 설명할 수 없다.
+   */
   readonly ignored: readonly string[];
   /**
    * 부품 줄로 볼 것인가.
@@ -96,17 +101,35 @@ function chunks(line: string): string[] {
  * 이름표는 찾는 말이 아니라 **어디서 찾을지**를 말한다.
  */
 function splitLabel(line: string): { label: QuoteLabel | null; rest: string } {
-  // 「CPU:」 「[CPU]」 「CPU -」 「CPU |」 — **구분자가 있어야** 이름표로 본다.
-  // 구분자 없이 앞 낱말만 보면 「Corsair ...」의 첫 낱말도 이름표가 된다.
+  // 「CPU:」 「[CPU]」 「CPU - …」 「CPU |」 「CPU-…」 — **구분자가 있어야** 이름표로
+  // 본다. 구분자 없이 앞 낱말만 보면 「Corsair ...」의 첫 낱말도 이름표가 된다.
   // 대괄호는 그 자체가 구분자다.
-  const m =
-    /^\s*\[\s*([0-9A-Za-z가-힣/ ]{1,12}?)\s*\]\s*(.*)$/.exec(line) ??
-    /^\s*([0-9A-Za-z가-힣/]{1,12})\s*[:\-|\t]\s*(.*)$/.exec(line);
+  const bracket = /^\s*\[\s*([0-9A-Za-z가-힣/ ]{1,12}?)\s*\]\s*(.*)$/.exec(line);
+  // 하이픈 앞의 공백을 따로 잡는다. 붙여 쓴 것과 띄어 쓴 것의 뜻이 다르다.
+  const m = bracket ?? /^\s*([0-9A-Za-z가-힣/]{1,12})(\s*)([:|\t-])\s*(.*)$/.exec(line);
   if (!m) return { label: null, rest: line };
 
   const head = (m[1] ?? '').toLowerCase().replace(/[\s/]/g, '');
+  const rest = (bracket ? m[2] : m[4]) ?? '';
+
+  /**
+   * 붙여 쓴 하이픈 뒤의 **두 글자 영문**은 이름표로 보지 않는다.
+   *
+   * 모델명·파트넘버 안에 하이픈이 흔하고, 짧을수록 겹친다. Samsung MPN
+   * `MB-ME32GA`를 이름표로 읽으면 메인보드 카테고리로 좁혀져 0건이 난다.
+   *
+   * 세 글자 이상(`CPU-`, `SSD-`, `VGA-`)이나 한글(`램-`)은 그대로 받는다 —
+   * 파트넘버에 한글이 없고, 세 글자 접두사가 겹칠 일은 드물다.
+   * 두 글자라도 `MB:`·`[MB]`·`MB - …`처럼 다른 구분자거나 띄어 썼으면 이름표다 —
+   * 파트넘버는 하이픈 앞에 공백을 두지 않는다.
+   */
+  const tightHyphen = !bracket && m[3] === '-' && m[2] === '';
+  if (tightHyphen && head.length <= 2 && !HANGUL.test(head)) {
+    return { label: null, rest: line };
+  }
+
   const found = QUOTE_LABELS.find((l) => l.words.includes(head));
-  return found ? { label: found, rest: m[2] ?? '' } : { label: null, rest: line };
+  return found ? { label: found, rest } : { label: null, rest: line };
 }
 
 export interface QuoteOptions {
@@ -134,9 +157,38 @@ export function readQuoteLine(line: string, opts: QuoteOptions = {}): QuoteLine 
    * 그런 이름은 없다. 두 번 붙이는 것도 막는다 (`라이젠7-5세대` → `ryzen75`).
    */
   let joinable = false;
+  /**
+   * 앞에 붙일 자리가 없어 들고 있는 짧은 조각.
+   *
+   * 「CPU: i5-12400」의 `i5`가 그렇다. 버리면 `12400`만 남고, 글자가 없어서
+   * **부품 줄이 아닌 것으로 판정돼 줄이 통째로 사라졌다.** 이름표가 CPU라고
+   * 말하고 있는데도 그랬다.
+   *
+   * 그래서 뒤로 붙인다 — `i5` + `12400` → `i512400`.
+   * `Intel Core i5-12400`은 구분자를 지우면 `intelcorei512400`이라 그대로 걸린다.
+   *
+   * **줄 맨 앞에서만 한다.** 뒤로 붙이는 것은 앞에 아무것도 없을 때의 유일한
+   * 방향이기 때문이다. 중간에서 하면 사이에 버린 말이 끼어 있는지 알 수 없다 —
+   * 「RTX 5080 게이밍 트리오 OC 16G」의 `OC`를 `16G`에 붙이면 `oc16g`가 되는데
+   * 그런 이름은 없다. (뒤에서 앞으로 붙이는 규칙도 같은 이유로 바로 앞만 본다.)
+   */
+  let pending: string | null = null;
+  /** 이 줄에서 조각을 하나라도 봤는가. 맨 앞인지 가리는 데 쓴다 */
+  let seen = false;
+
+  /** 들고 있던 조각을 버린다. 무엇을 버렸는지는 남긴다 */
+  const dropPending = (): void => {
+    if (pending !== null) ignored.push(pending);
+    pending = null;
+  };
 
   for (const chunk of chunks(rest)) {
+    const first = !seen;
+    seen = true;
+
     if (HANGUL.test(chunk)) {
+      // 한글에는 붙이지 않는다. `i5인텔`이라는 이름은 없다.
+      dropPending();
       const hits = lookupExact(chunk);
       if (hits.length === 0) {
         ignored.push(chunk);
@@ -150,8 +202,12 @@ export function readQuoteLine(line: string, opts: QuoteOptions = {}): QuoteLine 
 
     const s = squash(chunk);
     if (s === '') continue;
+
     if (s.length > SHORT) {
-      terms.push({ raw: chunk, any: [s] });
+      // 들고 있던 짧은 조각이 있으면 **앞에** 붙인다. 원문 순서 그대로다.
+      const merged = pending !== null ? pending + s : s;
+      pending = null;
+      terms.push({ raw: chunk, any: [merged] });
       joinable = true;
       continue;
     }
@@ -161,11 +217,27 @@ export function readQuoteLine(line: string, opts: QuoteOptions = {}): QuoteLine 
     const prev = terms[i];
     if (opts.mergeShort !== false && joinable && prev !== undefined) {
       terms[i] = { raw: `${prev.raw}${chunk}`, any: [(prev.any[0] as string) + s] };
+      joinable = false;
+      continue;
     }
-    // 붙일 자리가 없으면 버린다. 남겨두면 목록이 엉뚱하게 넓어진다.
+    // 붙일 앞이 없다. 줄 맨 앞이면 뒤에 올 조각에 붙이려고 들고 있는다.
+    dropPending();
+    if (first && opts.mergeShort !== false) pending = s;
+    else ignored.push(chunk);
     joinable = false;
   }
+  // 줄 끝에 남은 것은 붙일 데가 없다.
+  dropPending();
 
-  const isPart = terms.some((t) => t.any.some((v) => /[a-z]/.test(v)));
+  /**
+   * 부품 줄로 볼 것인가.
+   *
+   * 글자가 든 조각이 있으면 부품 줄이다. 그리고 **이름표가 부품을 말하면
+   * 그것으로 충분하다** — 사용자가 「CPU:」라고 적었는데 우리가 "부품 줄이
+   * 아니다"라고 하면, 못 찾았다는 말조차 못 보게 된다.
+   */
+  const isPart =
+    terms.some((t) => t.any.some((v) => /[a-z]/.test(v))) ||
+    (label !== null && terms.length > 0);
   return { label, terms, ignored, isPart };
 }

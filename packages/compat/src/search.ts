@@ -228,7 +228,12 @@ export function searchTerms(query: string): SearchTerms {
   const translated: { from: string; to: string }[] = [];
   const unknown: string[] = [];
 
-  for (const token of query.trim().split(/\s+/)) {
+  // 문자열이 아닌 것이 들어올 수 있다. Next의 `searchParams`는 `?q=a&q=b`면
+  // 배열을 준다 — 그대로 `trim()`을 부르면 던지고, 호출부의 try/catch가
+  // **"DB를 불러올 수 없습니다"**로 잘못 안내한다. 검색어가 없는 것으로 본다.
+  const text = typeof query === 'string' ? query : '';
+
+  for (const token of text.trim().split(/\s+/)) {
     if (token === '') continue;
 
     if (!hasHangul(token)) {

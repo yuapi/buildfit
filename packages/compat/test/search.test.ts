@@ -110,6 +110,19 @@ describe('모르는 말을 조용히 버리지 않는다', () => {
   });
 });
 
+describe('검토에서 잡힌 것', () => {
+  it('★ 문자열이 아닌 것이 들어와도 던지지 않는다', () => {
+    // Next의 `searchParams`는 `?q=a&q=b`면 배열을 준다. 그대로 `trim()`을
+    // 부르면 던지고, 호출부의 try/catch가 "DB를 불러올 수 없습니다"로
+    // **잘못 안내한다** — 원인과 문구가 어긋난다.
+    for (const bad of [['a', 'b'], null, undefined, 42, {}, true]) {
+      const t = searchTerms(bad as unknown as string);
+      expect(t.terms, String(bad)).toEqual([]);
+      expect(isImpossible(t)).toBe(false);
+    }
+  });
+});
+
 describe('사전 자체의 건전성', () => {
   it('영문 쪽은 이미 squash를 거친 모양이어야 한다', () => {
     // 아니면 카탈로그와 맞댈 때 어긋난다. `cooler master`는 절대 안 걸린다.

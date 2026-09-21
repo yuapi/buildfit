@@ -22,11 +22,19 @@ export type { SearchTerms };
  * **뜻을 모르는 한글이 섞이면 0건을 낸다.** 그 조각을 조용히 버리면
  * "다나와 5080"이 5080 전부를 부르게 된다. 모르는 것은 모른다고 해야 한다.
  */
+/**
+ * 한 검색에 붙일 조건 수의 상한.
+ *
+ * 호출부가 길이를 자르지만, 여기가 DB 앞의 마지막 지점이다. 이름 하나를
+ * 가리키는 데 40조각이면 이미 지나치게 좁고, 그 이상은 찾는 행위가 아니다.
+ */
+const MAX_TERMS = 40;
+
 export function nameWhere(parsed: SearchTerms): SQL[] {
   if (parsed.terms.length === 0) return [];
   if (isImpossible(parsed)) return [sql`false`];
 
-  return parsed.terms.map((term) => {
+  return parsed.terms.slice(0, MAX_TERMS).map((term) => {
     const alts = term.any.map((v) => sql`${parts.searchText} like ${`%${v}%`}`);
     return sql`(${sql.join(alts, sql` or `)})`;
   });
