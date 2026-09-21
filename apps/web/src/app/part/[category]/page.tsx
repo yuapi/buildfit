@@ -12,9 +12,9 @@ const PAGE_SIZE = 60;
 export async function generateMetadata({ params }: { params: Promise<{ category: string }> }) {
   const { category } = await params;
   const resolved = categoryFromSlug(category);
-  if (!resolved) return { title: 'buildfit' };
+  if (!resolved) return { title: { absolute: 'buildfit' } };
   return {
-    title: `${categoryLabel(resolved)} 목록 — buildfit`,
+    title: `${categoryLabel(resolved)} 목록`,
     description: `${categoryLabel(resolved)} 스펙과 호환 정보를 찾아봅니다.`,
   };
 }
@@ -24,10 +24,17 @@ export default async function CategoryIndex({
   searchParams,
 }: {
   params: Promise<{ category: string }>;
-  searchParams: Promise<{ page?: string; q?: string }>;
+  // Next는 `?q=a&q=b`면 **배열**을 준다. `string`이라고 적어두면 타입이
+  // 거짓말을 하고, 런타임에 `q.trim is not a function`으로 던진다.
+  searchParams: Promise<{ page?: string | string[]; q?: string | string[] }>;
 }) {
   const { category } = await params;
-  const { page, q } = await searchParams;
+  const { page: rawPage, q: rawQ } = await searchParams;
+  // 여러 번 온 값은 첫 것만 쓴다. 검색어 둘을 어떻게 합칠지는 우리가 정할 일이 아니다.
+  const first = (v: string | string[] | undefined): string | undefined =>
+    Array.isArray(v) ? v[0] : v;
+  const page = first(rawPage);
+  const q = first(rawQ);
 
   const resolved = categoryFromSlug(category);
   if (!resolved) notFound();

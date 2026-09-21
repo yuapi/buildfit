@@ -6,7 +6,7 @@ import { searchCandidates, type PartOption } from '@buildfit/db/picker';
 import { matchQuote, type QuoteLineResult } from '@buildfit/db/quote';
 import { SLOT_META, type SlotName } from '@/lib/categories';
 import { getDb } from '@/lib/db';
-import { MAX_LIMIT, MAX_QUOTE_CHARS, PAGE } from '@/lib/picker';
+import { MAX_LIMIT, MAX_QUERY_CHARS, MAX_QUOTE_CHARS, PAGE } from '@/lib/picker';
 
 export type { PartOption };
 
@@ -80,7 +80,9 @@ export async function searchParts(
   try {
     const page = await searchCandidates(getDb(), {
       category: meta.category,
-      query,
+      // 클라이언트가 보낸 값이다. 길이를 자르지 않으면 조각 수가 그대로
+      // 쿼리 조건 수가 된다 (`MAX_QUERY_CHARS` 주석 참고).
+      query: typeof query === 'string' ? query.slice(0, MAX_QUERY_CHARS) : '',
       constraints: sanitize(constraints),
       // 클라이언트가 보낸 값이다. 큰 수를 넣어 목록 전체를 한 번에 끌어가지
       // 못하게 막는다. 실수로 NaN이 와도 기본값으로 떨어뜨린다.

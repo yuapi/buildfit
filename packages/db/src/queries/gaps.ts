@@ -36,23 +36,35 @@ export async function fieldGapSummary(db: Database): Promise<FieldGap[]> {
   const keys = [...new Set(required.map((r) => r.specKey))];
   if (keys.length === 0) return [];
 
-  const [totalRows, haveRows] = await Promise.all([
-    db
-      .select({ category: parts.category, n: sql<number>`count(*)::int` })
-      .from(parts)
-      .groupBy(parts.category),
-    db
-      .select({
-        category: parts.category,
-        key: partSpecs.key,
-        // 복합 PK(part_id, key)라 한 부품에 같은 키가 두 번 오지 않는다.
-        n: sql<number>`count(*)::int`,
-      })
-      .from(partSpecs)
-      .innerJoin(parts, eq(parts.id, partSpecs.partId))
-      .where(inArray(partSpecs.key, keys))
-      .groupBy(parts.category, partSpecs.key),
-  ]);
+  /**
+   * 두 수를 **한 스냅샷에서** 읽는다.
+   *
+   * 따로 읽으면 적재가 도는 중 그 사이에 부품과 스펙이 커밋될 수 있고,
+   * 그러면 `have > total`이 되어 결측이 0으로 눌린다 — 표가 "다 채워졌다"고
+   * 거짓말한다. 이 수는 공개 페이지(`/rules`)가 그대로 보여주는 값이다.
+   */
+  const [totalRows, haveRows] = await db.transaction(
+    async (tx) =>
+      await Promise.all([
+        tx
+          .select({ category: parts.category, n: sql<number>`count(*)::int` })
+          .from(parts)
+          .groupBy(parts.category),
+        tx
+          .select({
+            category: parts.category,
+            key: partSpecs.key,
+            // 복합 PK(part_id, key)라 한 부품에 같은 키가 두 번 오지 않는다.
+            n: sql<number>`count(*)::int`,
+          })
+          .from(partSpecs)
+          .innerJoin(parts, eq(parts.id, partSpecs.partId))
+          .where(inArray(partSpecs.key, keys))
+          .groupBy(parts.category, partSpecs.key),
+      ]),
+    // 두 쿼리가 같은 시점을 보게 한다. 기본 격리 수준은 문장마다 스냅샷이 바뀐다.
+    { isolationLevel: 'repeatable read' },
+  );
 
   const totals = new Map(totalRows.map((r) => [r.category, r.n]));
   const have = new Map(haveRows.map((r) => [`${r.category}\u0000${r.key}`, r.n]));
@@ -62,6 +74,9 @@ export async function fieldGapSummary(db: Database): Promise<FieldGap[]> {
     const total = totals.get(req.category) ?? 0;
     // 아직 적재하지 않은 카테고리다. 0을 100% 결측으로 내면 표가 거짓말을 한다.
     if (total === 0) continue;
+    // 한 스냅샷에서 읽었으므로 음수가 될 수 없다. 그래도 눌러두는 이유는
+    // 조인이 언젠가 중복 계수하게 되면 **음수가 그 증상**이기 때문이다 —
+    // 눌러서 감추지 않고 드러나게 두려면 여기가 아니라 테스트가 잡아야 한다.
     const missing = Math.max(0, total - (have.get(`${req.category}\u0000${req.specKey}`) ?? 0));
     out.push({
       category: req.category,

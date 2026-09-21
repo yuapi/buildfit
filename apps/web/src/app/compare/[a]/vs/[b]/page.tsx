@@ -15,13 +15,13 @@ export async function generateMetadata({ params }: { params: Promise<{ a: string
   try {
     const db = getDb();
     const [left, right] = await Promise.all([partBySlug(db, a), partBySlug(db, b)]);
-    if (!left || !right) return { title: 'buildfit' };
+    if (!left || !right) return { title: { absolute: 'buildfit' } };
     return {
-      title: `${left.modelName} vs ${right.modelName} — buildfit`,
+      title: `${left.modelName} vs ${right.modelName}`,
       description: `${left.modelName}와 ${right.modelName}의 스펙을 나란히 비교합니다.`,
     };
   } catch {
-    return { title: 'buildfit' };
+    return { title: { absolute: 'buildfit' } };
   }
 }
 
