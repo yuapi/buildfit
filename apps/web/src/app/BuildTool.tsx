@@ -25,6 +25,7 @@ import { decodeBuildCode, encodeBuildCode } from "@/lib/build-code";
 import { FitBar } from "@/components/FitBar";
 import { PartIcon } from "@/components/Icons";
 import { buildLabel, pickedCount } from "@/lib/build-summary";
+import { MAX_RAM_KITS, addRamKit, removeRamKit } from "@/lib/ram-slots";
 import { SLOT_META, type SlotName } from "@/lib/categories";
 import { NO_CURSOR, nextCursor } from "@/lib/list-cursor";
 import { listWithJosa } from "@/lib/korean";
@@ -56,17 +57,21 @@ function toSelection(build: Build) {
   };
 }
 
-function nameOf(build: Build, slot: SlotName): string | null {
-  if (slot === "ram") return build.ram[0]?.name ?? null;
-  return build[slot]?.name ?? null;
+/** 한 칸에 들어 있는 부품들. 메모리만 여럿일 수 있다 */
+interface PickedPart {
+  readonly id: string;
+  readonly name: string;
+  /** 상세 페이지 주소. slug가 없으면 링크하지 않는다 */
+  readonly href: string | null;
 }
 
-/** 고른 부품의 상세 페이지 주소. slug가 없으면 링크하지 않는다. */
-function detailHref(build: Build, slot: SlotName): string | null {
-  const part = slot === "ram" ? build.ram[0] : build[slot];
-  const category = SLOT_META.find((m) => m.slot === slot)?.category;
-  if (!part?.slug || !category) return null;
-  return `/part/${category.toLowerCase()}/${part.slug}`;
+function pickedIn(build: Build, meta: (typeof SLOT_META)[number]): PickedPart[] {
+  const parts = meta.slot === "ram" ? build.ram : [build[meta.slot]];
+  return parts.filter((p) => p != null).map((p) => ({
+    id: p.id,
+    name: p.name,
+    href: p.slug ? `/part/${meta.category.toLowerCase()}/${p.slug}` : null,
+  }));
 }
 
 const EMPTY: Build = {
@@ -212,7 +217,8 @@ export function BuildTool({ initial }: { initial?: Build }) {
   const choose = useCallback(
     (slot: SlotName, id: string) => {
       const next = { ...selection };
-      if (slot === "ram") next.ram = [id];
+      // 메모리는 **덧붙인다** (`lib/ram-slots.ts`).
+      if (slot === "ram") next.ram = addRamKit(next.ram, id);
       else next[slot] = id;
       setOpenSlot(null);
       apply(next);
@@ -230,7 +236,7 @@ export function BuildTool({ initial }: { initial?: Build }) {
     (picks: readonly QuotePick[]) => {
       const next = { ...selection };
       for (const p of picks) {
-        if (p.slot === "ram") next.ram = [p.id];
+        if (p.slot === "ram") next.ram = addRamKit(next.ram, p.id);
         else next[p.slot] = p.id;
       }
       setOpenSlot(null);
@@ -240,9 +246,10 @@ export function BuildTool({ initial }: { initial?: Build }) {
   );
 
   const clear = useCallback(
-    (slot: SlotName) => {
+    (slot: SlotName, id?: string) => {
       const next = { ...selection };
-      if (slot === "ram") next.ram = [];
+      // 메모리는 묶음이 여럿일 수 있다. 어느 것을 뺄지 받는다.
+      if (slot === "ram") next.ram = removeRamKit(next.ram, id);
       else next[slot] = undefined;
       apply(next);
     },
@@ -309,15 +316,15 @@ export function BuildTool({ initial }: { initial?: Build }) {
                 slot={meta.slot}
                 category={meta.category}
                 label={meta.label}
-                selectedName={nameOf(build, meta.slot)}
-                detailHref={detailHref(build, meta.slot)}
+                picked={pickedIn(build, meta)}
                 constraints={pickerConstraints(build, meta.slot)}
+                full={meta.slot === "ram" && build.ram.length >= MAX_RAM_KITS}
                 open={openSlot === meta.slot}
                 onToggle={() =>
                   setOpenSlot(openSlot === meta.slot ? null : meta.slot)
                 }
                 onChoose={(id) => choose(meta.slot, id)}
-                onClear={() => clear(meta.slot)}
+                onClear={(id) => clear(meta.slot, id)}
               />
             ))}
           </ul>
@@ -461,9 +468,9 @@ function SlotRow({
   slot,
   category,
   label,
-  selectedName,
-  detailHref,
+  picked,
   constraints,
+  full,
   open,
   onToggle,
   onChoose,
@@ -472,14 +479,24 @@ function SlotRow({
   slot: SlotName;
   category: string;
   label: string;
-  selectedName: string | null;
-  detailHref: string | null;
+  /** 이 칸에 들어 있는 부품들. 메모리만 여럿일 수 있다 */
+  picked: readonly PickedPart[];
   constraints: readonly Constraint[];
+  /** 더 담을 수 없는가 (메모리 묶음 상한) */
+  full: boolean;
   open: boolean;
   onToggle: () => void;
   onChoose: (id: string) => void;
-  onClear: () => void;
+  /** id를 주면 그것만, 안 주면 전부 뺀다 */
+  onClear: (id?: string) => void;
 }) {
+  const many = slot === "ram";
+  /*
+   * 메모리는 **덧붙인다.** 그래서 이미 있어도 「변경」이 아니라 「추가」다.
+   * 바꾸려면 빼고 넣는다 — 그편이 무엇이 들어 있는지 분명하다.
+   */
+  const actionLabel = open ? "닫기" : picked.length === 0 ? "선택" : many ? "추가" : "변경";
+
   return (
     <li className={open ? "bg-surface-2" : ""}>
       {/* 카드 더미가 아니라 표의 한 줄이다. 한 화면에 더 많이 들어간다 (ADR-0015) */}
@@ -490,23 +507,39 @@ function SlotRow({
             {/* 제품 사진이 없으므로 아이콘이 시각적 닻 노릇을 한다 */}
             <PartIcon category={category} className="text-fg-subtle" />
             <span className="truncate">{label}</span>
+            {/* 몇 묶음인지 말하지 않으면 둘째 줄이 왜 있는지 알 수 없다 */}
+            {many && picked.length > 1 && (
+              <span className="shrink-0 text-fg-subtle tnum">×{picked.length}</span>
+            )}
           </span>
           <span className="min-w-0 text-sm">
-            {selectedName ? (
-              detailHref ? (
-                <Link
-                  href={detailHref}
-                  className="link block truncate font-medium"
-                >
-                  {selectedName}
-                </Link>
-              ) : (
-                <span className="block truncate font-medium">
-                  {selectedName}
-                </span>
-              )
-            ) : (
+            {picked.length === 0 ? (
               <span className="text-fg-subtle">아직 고르지 않음</span>
+            ) : (
+              <span className="block space-y-0.5">
+                {picked.map((p) => (
+                  <span key={p.id} className="flex min-w-0 items-baseline gap-1.5">
+                    {p.href ? (
+                      <Link href={p.href} className="link min-w-0 truncate font-medium">
+                        {p.name}
+                      </Link>
+                    ) : (
+                      <span className="min-w-0 truncate font-medium">{p.name}</span>
+                    )}
+                    {/* 묶음이 여럿이면 줄마다 뺄 수 있어야 한다 */}
+                    {many && picked.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => onClear(p.id)}
+                        aria-label={`${p.name} 제거`}
+                        className="btn btn-ghost shrink-0 px-1.5 py-0.5 text-xs"
+                      >
+                        제거
+                      </button>
+                    )}
+                  </span>
+                ))}
+              </span>
             )}
           </span>
         </div>
@@ -520,23 +553,26 @@ function SlotRow({
             type="button"
             onClick={onToggle}
             aria-expanded={open}
-            aria-label={`${label} ${open ? "닫기" : selectedName ? "변경" : "선택"}`}
+            aria-label={`${label} ${actionLabel}`}
+            disabled={!open && full}
             className={
-              selectedName
-                ? "btn btn-ghost px-2 py-1 text-xs"
-                : "btn btn-secondary px-2.5 py-1 text-xs"
+              picked.length > 0
+                ? "btn btn-ghost px-2 py-1 text-xs disabled:opacity-40"
+                : "btn btn-secondary px-2.5 py-1 text-xs disabled:opacity-40"
             }
           >
-            {open ? "닫기" : selectedName ? "변경" : "선택"}
+            {actionLabel}
           </button>
-          {selectedName && (
+          {picked.length > 0 && (
             <button
               type="button"
-              onClick={onClear}
-              aria-label={`${label} 제거`}
+              // 인자 없이 부르면 이 칸을 비운다. 빈 문자열을 넘기면 아무것도
+              // 걸러지지 않아 「전부 제거」가 조용히 실패한다.
+              onClick={() => onClear()}
+              aria-label={`${label} ${many && picked.length > 1 ? "전부 " : ""}제거`}
               className="btn btn-ghost px-2 py-1 text-xs"
             >
-              제거
+              {many && picked.length > 1 ? "전부 제거" : "제거"}
             </button>
           )}
         </span>
