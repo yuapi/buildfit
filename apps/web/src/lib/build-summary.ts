@@ -38,6 +38,20 @@ export function pickedCount(build: Build): number {
 }
 
 /**
+ * 채운 **칸** 수. 메모리는 몇 묶음이든 한 칸이다.
+ *
+ * 「4 / 7」처럼 칸 수를 분모로 쓰는 자리에서는 이쪽을 써야 한다.
+ * 부품 수를 쓰면 메모리를 여러 묶음 넣었을 때 **분자가 분모를 넘는다**
+ * (묶음 4 + 나머지 6 = 10 / 7).
+ */
+export function filledSlotCount(build: Build): number {
+  return (
+    [build.cpu, build.motherboard, build.gpu, build.pcCase, build.psu, build.cooler].filter(Boolean)
+      .length + (build.ram.length > 0 ? 1 : 0)
+  );
+}
+
+/**
  * 미리보기에 쓸 한 줄.
  *
  * **없는 것을 지어내지 않는다.** 판정이 없으면 판정을 말하지 않고, 전력을
