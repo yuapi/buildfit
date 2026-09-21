@@ -17,3 +17,11 @@ export const PAGE = 30;
  * 적는 것이 맞다.
  */
 export const MAX_LIMIT = 300;
+
+/**
+ * 붙여넣을 수 있는 글자 수.
+ *
+ * 견적서는 열 줄 남짓이다. 이보다 길면 붙여넣기 사고이거나 우리가 다룰 글이
+ * 아니다. 줄 수 제한(`MAX_LINES`)은 이걸 자른 뒤에 걸린다.
+ */
+export const MAX_QUOTE_CHARS = 4000;

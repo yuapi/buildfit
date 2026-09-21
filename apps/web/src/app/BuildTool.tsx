@@ -36,6 +36,7 @@ import {
 } from "@/lib/storage";
 import { MAX_LIMIT, PAGE } from "@/lib/picker";
 import { fetchBuildParts, searchParts, type PartOption } from "./actions";
+import { QuoteBox, type QuotePick } from "./QuoteBox";
 
 /** Build에서 선택 id만 뽑는다. 공유 코드와 서버 조회의 입력이 된다. */
 function toSelection(build: Build) {
@@ -158,6 +159,25 @@ export function BuildTool({ initial }: { initial?: Build }) {
     [selection, apply],
   );
 
+  /**
+   * 견적서에서 고른 것들을 한 번에 넣는다 (ADR-0018).
+   *
+   * **한 번만 갱신한다.** 슬롯마다 `choose`를 부르면 요청이 일곱 번 나가고
+   * 그중 늦게 온 것이 이긴다 — 마지막 하나만 들어간 것처럼 보인다.
+   */
+  const applyQuote = useCallback(
+    (picks: readonly QuotePick[]) => {
+      const next = { ...selection };
+      for (const p of picks) {
+        if (p.slot === "ram") next.ram = [p.id];
+        else next[p.slot] = p.id;
+      }
+      setOpenSlot(null);
+      apply(next);
+    },
+    [selection, apply],
+  );
+
   const clear = useCallback(
     (slot: SlotName) => {
       const next = { ...selection };
@@ -174,6 +194,13 @@ export function BuildTool({ initial }: { initial?: Build }) {
     <div className="space-y-5">
       {/* 판정을 맨 위 띠로 올린다. 이 도구가 하는 일이 판정이다 (ADR-0015) */}
       <VerdictBar verdict={verdict} build={build} pending={pending} />
+
+      {/*
+        * 견적서를 이미 들고 온 사람이 많다. 일곱 칸을 손으로 채우게 하지 않는다.
+        * 판정 띠 바로 아래에 둔다 — 부품을 넣기 전에 보여야 쓸모가 있다.
+        * 부품을 고른 뒤에도 접힌 채로 남긴다. 한 번 숨기면 다시 열 길이 없다.
+        */}
+      <QuoteBox onApply={applyQuote} />
 
       {loadError && (
         <p role="alert" className="verdict-bar verdict-warning text-sm">
