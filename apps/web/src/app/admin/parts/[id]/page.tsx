@@ -4,6 +4,7 @@ import { requiredKeysFor } from '@buildfit/compat';
 import { partWithSpecs } from '@buildfit/db/queries';
 import { Container } from '@/components/SiteShell';
 import { getDb } from '@/lib/db';
+import { requireAdmin } from '@/lib/admin-auth';
 import { SpecForm } from './SpecForm';
 
 export const dynamic = 'force-dynamic';
@@ -15,6 +16,9 @@ export default async function PartEditor({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ focus?: string }>;
 }) {
+  // 데이터를 만지기 전에 막는다. 레이아웃에서만 막으면 늦는다 (ADR-0020).
+  await requireAdmin();
+
   const { id } = await params;
   const { focus } = await searchParams;
 
