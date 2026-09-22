@@ -39,7 +39,10 @@ export interface PowerAssumptions {
  * 검색 결과가 해당 페이지의 수치로 제시한 값이다. 경위는
  * `docs/research/power-constants.md`.
  *
- * 스토리지·쿨러·팬은 MVP 취급 부품(6종)에 없으므로 가정하지 않는다.
+ * **스토리지·쿨러·팬은 계산에 넣지 않는다.** 스토리지는 이제 견적에 담기지만
+ * (규칙 17~19), NVMe·SATA의 유휴·피크 전력 범위를 **출처와 함께** 확보하지 못했다.
+ * 추정치를 지어내지 않는다. 대신 **빠졌다는 사실을 결과에 적는다** (§7.4).
+ * 경위: `docs/research/power-constants.md`, 착수 조건은 이슈 #5.
  */
 export const POWER_ASSUMPTIONS: PowerAssumptions = {
   motherboard: { minW: 25, maxW: 80 },
@@ -50,6 +53,17 @@ export const POWER_ASSUMPTIONS: PowerAssumptions = {
     verified: false,
   },
 };
+
+/**
+ * 빠진 부품을 한 줄로. 있을 때만 부른다.
+ *
+ * 구간이 실제보다 **낮다**는 방향까지 말한다. "빠졌습니다"만 적으면 사용자가
+ * 어느 쪽으로 틀렸는지 모른다.
+ */
+export function describeExcluded(excluded: readonly string[]): string | null {
+  if (excluded.length === 0) return null;
+  return `${excluded.join(', ')}의 소비전력은 근거 있는 범위를 구하지 못해 계산에 넣지 않았습니다. 실제 소비전력은 이 구간보다 높습니다.`;
+}
 
 /** 결과에 함께 내보낼 가정 설명. §7.4 */
 export function describeAssumptions(a: PowerAssumptions = POWER_ASSUMPTIONS): string {
@@ -89,12 +103,21 @@ export interface PowerEstimate {
   readonly recommendedW: number;
   /** 부품별 내역. 화면이 "무엇이 얼마를 먹는가"를 보여줄 때 쓴다 */
   readonly parts: readonly { readonly label: string; readonly watts: number }[];
+  /**
+   * 계산에서 **빠진** 부품.
+   *
+   * 범위 출처가 없어 가정하지 않은 것들이다. 조용히 빼면 사용자는 합계가
+   * 전부인 줄 안다 — 그러면 이 구간은 실제보다 낮다.
+   */
+  readonly excluded: readonly string[];
 }
 
 export function estimatePower(input: {
   cpuW: number | null;
   gpuW: number | null;
   ramModules: number;
+  /** 담긴 드라이브 수. 계산에는 안 쓰고 **빠졌다고 말하는 데** 쓴다 */
+  storageCount?: number;
   assumptions?: PowerAssumptions;
 }): PowerEstimate {
   const a = input.assumptions ?? POWER_ASSUMPTIONS;
@@ -109,5 +132,15 @@ export function estimatePower(input: {
   if (cpuW > 0) parts.push({ label: 'CPU', watts: cpuW });
   if (gpuW > 0) parts.push({ label: '그래픽카드', watts: gpuW });
 
-  return { minW, maxW, recommendedW: Math.ceil(maxW * PSU_HEADROOM_MULTIPLIER), parts };
+  // 드라이브는 견적에 담기지만 전력 범위의 출처가 없다. 넣지 않고, 넣지 않았다고 말한다.
+  const drives = input.storageCount ?? 0;
+  const excluded = drives > 0 ? [`드라이브 ${drives}개`] : [];
+
+  return {
+    minW,
+    maxW,
+    recommendedW: Math.ceil(maxW * PSU_HEADROOM_MULTIPLIER),
+    parts,
+    excluded,
+  };
 }
