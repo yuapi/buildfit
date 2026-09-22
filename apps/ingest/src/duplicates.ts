@@ -13,6 +13,7 @@
 
 import { sql } from 'drizzle-orm';
 import type { Database } from '@buildfit/db';
+import { comparableSpecValue } from '@buildfit/db/queries';
 
 export interface DuplicateResult {
   /** 대표가 아닌 것으로 표시된 레코드 수 */
@@ -88,35 +89,76 @@ export async function markDuplicates(db: Database): Promise<DuplicateResult> {
  * `disputed`는 컬럼과 「검증 중」 표시가 이미 있고(§5.5) 지금까지 0건이었다.
  * 어드민이 바로 볼 수 있는 작업 목록이 된다.
  *
- * **사람이 신고해 세운 것을 지우지 않는다.** 세우기만 한다 — 어느 쪽이 세웠는지
- * 구분할 방법이 없어서다. 어드민이 값을 채우면 그때 풀린다.
+ * **사람이 신고해 세운 것을 지우지 않는다.** 이 검사가 세운 것 중 더는 어긋나지
+ * 않는 것만 거둔다 — 구분은 「열린 신고가 있는가」로 한다 (아래 주석).
  *
  * **`markDuplicates` 다음에 부른다.** `duplicate_of`를 그룹으로 쓴다.
  */
 export interface ConflictResult {
   /** 이번에 새로 세운 행 수 */
   readonly marked: number;
+  /**
+   * 이번에 거둔 행 수 — 이 검사가 세웠는데 **더는 어긋나지 않는** 것.
+   *
+   * 사람이 신고해 세운 것은 거두지 않는다 (아래 `retractStale` 주석).
+   */
+  readonly retracted: number;
   /** 지금 서 있는 행 수. 두 번째 적재부터 `marked`는 0이 된다 */
   readonly standing: number;
 }
 
 export async function flagConflictingSpecs(db: Database): Promise<ConflictResult> {
-  const result = await db.execute(sql`
-    with grp as (
+  // 비교는 **같은 소켓의 다른 표기를 같은 값으로 센다** (이슈 #16). 어드민 목록
+  // (conflictingSpecs)과 같은 식이다 — 두 벌이면 「검증 중」과 목록이 갈라진다.
+  const value = comparableSpecValue('s');
+
+  const conflicting = sql`
+    grp as (
       -- ★ markDuplicates가 계산해 둔 답을 쓴다. 여기서 GROUP_KEY로 다시 묶으면
       -- 기준이 두 벌이 되고, 한쪽만 고치는 날 조용히 어긋난다.
-      -- 어드민 목록(conflictingSpecs)도 같은 식을 쓴다.
       select id, coalesce(duplicate_of, id) as canon from parts
     ), conflicting as (
       select g.canon, s.key
       from grp g join part_specs s on s.part_id = g.id
       group by g.canon, s.key
-      having count(distinct s.value::text) > 1
-    )
+      having count(distinct ${value}) > 1
+    )`;
+
+  const result = await db.execute(sql`
+    with ${conflicting}
     update part_specs s
     set disputed = true
     from grp g, conflicting c
     where s.part_id = g.id and g.canon = c.canon and s.key = c.key and s.disputed = false
+  `);
+
+  /**
+   * ★ 이 검사가 세운 것 중 더는 어긋나지 않는 것을 거둔다.
+   *
+   * 전에는 세우기만 했다 — 사람이 신고해 세운 것과 구분할 방법이 없어서였다.
+   * 그런데 **구분할 수단이 있었다.** `disputed`를 세우는 곳은 둘뿐이다:
+   *
+   * 1. 사용자 신고(`createSpecReport`) — 항상 `spec_reports`에 **열린 신고**가 같이 생긴다
+   * 2. 이 검사
+   *
+   * 그러니 **열린 신고가 없는 `disputed`는 이 검사가 세운 것이다.** 그중 지금은
+   * 어긋나지 않는 것만 거둔다. 열린 신고가 있으면 절대 건드리지 않는다.
+   *
+   * 거두지 않으면 표기가 정리되거나(TR4/sTR4, 이슈 #16) 업스트림이 값을 고쳐도
+   * 「검증 중」이 영원히 남고, 판정마다 「검증 중인 값으로 판정했습니다」가 붙는다.
+   */
+  const retracted = await db.execute(sql`
+    with ${conflicting}
+    update part_specs s
+    set disputed = false
+    from grp g
+    where s.part_id = g.id
+      and s.disputed = true
+      and not exists (select 1 from conflicting c where c.canon = g.canon and c.key = s.key)
+      and not exists (
+        select 1 from spec_reports r
+        where r.part_id = s.part_id and r.spec_key = s.key and r.status = 'open'
+      )
   `);
 
   // 서 있는 총수를 따로 센다. 두 번째 적재부터 위 update는 0행이고, 로그에
@@ -125,5 +167,9 @@ export async function flagConflictingSpecs(db: Database): Promise<ConflictResult
     sql`select count(*)::int as n from part_specs where disputed`,
   );
 
-  return { marked: Number(result.count ?? 0), standing: Number(total?.n ?? 0) };
+  return {
+    marked: Number(result.count ?? 0),
+    retracted: Number(retracted.count ?? 0),
+    standing: Number(total?.n ?? 0),
+  };
 }

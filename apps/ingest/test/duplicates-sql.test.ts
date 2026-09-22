@@ -168,6 +168,80 @@ describeIfDb('중복 레코드 묶기 (이슈 #11)', () => {
     expect(ids).toHaveLength(2);
   });
 
+  // --- 거두기와 소켓 표기 (이슈 #16 뒷정리) -------------------------------
+
+  describe('검증 표시 거두기', () => {
+    const TW1 = 'eeeeeeee-0000-4000-8000-000000000001';
+    const TW2 = 'eeeeeeee-0000-4000-8000-000000000002';
+    const REP = 'eeeeeeee-0000-4000-8000-000000000003';
+
+    beforeAll(async () => {
+      // 같은 CPU 쌍둥이. 소켓을 TR4 / sTR4로 적었다 — 같은 소켓이다
+      await db.execute(sql`
+        insert into parts (id, slug, category, brand, model_name, release_year, opendb_id) values
+          (${TW1}, 'tr-a', 'CPU', 'AMD', 'Threadripper 2950X', 2018, 'tr-a'),
+          (${TW2}, 'tr-b', 'CPU', 'AMD', 'Threadripper 2950X', 2018, 'tr-b'),
+          (${REP}, 'rep-solo', 'CPU', 'AMD', 'Ryzen 신고받은 것', 2022, 'rep-solo')`);
+      await db.execute(sql`
+        insert into part_specs (part_id, key, value) values
+          (${TW1}, 'socket', '"sTR4"'::jsonb),
+          (${TW2}, 'socket', '"TR4"'::jsonb),
+          (${REP}, 'socket', '"AM5"'::jsonb)`);
+      await markDuplicates(db);
+    });
+
+    it('★ 같은 소켓의 다른 표기는 어긋남이 아니다', async () => {
+      await flagConflictingSpecs(db);
+      const rows = await db.execute<{ disputed: boolean }>(
+        sql`select disputed from part_specs where part_id in (${TW1}, ${TW2}) and key = 'socket'`,
+      );
+      expect(rows.map((r) => r.disputed)).toEqual([false, false]);
+    });
+
+    it('★ 이 검사가 세웠는데 더는 어긋나지 않으면 거둔다', async () => {
+      // 이전 적재에서 어긋남으로 세워졌다고 친다 (예: 소켓 등가 표가 생기기 전)
+      await db.execute(
+        sql`update part_specs set disputed = true where part_id in (${TW1}, ${TW2}) and key = 'socket'`,
+      );
+      const r = await flagConflictingSpecs(db);
+      expect(r.retracted).toBeGreaterThanOrEqual(2);
+      const rows = await db.execute<{ disputed: boolean }>(
+        sql`select disputed from part_specs where part_id in (${TW1}, ${TW2}) and key = 'socket'`,
+      );
+      expect(rows.every((x) => !x.disputed)).toBe(true);
+    });
+
+    it('★ 사람이 신고해 세운 것은 거두지 않는다 — 어긋남이 없어도', async () => {
+      // 신고는 disputed와 열린 spec_report를 함께 만든다 (createSpecReport)
+      await db.execute(sql`update part_specs set disputed = true where part_id = ${REP} and key = 'socket'`);
+      await db.execute(sql`
+        insert into spec_reports (part_id, spec_key, reported_value, client_token)
+        values (${REP}, 'socket', 'AM4', 'test-token')`);
+      await flagConflictingSpecs(db);
+      const [row] = await db.execute<{ disputed: boolean }>(
+        sql`select disputed from part_specs where part_id = ${REP} and key = 'socket'`,
+      );
+      expect(row?.disputed, '신고가 열려 있는데 표시가 사라졌다').toBe(true);
+    });
+
+    it('신고가 처리되면(open이 아니면) 거둘 수 있다', async () => {
+      await db.execute(sql`update spec_reports set status = 'resolved' where part_id = ${REP}`);
+      await flagConflictingSpecs(db);
+      const [row] = await db.execute<{ disputed: boolean }>(
+        sql`select disputed from part_specs where part_id = ${REP} and key = 'socket'`,
+      );
+      expect(row?.disputed).toBe(false);
+    });
+
+    it('진짜 어긋남은 그대로 둔다 — 거두기가 과하지 않다', async () => {
+      await flagConflictingSpecs(db);
+      const rows = await db.execute<{ disputed: boolean }>(
+        sql`select disputed from part_specs where part_id = ${A} and key = 'capacity_gb'`,
+      );
+      expect(rows[0]?.disputed).toBe(true);
+    });
+  });
+
   // --- 어드민 작업 목록 (이슈 #12) -----------------------------------------
 
   it('어긋난 값을 나란히 내놓는다', async () => {

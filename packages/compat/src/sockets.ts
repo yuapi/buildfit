@@ -50,3 +50,14 @@ export function socketAliases(socket: string): readonly string[] {
 export function sameSocket(a: string, b: string): boolean {
   return a === b || socketAliases(a).includes(b);
 }
+
+/**
+ * (표기, 대표 표기) 쌍 전부. 묶음의 첫 표기가 대표다.
+ *
+ * DB 쪽이 SQL 안에서 같은 비교를 해야 할 때 쓴다 — 중복 레코드 간 불일치 검사가
+ * `TR4`와 `sTR4`를 「값이 어긋난다」로 세면, 같은 소켓인데 「검증 중」이 붙는다
+ * (이슈 #16 뒷정리). 표를 SQL에 따로 적지 않고 여기서 받아 간다.
+ */
+export function socketCanonicalPairs(): readonly (readonly [string, string])[] {
+  return SOCKET_GROUPS.flatMap((group) => group.map((name) => [name, group[0]!] as const));
+}

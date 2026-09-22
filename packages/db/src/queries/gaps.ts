@@ -5,7 +5,12 @@
  * 여기서 따로 목록을 들고 있지 않는다.
  */
 
-import { SPEC_REQUIREMENTS, rulesBlockedBy, type FieldRequirement } from '@buildfit/compat';
+import {
+  SPEC_REQUIREMENTS,
+  rulesBlockedBy,
+  socketCanonicalPairs,
+  type FieldRequirement,
+} from '@buildfit/compat';
 import { and, eq, inArray, sql, type SQL } from 'drizzle-orm';
 import type { Database } from '../client';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
@@ -396,6 +401,39 @@ export async function saveSpec(
 
 // --- 값이 어긋나는 스펙 -------------------------------------------------------
 
+/**
+ * 「값이 같은가」를 볼 때 쓰는 비교용 값 — 이슈 #16 뒷정리.
+ *
+ * 같은 소켓을 다르게 적은 표기(`TR4`/`sTR4`)는 **같은 값으로 센다.** 그러지 않으면
+ * 중복 레코드 간 불일치 검사가 Threadripper 2950X 쌍둥이를 「값이 어긋난다」로
+ * 잡아 「검증 중」을 세우고, 규칙 1이 「검증 중인 값으로 판정했습니다」라고 말한다.
+ * 같은 소켓인데.
+ *
+ * 등가 표는 `@buildfit/compat`의 것을 그대로 받아 온다. **SQL에 따로 적지 않는다** —
+ * 두 벌이면 한쪽만 고치는 날 판정과 검증 표시가 갈라진다.
+ *
+ * **이 식을 쓰는 곳은 둘이고 둘이 같아야 한다**: 적재의 `flagConflictingSpecs`와
+ * 어드민의 `conflictingSpecs`. 테스트가 둘의 일치를 본다.
+ *
+ * `alias`는 `part_specs`에 붙인 별칭이다 (`s`).
+ */
+export function comparableSpecValue(alias: string): SQL {
+  const t = sql.raw(alias);
+  const pairs = socketCanonicalPairs();
+  if (pairs.length === 0) return sql`${t}.value::text`;
+  const rows = sql.join(
+    pairs.map(([name, canon]) => sql`(${name}, ${canon})`),
+    sql`, `,
+  );
+  return sql`coalesce(
+    (select to_jsonb(a.canon)::text
+       from (values ${rows}) as a(name, canon)
+      where ${t}.key = 'socket' and a.name = ${t}.value #>> '{}'),
+    ${t}.value::text
+  )`;
+}
+
+
 export interface ConflictingValue {
   readonly value: unknown;
   readonly unit: string | null;
@@ -465,10 +503,13 @@ export async function conflictingSpecs(db: Database, limit = 100): Promise<SpecC
       --
       -- 단위는 min()으로 딸려 보낸다. 묶는 기준에 넣으면 단위만 다른 경우가
       -- 어긋난 값으로 세어져 적재의 disputed와 수가 달라진다.
-      select g.canon, s.key, s.value, min(s.unit) as unit,
+      select g.canon, s.key,
+             -- 같은 값으로 센 표기가 여럿이면 하나를 대표로 보여준다
+             min(s.value::text)::jsonb as value,
+             min(s.unit) as unit,
              jsonb_agg(g.id order by g.id) as part_ids
       from grp g join ${partSpecs} s on s.part_id = g.id
-      group by g.canon, s.key, s.value
+      group by g.canon, s.key, ${comparableSpecValue('s')}
     ), conflicting as (
       select canon, key, count(*)::int as n,
              jsonb_agg(
