@@ -9,8 +9,8 @@ export default function robots(): MetadataRoute.Robots {
       userAgent: '*',
       allow: '/',
       // 어드민은 공개 페이지가 아니다. 공유 코드는 사용자가 만든 주소라
-      // 색인 대상이 아니며, 수가 무한히 늘어난다.
-      disallow: ['/admin', '/build/'],
+      // 색인 대상이 아니며, 수가 무한히 늘어난다. /healthz는 배포 플랫폼용이다.
+      disallow: ['/admin', '/build/', '/healthz'],
     },
     sitemap: [
       // sitemap.ts의 generateSitemaps와 같은 목록이어야 한다. 빠지면 색인이
