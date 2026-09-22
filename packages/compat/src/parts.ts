@@ -29,6 +29,8 @@ export interface Cpu extends PartRef {
   readonly memoryTypes: readonly string[] | null;
   /** 출시 연도. 규칙 12 (BIOS). 1차 소스가 연 단위만 준다 (ADR/§5.8) */
   readonly releaseYear: number | null;
+  /** 메모리 컨트롤러가 다루는 최대 총 용량 (GB). 규칙 16 (§16) */
+  readonly memoryMaxGb: number | null;
 }
 
 export interface Motherboard extends PartRef {
@@ -36,6 +38,13 @@ export interface Motherboard extends PartRef {
   readonly formFactor: string | null;
   readonly memoryType: string | null;
   readonly memorySlots: number | null;
+  /**
+   * 보드가 지원하는 최대 총 용량 (GB). 규칙 16 (§16).
+   *
+   * **작다고 이상치가 아니다.** 4GB는 LGA775·Atom 보드에서 맞는 값이다.
+   * 슬롯 수와 맞대 봐야 틀린 값이 드러난다 (§16.2).
+   */
+  readonly memoryMaxGb: number | null;
   /** 출시 연도. 규칙 12. **20.4%만 채워져 있다** — 대부분 판정 불가가 된다 */
   readonly releaseYear: number | null;
   /**
@@ -52,6 +61,8 @@ export interface RamKit extends PartRef {
   readonly ramType: string | null;
   /** 이 키트에 든 모듈 개수. */
   readonly moduleCount: number | null;
+  /** 이 키트의 **총** 용량 (GB). 모듈 하나가 아니라 합계다. 규칙 16 (§16) */
+  readonly capacityGb: number | null;
   readonly heightMm: number | null;
 }
 

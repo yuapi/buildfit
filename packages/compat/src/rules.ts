@@ -464,6 +464,66 @@ export const rule15: Rule = ({ gpu, pcCase }) => {
   };
 };
 
+// --- 16. 총 메모리 용량 ≤ 보드·CPU 최대 -------------------------------------
+
+export const rule16: Rule = ({ cpu, motherboard, ram }) => {
+  if (ram.length === 0 || !motherboard) return null;
+
+  const gaps: FieldRef[] = [];
+  for (const kit of ram) {
+    if (!isFilled(kit.capacityGb)) gaps.push(ref(kit, '용량'));
+  }
+  if (gaps.length > 0) {
+    return missing(16, '메모리 용량 정보가 없어 판정하지 못했습니다.', gaps);
+  }
+
+  /**
+   * 보드 최대가 슬롯 수보다 작을 수는 없다. 모든 실제 DIMM이 1GB 이상이다.
+   *
+   * **작다고 버리지 않는다.** 최대 4GB는 LGA775·Atom 보드에서 맞는 값이고 22건이
+   * 실재한다. 슬롯 수와 맞대 봐야 틀린 5건만 걸러진다 (§16.2).
+   */
+  const boardBad =
+    isFilled(motherboard.memoryMaxGb) &&
+    isFilled(motherboard.memorySlots) &&
+    motherboard.memoryMaxGb! < motherboard.memorySlots!;
+  const boardMax = isFilled(motherboard.memoryMaxGb) && !boardBad ? motherboard.memoryMaxGb! : null;
+  // CPU에는 슬롯이 없으니 0 이하만 본다 (48건)
+  const cpuMax = cpu && isFilled(cpu.memoryMaxGb) && cpu.memoryMaxGb! > 0 ? cpu.memoryMaxGb! : null;
+
+  if (boardMax === null && cpuMax === null) {
+    if (boardBad) {
+      return inconsistent(
+        16,
+        '메인보드의 최대 메모리 값이 슬롯 수보다 작아 판정하지 못했습니다.',
+        `최대 ${motherboard.memoryMaxGb}GB인데 슬롯이 ${motherboard.memorySlots}개입니다. 슬롯마다 최소 1GB는 꽂히므로 있을 수 없는 값입니다.`,
+        [ref(motherboard, '최대 메모리')],
+      );
+    }
+    const unknownFields = [ref(motherboard, '최대 메모리')];
+    if (cpu) unknownFields.push(ref(cpu, '최대 메모리'));
+    return missing(16, '최대 메모리 정보가 없어 판정하지 못했습니다.', unknownFields);
+  }
+
+  // 키트를 여러 개 담을 수 있으므로 합산한다. 규칙 3이 모듈 수를 더하는 것과 같다.
+  const total = ram.reduce((n, kit) => n + (kit.capacityGb ?? 0), 0);
+  // 한쪽만 있으면 있는 쪽으로 판정한다. 둘 다 없을 때만 판정 불가다.
+  const limit = Math.min(boardMax ?? Infinity, cpuMax ?? Infinity);
+  // 어느 쪽이 한계인지 말한다. 보드가 한계면 보드를 바꾸고, CPU가 한계면 CPU를 바꾼다.
+  const bound = cpuMax !== null && cpuMax <= (boardMax ?? Infinity) ? cpu! : motherboard;
+  const boundLabel = bound === motherboard ? '메인보드' : 'CPU';
+
+  if (total > limit) {
+    // 오류가 아니라 경고다. 제조사 사양은 보수적이고 BIOS 업데이트로 늘어난다. §16.3
+    return fail(
+      16,
+      'warning',
+      `메모리 ${total}GB인데 ${boundLabel} 사양은 ${limit}GB까지입니다. BIOS 업데이트로 늘어난 사례가 있으니 제조사 지원 목록을 확인해 주세요.`,
+    );
+  }
+  return pass(16, `메모리 ${total}GB / ${boundLabel} 한계 ${limit}GB.`);
+};
+
 // --- 12. BIOS 업데이트 필요 여부 (Phase 1) ----------------------------------
 
 export const rule12: Rule = ({ cpu, motherboard }) => {
@@ -504,4 +564,4 @@ export const rule12: Rule = ({ cpu, motherboard }) => {
 export const phase0Rules: readonly Rule[] = [rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8];
 
 /** Phase 1에서 추가된 규칙까지. 명세 §4.2 */
-export const phase1Rules: readonly Rule[] = [...phase0Rules, rule9, rule12, rule15];
+export const phase1Rules: readonly Rule[] = [...phase0Rules, rule9, rule12, rule15, rule16];

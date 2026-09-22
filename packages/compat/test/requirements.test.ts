@@ -50,6 +50,13 @@ const BLANK: Record<string, () => Build> = {
   // 보게 만들려면 CPU가 더 나중인 상황을 함께 만들어야 한다.
   'Motherboard.bios_flashback': () =>
     f.withBuild({ motherboard: { ...f.motherboard, releaseYear: 2022, biosFlashback: null } }),
+  'RAM.capacity_gb': () => f.withBuild({ ram: [{ ...f.ramKit, capacityGb: null }] }),
+  // 한쪽만 비우면 남은 쪽으로 판정한다 (§16.1). CPU.tdp_w가 ppt까지 비우는 것과 같다.
+  'Motherboard.memory_max_gb': () =>
+    f.withBuild({
+      motherboard: { ...f.motherboard, memoryMaxGb: null },
+      cpu: { ...f.cpu, memoryMaxGb: null },
+    }),
   'GPU.total_slot_width': () => f.withBuild({ gpu: { ...f.gpu, totalSlotWidth: null } }),
   'PCCase.expansion_slots': () => f.withBuild({ pcCase: { ...f.pcCase, expansionSlots: null } }),
 };
