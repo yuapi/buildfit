@@ -14,6 +14,7 @@ import { createDb, importers, partAliases, parts, partSpecs } from '@buildfit/db
 import { sql } from 'drizzle-orm';
 import { CATEGORIES } from './mapping';
 import { toPartRow, toSlug, type PartRow } from './transform';
+import { flagConflictingSpecs, markDuplicates } from './duplicates';
 
 const CHUNK = 500;
 
@@ -238,6 +239,16 @@ export async function ingest(opts: IngestOptions): Promise<void> {
     for (const batch of chunked(aliasValues, CHUNK)) {
       await db.insert(partAliases).values(batch).onConflictDoNothing();
     }
+
+    // --- 중복 묶기 --------------------------------------------------------
+    // 같은 제품이 여러 레코드로 들어 있다. 합치지 않고 대표를 가리킨다 —
+    // parts.id는 공유 URL이 담으므로 없애면 링크가 깨진다 (ADR-0012).
+    log('중복 레코드 묶는 중...');
+    const dup = await markDuplicates(db);
+    log(`  ${dup.groups}그룹 · ${dup.marked}건을 대표 아님으로 표시`);
+    // 같은 제품인데 스펙이 어긋나면 하나는 틀린 값이다. 어드민이 볼 목록이 된다
+    const conflicts = await flagConflictingSpecs(db);
+    log(`  값이 어긋나는 스펙 ${conflicts}건에 검증 표시`);
 
     // --- 요약 -------------------------------------------------------------
     const [counts] = await db

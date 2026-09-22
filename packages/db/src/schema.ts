@@ -75,6 +75,21 @@ export const parts = pgTable(
      */
     manufacturerUrl: text('manufacturer_url'),
 
+    /**
+     * 같은 제품의 **대표 레코드**. 대표 자신은 `null`이다.
+     *
+     * 원본에 같은 제품이 여러 레코드로 들어 있다 — 이름·제조사·출시연도가 전부
+     * 같은 것이 499그룹 1,036건이고, 한 그룹이 최대 7건이다. 그대로 두면 검색
+     * 한 페이지에 같은 제품이 7번 나오고 구별할 방법이 없다.
+     *
+     * **합치지 않고 가리킨다.** `parts.id`는 공유 URL이 담으므로(ADR-0012)
+     * 레코드를 없애면 이미 뿌려진 링크가 깨진다. 목록·검색·sitemap만 대표를
+     * 보여주고, id로는 여전히 열린다.
+     *
+     * 근거: `docs/research/duplicate-parts.md`
+     */
+    duplicateOf: uuid('duplicate_of'),
+
     /** 국내 유통 여부. 유효 SKU >= 1 (§5.7.1 7단계) */
     krAvailable: boolean('kr_available'),
     krCheckedAt: timestamp('kr_checked_at', { withTimezone: true }),
@@ -107,6 +122,8 @@ export const parts = pgTable(
     uniqueIndex('parts_slug_uq').on(t.slug),
     uniqueIndex('parts_opendb_id_uq').on(t.opendbId),
     index('parts_category_idx').on(t.category),
+    // 목록·검색이 매번 「대표만」으로 좁힌다. 대표가 97.9%라 부분 인덱스로 둔다
+    index('parts_duplicate_of_idx').on(t.duplicateOf).where(sql`${t.duplicateOf} is not null`),
     index('parts_chip_id_idx').on(t.chipId),
     index('parts_mpn_idx').on(t.mpn),
     // 부분 일치라 b-tree가 듣지 않는다. 앞에 와일드카드가 붙으면 b-tree는

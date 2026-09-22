@@ -53,6 +53,10 @@ async function relatedParts(
   return null;
 }
 
+function partHref(category: string, slug: string): string {
+  return `/part/${category.toLowerCase()}/${slug}`;
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   try {
@@ -61,6 +65,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     return {
       title: `${part.modelName} 스펙`,
       description: `${part.modelName}의 스펙과 호환 정보. 조합의 호환성과 소비전력을 판정합니다.`,
+      // 같은 제품이 여러 레코드로 들어 있다. 중복 페이지는 대표를 가리킨다 —
+      // 그냥 두면 같은 내용의 페이지들이 서로 순위를 갉아먹는다.
+      alternates: {
+        canonical: partHref(part.category, part.canonicalSlug ?? part.slug),
+      },
     };
   } catch {
     return { title: { absolute: 'buildfit' } };
@@ -127,6 +136,19 @@ export default async function PartPage({
           <Link href={buildHref} className="btn btn-primary mt-4">
             이 부품으로 견적 시작
           </Link>
+        )}
+        {/*
+          중복 레코드는 주소를 살려 둔다 (공유 링크가 담고 있다 — ADR-0012).
+          다만 목록·검색에는 대표만 나오므로, 여기 온 사람에게 왜 둘이 있는지 알린다.
+        */}
+        {part.canonicalSlug && (
+          <p className="mt-4 text-sm text-fg-muted">
+            같은 제품이 원본 데이터에 여러 번 들어 있습니다. 대표 항목은{' '}
+            <Link href={partHref(part.category, part.canonicalSlug)} className="link">
+              여기
+            </Link>
+            입니다.
+          </p>
         )}
       </header>
 

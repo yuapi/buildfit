@@ -12,6 +12,7 @@ import { type QuoteLabel, readQuoteLine } from '@buildfit/compat';
 import { and, inArray, sql } from 'drizzle-orm';
 import type { Database } from '../client';
 import { parts } from '../schema';
+import { canonicalOnly } from './search';
 
 /** 견적에 들어갈 수 있는 카테고리만 본다. `GPUChip`은 내부 레코드라 제외한다 */
 export const QUOTE_CATEGORIES = [
@@ -95,6 +96,9 @@ async function matchLine(db: Database, line: string): Promise<QuoteLineResult> {
 
   const where = and(
     inArray(parts.category, category === null ? [...QUOTE_CATEGORIES] : [category]),
+    // 중복 레코드를 세면 후보가 늘어 "하나로 확정"이 깨진다. 같은 제품이 7행이면
+    // 줄은 확정 가능한데도 선택 목록이 된다.
+    canonicalOnly(),
     ...parsed.terms.map((term) => {
       const alts = term.any.map((v) => sql`${parts.searchText} like ${`%${v}%`}`);
       return sql`(${sql.join(alts, sql` or `)})`;

@@ -12,7 +12,7 @@ import type { Constraint } from '@buildfit/compat';
 import { type SQL, and, eq, sql } from 'drizzle-orm';
 import type { Database } from '../client';
 import { partSpecs, parts } from '../schema';
-import { nameWhere, searchTerms } from './search';
+import { canonicalOnly, nameWhere, searchTerms } from './search';
 
 export interface PartOption {
   readonly id: string;
@@ -112,7 +112,8 @@ export async function searchCandidates(
   // 클라이언트가 보낸 값이다. 문자열이 아니면 빈 검색으로 떨어뜨린다.
   const q = typeof input.query === 'string' ? input.query : '';
   const parsed = searchTerms(q);
-  const base = [eq(parts.category, input.category), ...nameWhere(parsed)];
+  // 대표만 보여준다. 같은 제품이 7번 나오면 목록이 쓸모없다
+  const base = [eq(parts.category, input.category), canonicalOnly(), ...nameWhere(parsed)];
 
   // 제약 조건을 따로 들고 있는다. `narrowed.slice(base.length)`로 되찾으면
   // 나중에 base에 조건을 하나 더 넣는 순간 hidden이 조용히 틀린 값을 센다.
