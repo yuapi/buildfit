@@ -160,6 +160,34 @@ describeIfDb('후보 좁히기 SQL (ADR-0016)', () => {
     ]);
   });
 
+  it('★ 「검증 중」인 값으로는 숨기지 않는다 (이슈 #14)', async () => {
+    // LGA 씨피유는 소켓이 어긋나 빠져 있었다. 그 값에 「검증 중」이 서면
+    // 다시 나와야 한다 — 다투어지는 값은 아는 값이 아니다.
+    const before = await names('CPU', [
+      { kind: 'equals', key: 'socket', value: 'AM5', ruleId: 1, because: '보드 소켓' },
+    ]);
+    expect(before.names).not.toContain('LGA 씨피유');
+
+    await db.execute(
+      sql`update part_specs set disputed = true
+          where part_id = '22222222-2222-4222-8222-222222222222' and key = 'socket'`,
+    );
+    try {
+      const after = await names('CPU', [
+        { kind: 'equals', key: 'socket', value: 'AM5', ruleId: 1, because: '보드 소켓' },
+      ]);
+      expect(after.names).toContain('LGA 씨피유');
+      // 숨긴 개수도 같은 기준으로 줄어야 한다. 목록에는 있는데 "1개 숨김"이
+      // 남아 있으면 사용자가 없는 것을 찾는다.
+      expect(after.hidden).toBe(before.hidden - 1);
+    } finally {
+      await db.execute(
+        sql`update part_specs set disputed = false
+            where part_id = '22222222-2222-4222-8222-222222222222' and key = 'socket'`,
+      );
+    }
+  });
+
   it('제약이 없으면 전부 나온다', async () => {
     const r = await names('CPU', []);
     expect(r.names).toHaveLength(6);
