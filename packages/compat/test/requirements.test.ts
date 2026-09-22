@@ -74,6 +74,11 @@ const BLANK: Record<string, () => Build> = {
       storage: [{ ...f.sataDrive, formFactor: '2.5"' }],
       pcCase: { ...f.pcCase, internal25Bays: null },
     }),
+  // 연도는 parts 컬럼이지만 규칙이 읽는 입력이므로 선언에 있다 (이슈 #15).
+  // 비우는 방법은 다른 필드와 같다 — 규칙 엔진은 어디 저장되는지 모른다.
+  'CPU.release_year': () => f.withBuild({ cpu: { ...f.cpu, releaseYear: null } }),
+  'Motherboard.release_year': () =>
+    f.withBuild({ motherboard: { ...f.motherboard, releaseYear: null } }),
   'GPU.total_slot_width': () => f.withBuild({ gpu: { ...f.gpu, totalSlotWidth: null } }),
   'PCCase.expansion_slots': () => f.withBuild({ pcCase: { ...f.pcCase, expansionSlots: null } }),
 };

@@ -150,7 +150,11 @@ export async function ingest(opts: IngestOptions): Promise<void> {
             category: sql`excluded.category`,
             brand: sql`excluded.brand`,
             modelName: sql`excluded.model_name`,
-            releaseYear: sql`excluded.release_year`,
+            // ★ 원본이 연도를 모른다고 기존 값을 지우지 않는다 (이슈 #15).
+            // 어드민이 채운 연도가 다음 적재에 사라지면 가장 비싼 데이터를 잃는다.
+            // 원본에 값이 있으면 그것이 이긴다 — 아래 「사람이 넣은 값 다시 얹기」가
+            // 사람 값을 되돌린다.
+            releaseYear: sql`coalesce(excluded.release_year, ${parts.releaseYear})`,
             mpn: sql`excluded.mpn`,
             manufacturerUrl: sql`excluded.manufacturer_url`,
             chipId: sql`excluded.chip_id`,
@@ -239,6 +243,25 @@ export async function ingest(opts: IngestOptions): Promise<void> {
     for (const batch of chunked(aliasValues, CHUNK)) {
       await db.insert(partAliases).values(batch).onConflictDoNothing();
     }
+
+    // --- 사람이 넣은 값 다시 얹기 ------------------------------------------
+    // `parts` 컬럼에 있는 입력은 컬럼별 출처를 담을 자리가 없어서, 어드민이
+    // 채울 때 `part_specs`에도 같은 키로 흔적을 남긴다 (출처·확인 시각).
+    // 그 행이 사람이 넣었다는 증거이므로, 적재가 컬럼을 덮어썼다면 되돌린다.
+    //
+    // 스펙 쪽의 「사람이 넣은 값은 건드리지 않는다」와 같은 원칙이다.
+    log('사람이 넣은 컬럼 값 다시 얹는 중...');
+    const restored = await db.execute(sql`
+      update ${parts} p
+      set release_year = (s.value #>> '{}')::int, updated_at = now()
+      from ${partSpecs} s
+      where s.part_id = p.id
+        and s.key = 'release_year'
+        and s.source_url not like 'https://github.com/buildcores/%'
+        and jsonb_typeof(s.value) = 'number'
+        and p.release_year is distinct from (s.value #>> '{}')::int
+    `);
+    log(`  ${Number(restored.count ?? 0)}건`);
 
     // --- 중복 묶기 --------------------------------------------------------
     // 같은 제품이 여러 레코드로 들어 있다. 합치지 않고 대표를 가리킨다 —

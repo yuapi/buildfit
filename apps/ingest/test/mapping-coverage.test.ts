@@ -15,7 +15,10 @@
  * 필요 없다 — 선언 두 벌을 맞대 보는 정적 검사다.
  */
 
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { SPEC_REQUIREMENTS } from '@buildfit/compat';
+import { PART_COLUMNS } from '@buildfit/db/queries';
 import { describe, expect, it } from 'vitest';
 import { CATEGORIES, CATEGORY_SPECS, DERIVED_SPECS } from '../src/mapping';
 
@@ -26,6 +29,18 @@ function mapped(category: string, specKey: string): boolean {
     DERIVED_SPECS[category]?.[specKey] !== undefined
   );
 }
+
+/**
+ * `parts` 컬럼에 있는 입력은 `CATEGORY_SPECS`에 없다 (이슈 #15).
+ *
+ * 그 대신 **세 곳이 맞아야 한다** — `transform.ts`가 원본에서 읽고, DB 계층의
+ * `PART_COLUMNS`가 컬럼을 알고, 적재가 사람이 넣은 값을 다시 얹는다.
+ * 하나라도 빠지면 그 필드가 조용히 100% 결측으로 잡히거나, 어드민이 채운 값이
+ * 다음 적재에 사라진다.
+ */
+const PART_COLUMN_KEYS = new Set(
+  SPEC_REQUIREMENTS.filter((r) => r.storedOnPart === true).map((r) => r.specKey),
+);
 
 describe('요구사항 선언 ↔ 적재 매핑', () => {
   it.each(
@@ -38,6 +53,8 @@ describe('요구사항 선언 ↔ 적재 매핑', () => {
         ] as const,
     ),
   )('%s 를 적재가 채운다', (_label, category, specKey) => {
+    // 컬럼 백업 필드는 아래 별도 테스트가 본다
+    if (PART_COLUMN_KEYS.has(specKey)) return;
     expect(
       mapped(category, specKey),
       `규칙이 ${category}.${specKey}를 요구하는데 mapping.ts에 없다. ` +
@@ -45,9 +62,41 @@ describe('요구사항 선언 ↔ 적재 매핑', () => {
     ).toBe(true);
   });
 
+  it('★ parts 컬럼에 있는 입력은 세 곳이 맞는다 (이슈 #15)', () => {
+    const transform = readFileSync(
+      fileURLToPath(new URL('../src/transform.ts', import.meta.url)),
+      'utf8',
+    );
+    const index = readFileSync(
+      fileURLToPath(new URL('../src/index.ts', import.meta.url)),
+      'utf8',
+    );
+
+    expect(PART_COLUMN_KEYS.size, '컬럼 백업 필드가 하나도 없다면 이 테스트가 헛돈다').toBeGreaterThan(0);
+
+    for (const key of PART_COLUMN_KEYS) {
+      // 1) DB 계층이 컬럼을 안다
+      expect(
+        Object.keys(PART_COLUMNS),
+        `${key}가 PART_COLUMNS에 없다. 결측 집계가 100%로 잡고 어드민이 채울 수 없다`,
+      ).toContain(key);
+
+      // 2) 적재가 원본에서 읽는다 (parts 컬럼은 transform이 채운다)
+      const camel = key.replace(/_([a-z])/g, (_m, c: string) => c.toUpperCase());
+      expect(transform, `transform.ts가 ${key}를 채우지 않는다`).toContain(camel);
+
+      // 3) 적재가 사람이 넣은 값을 다시 얹는다
+      expect(
+        index,
+        `적재가 ${key}를 다시 얹지 않는다. 어드민이 채운 값이 다음 적재에 사라진다`,
+      ).toContain(`s.key = '${key}'`);
+    }
+  });
+
   it('fallbackKey도 적재가 채운다', () => {
     for (const r of SPEC_REQUIREMENTS) {
       if (r.fallbackKey === undefined) continue;
+      if (PART_COLUMN_KEYS.has(r.fallbackKey)) continue;
       expect(
         mapped(r.category, r.fallbackKey),
         `${r.category}.${r.specKey}의 대체 키 ${r.fallbackKey}가 mapping.ts에 없다`,
