@@ -5,6 +5,7 @@ import { partsMissingField } from '@buildfit/db/queries';
 import { Container } from '@/components/SiteShell';
 import { getDb } from '@/lib/db';
 import { requireAdmin } from '@/lib/admin-auth';
+import { BulkRow } from './BulkRow';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,23 +45,18 @@ export default async function GapList({
         이 값이 없어 규칙 {req.ruleId}번이 판정 불가로 처리되는 부품이다.
         최신 부품부터 보여준다.
       </p>
+      <p className="mt-1 text-xs leading-relaxed text-fg-subtle">
+        여기서 바로 채운다. 채운 줄은 <strong className="font-medium">사라지지 않고</strong>{' '}
+        「저장됨」으로 남는다 — 사라지면 아래 줄이 위로 밀려 커서 아래에서 줄이 바뀐다.
+        목록을 새로 받으려면 새로고침한다.
+      </p>
 
-      <ul className="mt-6 divide-y divide-border">
+      {/* 줄마다 상세 화면을 열고 돌아오는 왕복이 작업량의 대부분이었다 (이슈 #3) */}
+      <div className="mt-6 divide-y divide-border">
         {rows.map((p) => (
-          <li key={p.id} className="py-2">
-            <Link
-              href={`/admin/parts/${p.id}?focus=${specKey}`}
-              className="link hover:no-underline"
-            >
-              {p.modelName}
-            </Link>
-            <span className="ml-2 text-xs text-fg-subtle">
-              {p.brand ?? '제조사 미상'}
-              {p.releaseYear ? ` · ${p.releaseYear}` : ''}
-            </span>
-          </li>
+          <BulkRow key={p.id} req={req} part={p} />
         ))}
-      </ul>
+      </div>
 
       {rows.length === 0 && (
         <p className="mt-6 text-sm text-fg-subtle">이 페이지에는 더 이상 없다.</p>

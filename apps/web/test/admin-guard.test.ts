@@ -27,6 +27,20 @@ const entryPoints = files.filter((f) => {
   return !readFileSync(f, 'utf8').startsWith("'use client'");
 });
 
+/**
+ * 직접 막는 대신 **막는 함수에 위임하는 것**도 인정한다.
+ *
+ * `saveSpecCore`는 검증·기록 본체이고 첫 줄에서 `requireAdmin()`을 부른다.
+ * 두 화면(부품 하나 / 한 필드 줄줄이)이 그것을 공유하므로, 위임을 인정하지
+ * 않으면 같은 호출을 형식적으로 한 번 더 적게 되고 그게 진짜 방어처럼 보인다.
+ *
+ * 대신 **위임 대상이 실제로 막는지를 따로 확인한다.** 그러지 않으면 이 예외가
+ * 구멍이 된다 — 여기 이름만 올리면 통과하는 셈이 되어서는 안 된다.
+ */
+const GATED_HELPERS: readonly { readonly name: string; readonly file: string }[] = [
+  { name: 'saveSpecCore', file: 'spec-save.ts' },
+];
+
 describe('어드민 접근 제어', () => {
   it('막을 대상을 실제로 찾았다', () => {
     // 이 테스트가 0개를 훑으면서 통과하는 일이 없어야 한다
@@ -34,9 +48,22 @@ describe('어드민 접근 제어', () => {
   });
 
   it.each(entryPoints.map((f) => [f.slice(ADMIN_DIR.length + 1), f]))(
-    '%s 가 requireAdmin을 부른다',
+    '%s 가 requireAdmin을 부르거나 막는 함수에 위임한다',
     (_name, file) => {
-      expect(readFileSync(file, 'utf8')).toContain('await requireAdmin()');
+      const text = readFileSync(file, 'utf8');
+      const gated =
+        text.includes('await requireAdmin()') ||
+        GATED_HELPERS.some((h) => text.includes(`${h.name}(`));
+      expect(gated, '직접 막지도, 막는 함수에 위임하지도 않는다').toBe(true);
+    },
+  );
+
+  it.each(GATED_HELPERS.map((h) => [h.name, h.file] as const))(
+    '위임 대상 %s 가 스스로 requireAdmin을 부른다',
+    (name, file) => {
+      const text = readFileSync(join(ADMIN_DIR, file), 'utf8');
+      expect(text, `${name}이 ${file}에 없다`).toContain(`export async function ${name}`);
+      expect(text).toContain('await requireAdmin()');
     },
   );
 
