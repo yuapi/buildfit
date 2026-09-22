@@ -17,6 +17,18 @@ export interface PartRef {
    * 화면이 상세 페이지로 링크할 때 필요하다.
    */
   readonly slug?: string | undefined;
+  /**
+   * 이 부품에서 **값이 다투어지는** 스펙 키 (이슈 #13).
+   *
+   * 사용자 신고나 중복 레코드 간 불일치로 `disputed`가 선 키다 (§5.5, 이슈 #11).
+   * 판정에는 쓰지 않는다 — 값은 있고 규칙은 그 값으로 답을 낸다. 다만 **엔진이
+   * 결과에 「검증 중인 값을 썼다」를 덧붙인다**(`engine.ts`). 스스로 의심한다고
+   * 표시해 둔 값으로 확정적인 판정을 내놓지 않기 위해서다.
+   *
+   * 값이 없는 것과 다투어지는 것은 다르다. 신고 하나로 판정을 `unknown`으로
+   * 내리면 신고가 무기가 된다.
+   */
+  readonly contestedSpecs?: readonly string[] | undefined;
 }
 
 export interface Cpu extends PartRef {

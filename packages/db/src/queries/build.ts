@@ -15,6 +15,7 @@ import type {
   Gpu,
   Motherboard,
   PcCase,
+  PartRef,
   Psu,
   RamKit,
   StorageDrive,
@@ -31,6 +32,18 @@ interface RawPart {
   /** 스펙이 아니라 parts 컬럼이다. 규칙 12가 쓴다 */
   readonly releaseYear: number | null;
   readonly specs: ReadonlyMap<string, unknown>;
+  /** 「검증 중」이 선 스펙 키 (이슈 #13). 판정에는 쓰지 않고 결과에 덧붙는다 */
+  readonly contested: readonly string[];
+}
+
+/**
+ * 모든 부품 타입이 공유하는 머리 부분.
+ *
+ * 여덟 변환 함수가 같은 세 줄을 반복하고 있었다. `contestedSpecs`를 붙일 때
+ * 하나를 빠뜨리면 그 카테고리만 조용히 표시가 빠진다.
+ */
+function ref(p: RawPart): PartRef {
+  return { id: p.id, name: p.modelName, slug: p.slug, contestedSpecs: p.contested };
 }
 
 function num(specs: ReadonlyMap<string, unknown>, key: string): number | null {
@@ -82,11 +95,17 @@ async function loadRaw(db: Database, ids: readonly string[]): Promise<Map<string
     .where(inArray(parts.id, unique));
 
   const specRows = await db
-    .select({ partId: partSpecs.partId, key: partSpecs.key, value: partSpecs.value })
+    .select({
+      partId: partSpecs.partId,
+      key: partSpecs.key,
+      value: partSpecs.value,
+      disputed: partSpecs.disputed,
+    })
     .from(partSpecs)
     .where(inArray(partSpecs.partId, unique));
 
   const specsById = new Map<string, Map<string, unknown>>();
+  const contestedById = new Map<string, string[]>();
   for (const s of specRows) {
     let m = specsById.get(s.partId);
     if (!m) {
@@ -94,6 +113,11 @@ async function loadRaw(db: Database, ids: readonly string[]): Promise<Map<string
       specsById.set(s.partId, m);
     }
     m.set(s.key, s.value);
+    if (s.disputed) {
+      const keys = contestedById.get(s.partId);
+      if (keys) keys.push(s.key);
+      else contestedById.set(s.partId, [s.key]);
+    }
   }
 
   return new Map(
@@ -106,6 +130,7 @@ async function loadRaw(db: Database, ids: readonly string[]): Promise<Map<string
         slug: r.slug,
         releaseYear: r.releaseYear,
         specs: specsById.get(r.id) ?? new Map(),
+        contested: contestedById.get(r.id) ?? [],
       },
     ]),
   );
@@ -113,9 +138,7 @@ async function loadRaw(db: Database, ids: readonly string[]): Promise<Map<string
 
 function toCpu(p: RawPart): Cpu {
   return {
-    id: p.id,
-    name: p.modelName,
-    slug: p.slug,
+    ...ref(p),
     socket: str(p.specs, 'socket'),
     tdp: num(p.specs, 'tdp_w'),
     ppt: num(p.specs, 'ppt_w'),
@@ -127,9 +150,7 @@ function toCpu(p: RawPart): Cpu {
 
 function toMotherboard(p: RawPart): Motherboard {
   return {
-    id: p.id,
-    name: p.modelName,
-    slug: p.slug,
+    ...ref(p),
     socket: str(p.specs, 'socket'),
     formFactor: str(p.specs, 'form_factor'),
     memoryType: str(p.specs, 'memory_type'),
@@ -145,9 +166,7 @@ function toMotherboard(p: RawPart): Motherboard {
 
 function toRamKit(p: RawPart): RamKit {
   return {
-    id: p.id,
-    name: p.modelName,
-    slug: p.slug,
+    ...ref(p),
     ramType: str(p.specs, 'ram_type'),
     moduleCount: num(p.specs, 'module_count'),
     capacityGb: num(p.specs, 'capacity_gb'),
@@ -157,9 +176,7 @@ function toRamKit(p: RawPart): RamKit {
 
 function toGpu(p: RawPart): Gpu {
   return {
-    id: p.id,
-    name: p.modelName,
-    slug: p.slug,
+    ...ref(p),
     chipset: str(p.specs, 'chipset'),
     lengthMm: num(p.specs, 'length_mm'),
     totalSlotWidth: num(p.specs, 'total_slot_width'),
@@ -175,9 +192,7 @@ function toGpu(p: RawPart): Gpu {
 
 function toPcCase(p: RawPart): PcCase {
   return {
-    id: p.id,
-    name: p.modelName,
-    slug: p.slug,
+    ...ref(p),
     formFactor: str(p.specs, 'form_factor'),
     supportedMoboFormFactors: strArray(p.specs, 'supported_mobo_form_factors'),
     supportedPsuFormFactors: strArray(p.specs, 'supported_psu_form_factors'),
@@ -191,9 +206,7 @@ function toPcCase(p: RawPart): PcCase {
 
 function toStorage(p: RawPart): StorageDrive {
   return {
-    id: p.id,
-    name: p.modelName,
-    slug: p.slug,
+    ...ref(p),
     formFactor: str(p.specs, 'form_factor'),
     interface: str(p.specs, 'interface'),
     storageType: str(p.specs, 'storage_type'),
@@ -203,9 +216,7 @@ function toStorage(p: RawPart): StorageDrive {
 
 function toPsu(p: RawPart): Psu {
   return {
-    id: p.id,
-    name: p.modelName,
-    slug: p.slug,
+    ...ref(p),
     wattage: num(p.specs, 'wattage_w'),
     formFactor: str(p.specs, 'form_factor'),
     connectors: {
@@ -217,9 +228,7 @@ function toPsu(p: RawPart): Psu {
 
 function toCpuCooler(p: RawPart): CpuCooler {
   return {
-    id: p.id,
-    name: p.modelName,
-    slug: p.slug,
+    ...ref(p),
     heightMm: num(p.specs, 'height_mm'),
     waterCooled: bool(p.specs, 'water_cooled'),
     supportedSockets: strArray(p.specs, 'cpu_sockets'),
