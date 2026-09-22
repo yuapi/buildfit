@@ -80,6 +80,8 @@ const BLANK: Record<string, () => Build> = {
   'Motherboard.release_year': () =>
     f.withBuild({ motherboard: { ...f.motherboard, releaseYear: null } }),
   'GPU.total_slot_width': () => f.withBuild({ gpu: { ...f.gpu, totalSlotWidth: null } }),
+  'CPUCooler.cpu_sockets': () =>
+    f.withBuild({ cooler: { ...f.cooler, supportedSockets: null } }),
   'PCCase.expansion_slots': () => f.withBuild({ pcCase: { ...f.pcCase, expansionSlots: null } }),
 };
 

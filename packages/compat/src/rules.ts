@@ -26,7 +26,7 @@ import {
   describeExcluded,
   estimatePower,
 } from './power';
-import { sameSocket } from './sockets';
+import { coolerListCovers, sameSocket } from './sockets';
 
 export type Rule = (build: Build) => RuleResult | null;
 
@@ -731,6 +731,37 @@ export const rule12: Rule = ({ cpu, motherboard }) => {
 export const phase0Rules: readonly Rule[] = [rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8];
 
 /** Phase 1에서 추가된 규칙까지. 명세 §4.2 */
+/**
+ * 규칙 20 — 쿨러가 CPU 소켓을 지원하는가. docs/compat-rules.md §20, 이슈 #17.
+ *
+ * **경고다.** 우리가 아는 것은 「목록에 없다」뿐이다. AM5가 없는 쿨러 647개 중
+ * 363개가 AM4는 적고 있고, 그 상당수는 AM5에도 맞는다고 알려져 있다 — 그런데
+ * 데이터로 증명되지 않는다. 그래서 묶지도, 오류로 단정하지도 않는다 (§20.1).
+ */
+export const rule20: Rule = ({ cpu, cooler }) => {
+  if (!cpu || !cooler) return null;
+  const gaps: FieldRef[] = [];
+  if (!isFilled(cpu.socket)) gaps.push(ref(cpu, '소켓'));
+  // 빈 배열은 아무것도 말하지 않는다 — 「지원 소켓 없음」이 아니라 결측이다
+  if (!isFilled(cooler.supportedSockets)) gaps.push(ref(cooler, '지원 소켓'));
+  if (gaps.length > 0) {
+    return missing(20, '쿨러가 지원하는 소켓 정보가 없어 판정하지 못했습니다.', gaps);
+  }
+
+  const socket = cpu.socket!;
+  // TR4/sTR4 같은 표기 차이와 잘린 「LGA 115」를 보정한다 (§20.2)
+  return coolerListCovers(cooler.supportedSockets!, socket)
+    ? pass(20, `쿨러가 ${socket} 소켓을 지원합니다.`)
+    : fail(
+        20,
+        'warning',
+        // 조사를 소켓 이름에 바로 붙이지 않는다. AM5는 모음으로, LGA 1700은
+        // 받침으로 끝나 「이/가」가 반은 틀린다. 「소켓」에 붙이면 늘 맞다
+        `쿨러의 지원 소켓 목록에 ${socket} 소켓이 없습니다. 별도 고정 부품이 필요하거나 ` +
+          '장착되지 않을 수 있습니다. 제조사 스펙을 확인해 주세요.',
+      );
+};
+
 export const phase1Rules: readonly Rule[] = [
   ...phase0Rules,
   rule9,
@@ -740,4 +771,5 @@ export const phase1Rules: readonly Rule[] = [
   rule17,
   rule18,
   rule19,
+  rule20,
 ];

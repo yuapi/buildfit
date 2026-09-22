@@ -858,10 +858,10 @@ describe('19. 3.5"·2.5" 드라이브 수 ≤ 케이스 베이 수 (Phase 1)', (
 });
 
 describe('엔진', () => {
-  it('정상 견적은 14개 규칙이 통과하고 1개가 판정 불가다', () => {
+  it('정상 견적은 15개 규칙이 통과하고 1개가 판정 불가다', () => {
     const v = evaluate(f.goodBuild);
     // 규칙 17은 슬롯 수를 셀 수 없어 판정 불가다 (§17.4). 정상 동작이다
-    expect(v.counts.pass).toBe(14);
+    expect(v.counts.pass).toBe(15);
     expect(v.counts.fail).toBe(0);
     expect(v.counts.unknown).toBe(1);
   });
@@ -869,9 +869,9 @@ describe('엔진', () => {
   it('고르지 않은 부품의 규칙은 결과에서 빠진다', () => {
     const v = evaluate(f.withBuild({ gpu: null, pcCase: null, psu: null }));
     const ids = v.results.map((r) => r.ruleId);
-    // 12는 CPU+보드만으로, 16은 메모리+보드, 17·18은 스토리지+보드만으로
-    // 판정된다. 케이스·GPU·파워를 안 골라도 남는다
-    expect(ids).toEqual([1, 2, 3, 12, 16, 17, 18]);
+    // 12는 CPU+보드만으로, 16은 메모리+보드, 17·18은 스토리지+보드만으로,
+    // 20은 CPU+쿨러만으로 판정된다. 케이스·GPU·파워를 안 골라도 남는다
+    expect(ids).toEqual([1, 2, 3, 12, 16, 17, 18, 20]);
   });
 
   it('빈 견적은 적용할 규칙이 없다', () => {

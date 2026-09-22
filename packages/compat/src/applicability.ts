@@ -54,6 +54,7 @@ export const RULE_PARTS: Readonly<Record<number, readonly PartSlot[]>> = {
   17: ['storage', 'motherboard'],
   18: ['storage', 'motherboard'],
   19: ['storage', 'pcCase'],
+  20: ['cpu', 'cooler'],
 };
 
 /**
@@ -78,6 +79,7 @@ export const RULE_SUMMARY: Readonly<Record<number, string>> = {
   17: 'M.2 드라이브가 보드 슬롯 수 안인가',
   18: 'SATA 드라이브가 보드 포트 수 안인가',
   19: '3.5\"·2.5\" 드라이브가 케이스 베이 수 안인가',
+  20: '쿨러가 CPU 소켓을 지원하는가',
 };
 
 function isPicked(build: Build, slot: PartSlot): boolean {
