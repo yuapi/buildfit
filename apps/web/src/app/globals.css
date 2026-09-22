@@ -370,6 +370,16 @@
     font-size: 0.75rem;
     line-height: 1.5;
     white-space: nowrap;
+    /*
+     * 담긴 글자가 길어도 화면을 넘지 않는다.
+     *
+     * `nowrap`만 두면 긴 부품 이름이 390px 화면을 그대로 뚫는다 — 실제로
+     * 스토리지 이름(`Western Digital WD Blue 6TB HDD 3.5" 5400RPM SATA 3.0
+     * Gb/s Internal`)에서 92px가 넘쳤다. 이름을 담는 칩은 안쪽 글자에
+     * `truncate`를 함께 걸어 `…`로 끝내야 한다.
+     */
+    max-width: 100%;
+    overflow: hidden;
   }
 
   /*
