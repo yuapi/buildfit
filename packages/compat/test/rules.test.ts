@@ -681,54 +681,57 @@ describe('16. 총 메모리 용량 ≤ 보드·CPU 최대 (Phase 1)', () => {
   });
 });
 
-describe('17. M.2 드라이브 수 ≤ 보드 M.2 슬롯 수 (Phase 1)', () => {
+describe('17. M.2 드라이브를 보드가 받는가 (Phase 1)', () => {
   const m2 = (n: number) =>
     Array.from({ length: n }, (_, i) => ({ ...f.drive, id: `m2-${i}` }));
-  const build = (drives: number, slots: number | null, memoryType = 'DDR5') =>
+  const build = (drives: number, rows: number | null, memoryType = 'DDR5') =>
     f.withBuild({
       storage: m2(drives),
-      motherboard: { ...f.motherboard, m2Slots: slots, memoryType },
+      motherboard: { ...f.motherboard, m2Slots: rows, memoryType },
     });
 
-  it('들어가면 pass', () => {
-    expect(rule17(build(3, 3))?.verdict).toBe('pass');
-  });
-
-  it('넘으면 error', () => {
-    const r = rule17(build(4, 3));
-    expect(r?.verdict).toBe('fail');
-    expect(r?.severity).toBe('error');
-    expect(r?.message).toContain('4개');
-    expect(r?.message).toContain('3개');
-  });
-
-  it('★ 슬롯 0은 값이다 — M.2 없는 보드는 실재한다 (§17.2)', () => {
-    // DDR2의 100%, DDR3의 86.3%가 0이다
+  it('★ M.2 슬롯이 없는 보드는 error — 이것만 셀 수 있다 (§17.4)', () => {
+    // DDR2의 100%, DDR3의 86.3%가 0이다. 빈 목록은 쪼갤 것이 없어 믿을 수 있다
     const r = rule17(build(1, 0, 'DDR3'));
     expect(r?.verdict).toBe('fail');
     expect(r?.severity).toBe('error');
-    // DDR4의 135건도 H110·A320 같은 보급형이라 진짜 0이다
-    expect(rule17(build(1, 0, 'DDR4'))?.verdict).toBe('fail');
+    expect(r?.message).toContain('M.2 슬롯이 없는데');
+    expect(rule17(build(2, 0, 'DDR4'))?.verdict).toBe('fail');
   });
 
-  it('★ DDR5 보드의 0만 판정하지 않는다 (§17.2)', () => {
-    // 1,066건 중 3건뿐이고 전부 M.2가 있는 보드였다
+  it('★ 슬롯이 있으면 개수를 세지 않는다 — 배열 길이가 슬롯 수가 아니다 (§17.4)', () => {
+    // ASUS PRIME B650M-A는 슬롯 2개인데 4행, Gigabyte Z790 AORUS ELITE AX는
+    // 슬롯 4개인데 3행이다. 같은 계열이 다른 행 수로 존재하는 것이 138건이다
+    for (const [drives, rows] of [[1, 3], [3, 2], [5, 4]] as const) {
+      const r = rule17(build(drives, rows));
+      expect(r?.verdict, `드라이브 ${drives} / 행 ${rows}`).toBe('unknown');
+      expect(r?.reason?.kind).toBe('inconsistent');
+    }
+  });
+
+  it('M.2 드라이브가 없으면 pass — 볼 것이 없다', () => {
+    const b = f.withBuild({
+      storage: [f.sataDrive],
+      motherboard: { ...f.motherboard, m2Slots: 0, memoryType: 'DDR4' },
+    });
+    const r = rule17(b);
+    expect(r?.verdict).toBe('pass');
+    expect(r?.message).toContain('M.2 드라이브가 없습니다');
+  });
+
+  it('★ DDR5 보드의 0은 판정하지 않는다 (§17.2)', () => {
     const r = rule17(build(1, 0, 'DDR5'));
     expect(r?.verdict).toBe('unknown');
     expect(r?.reason?.kind).toBe('inconsistent');
   });
 
-  it('M.2가 아닌 드라이브는 세지 않는다', () => {
-    const b = f.withBuild({
-      storage: [f.sataDrive, { ...f.sataDrive, id: 'h2' }],
-      motherboard: { ...f.motherboard, m2Slots: 0, memoryType: 'DDR4' },
-    });
-    expect(rule17(b)?.verdict).toBe('pass');
-  });
-
   it('★ 자리를 세지 못한 드라이브는 그 사실을 적는다 (§17.1)', () => {
     const aic = { ...f.drive, id: 'aic', name: 'Intel Optane 905P', formFactor: 'PCIe' };
-    const r = rule17(f.withBuild({ storage: [f.drive, aic] }));
+    const b = f.withBuild({
+      storage: [aic],
+      motherboard: { ...f.motherboard, m2Slots: 0, memoryType: 'DDR4' },
+    });
+    const r = rule17(b);
     expect(r?.verdict).toBe('pass');
     expect(r?.notes?.join(' ')).toContain('Optane');
     expect(r?.notes?.join(' ')).toContain('세지 않았습니다');
@@ -855,11 +858,12 @@ describe('19. 3.5"·2.5" 드라이브 수 ≤ 케이스 베이 수 (Phase 1)', (
 });
 
 describe('엔진', () => {
-  it('정상 견적은 15개 규칙이 전부 통과한다', () => {
+  it('정상 견적은 14개 규칙이 통과하고 1개가 판정 불가다', () => {
     const v = evaluate(f.goodBuild);
-    expect(v.counts.pass).toBe(15);
+    // 규칙 17은 슬롯 수를 셀 수 없어 판정 불가다 (§17.4). 정상 동작이다
+    expect(v.counts.pass).toBe(14);
     expect(v.counts.fail).toBe(0);
-    expect(v.counts.unknown).toBe(0);
+    expect(v.counts.unknown).toBe(1);
   });
 
   it('고르지 않은 부품의 규칙은 결과에서 빠진다', () => {

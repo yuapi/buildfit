@@ -39,7 +39,10 @@ export interface Motherboard extends PartRef {
   readonly memoryType: string | null;
   readonly memorySlots: number | null;
   /**
-   * M.2 슬롯 **개수**. 규칙 17 (§17).
+   * 원본의 M.2 **행 수** (E키 와이파이 자리를 뺀 것). 규칙 17 (§17).
+   *
+   * **슬롯 수가 아니다.** 같은 보드 계열이 2·4·6행으로 존재한다 (§17.4).
+   * 그래서 규칙 17은 개수를 세지 않고 **있다 / 없다**만 본다.
    *
    * **`0`은 값이다.** M.2가 없는 보드는 실재한다 — DDR2의 100%, DDR3의 86.3%가
    * 그렇다. DDR5의 0만 미입력으로 본다 (§17.2).
