@@ -319,7 +319,7 @@ export async function saveSpec(
   const known = SPEC_REQUIREMENTS.filter((r) => r.specKey === input.key);
   if (known.length > 0 && !known.some((r) => r.category === part.category)) {
     throw new Error(
-      `${part.category}에는 ${input.key}를 저장할 수 없습니다 ` +
+      `${part.category}에는 ${input.key} 필드를 저장할 수 없습니다 ` +
         `(${[...new Set(known.map((r) => r.category))].join(', ')} 전용).`,
     );
   }
@@ -331,7 +331,7 @@ export async function saveSpec(
   // (「낡은 스펙 정리」가 OpenDB 출처만 지운다).
   if (PART_COLUMNS[input.key]) {
     if (input.key !== 'release_year') {
-      throw new Error(`컬럼 ${input.key}를 저장하는 방법이 정의되지 않았습니다.`);
+      throw new Error(`컬럼 ${input.key}의 저장 방법이 정의되지 않았습니다.`);
     }
     const year = Number(input.value);
     if (!Number.isInteger(year)) throw new Error('출시 연도는 정수여야 합니다.');

@@ -162,7 +162,7 @@ export function pickerConstraints(build: Build, slot: PartSlot): Constraint[] {
       key: 'expansion_slots',
       value: Math.ceil(gpu.totalSlotWidth!),
       ruleId: 15,
-      because: `${gpu.name}이 차지하는 ${Math.ceil(gpu.totalSlotWidth!)}칸`,
+      because: `${gpu.name}의 두께 ${Math.ceil(gpu.totalSlotWidth!)}칸`,
     });
   }
 
@@ -219,7 +219,7 @@ export function pickerConstraints(build: Build, slot: PartSlot): Constraint[] {
       key: 'form_factor',
       values: pcCase.supportedMoboFormFactors,
       ruleId: 5,
-      because: `${pcCase.name}가 지원하는 폼팩터`,
+      because: `${pcCase.name}의 지원 폼팩터`,
     });
   }
 
@@ -230,7 +230,7 @@ export function pickerConstraints(build: Build, slot: PartSlot): Constraint[] {
       key: 'form_factor',
       values: pcCase.supportedPsuFormFactors,
       ruleId: 6,
-      because: `${pcCase.name}가 지원하는 파워 규격`,
+      because: `${pcCase.name}의 지원 파워 규격`,
     });
   }
   if (slot === 'pcCase' && psu && filled(psu.formFactor)) {

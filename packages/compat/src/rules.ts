@@ -83,7 +83,7 @@ export const rule2: Rule = ({ cpu, motherboard, ram }) => {
   if (cpu && isFilled(cpu.memoryTypes)) {
     const supported = cpu.memoryTypes ?? [];
     if (kit.ramType !== null && !supported.includes(kit.ramType)) {
-      return fail(2, 'error', `이 CPU는 ${kit.ramType}를 지원하지 않습니다.`);
+      return fail(2, 'error', `이 CPU는 ${kit.ramType} 메모리를 지원하지 않습니다.`);
     }
   } else if (cpu) {
     return {
@@ -125,8 +125,8 @@ export const rule4: Rule = ({ gpu, pcCase }) => {
   if (gpu.chipOnly === true) {
     const range = gpu.chipLengthRangeMm;
     const hint = range
-      ? `${gpu.chipset}은 모델에 따라 ${range[0]}~${range[1]}mm로 차이가 큽니다.`
-      : `${gpu.chipset}은 모델에 따라 길이 차이가 큽니다.`;
+      ? `${gpu.chipset} 칩은 모델에 따라 ${range[0]}~${range[1]}mm로 차이가 큽니다.`
+      : `${gpu.chipset} 칩은 모델에 따라 길이 차이가 큽니다.`;
     return missing(4, `${hint} 구체적인 모델을 선택하거나 길이를 직접 입력해 주세요.`, [
       ref(gpu, 'AIB 모델 (길이)'),
     ]);
@@ -420,7 +420,7 @@ export const rule15: Rule = ({ gpu, pcCase }) => {
   if (gpu.chipOnly === true) {
     return missing(
       15,
-      `${gpu.chipset}은 모델에 따라 두께가 다릅니다. 구체적인 모델을 선택해 주세요.`,
+      `${gpu.chipset} 칩은 모델에 따라 두께가 다릅니다. 구체적인 모델을 선택해 주세요.`,
       [ref(gpu, 'AIB 모델 (두께)')],
     );
   }
