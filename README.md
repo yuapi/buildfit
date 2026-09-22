@@ -148,9 +148,20 @@ npm run ingest  -w @buildfit/ingest # 적재
 수치를 문서에 적어두면 낡는다. 다시 잴 수 있게 둔다.
 
 ```bash
-npm run sample        -w @buildfit/ingest  # 판정 불가율 표본
+npm run sample        -w @buildfit/ingest  # 판정 불가율 표본 (규칙별)
 npm run measure:quote -w @buildfit/ingest  # 견적서 줄 매칭 정확도 (ADR-0018)
 ```
+
+### CI와 같은 조건으로 돌리기
+
+```bash
+npm run test:empty-db
+```
+
+CI는 postgres를 새로 띄우므로 **카탈로그가 비어 있다.** 로컬에는 적재된 2만여
+건이 있어서, 실제 데이터에 기대는 테스트가 **로컬에서만 통과**할 수 있다.
+이 명령이 빈 DB를 만들어 마이그레이션·테스트(`CI=true`)·프로덕션 빌드를 CI와
+같은 순서로 돌린다.
 
 ## 문서
 
