@@ -87,10 +87,20 @@ function conflicts(c: Constraint): SQL {
   }
 }
 
+/**
+ * 제약 하나를 where 절로 옮긴다.
+ *
+ * **「검증 중」인 행으로는 숨기지 않는다** (이슈 #14). 다투어지는 값은 아는 값이
+ * 아니다 — 결측·단위 오류와 같은 자리다. 판정이 틀리면 사용자가 그 부품을 보고
+ * 의심할 수 있지만(이슈 #13이 「검증 중」이라고 적는다), 거르기가 숨기면
+ * **그 부품을 찾을 길이 없다.** ADR-0016이 세운 선("아는데 어긋나는 것만 뺀다").
+ */
 function constraintWhere(c: Constraint): SQL {
   return sql`not exists (
     select 1 from ${partSpecs}
-    where ${partSpecs.partId} = ${parts.id} and ${conflicts(c)}
+    where ${partSpecs.partId} = ${parts.id}
+      and ${partSpecs.disputed} = false
+      and ${conflicts(c)}
   )`;
 }
 
