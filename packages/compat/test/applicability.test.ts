@@ -22,8 +22,11 @@ const RULE_BY_ID = new Map(
   phase1Rules.map((rule) => [rule(f.goodBuild)?.ruleId, rule] as const),
 );
 
-const empty = (slot: PartSlot) =>
-  slot === 'ram' ? f.withBuild({ ram: [] }) : f.withBuild({ [slot]: null });
+const empty = (slot: PartSlot) => {
+  if (slot === 'ram') return f.withBuild({ ram: [] });
+  if (slot === 'storage') return f.withBuild({ storage: [] });
+  return f.withBuild({ [slot]: null });
+};
 
 describe('RULE_PARTS 선언 ↔ 규칙 구현', () => {
   it('선언된 규칙이 전부 구현되어 있다', () => {
@@ -74,7 +77,7 @@ describe('notApplicable', () => {
 
   it('무엇이 막고 있는지 부품 단위로 말한다', () => {
     const na = notApplicable(f.withBuild({ pcCase: null }));
-    expect(na.map((x) => x.ruleId)).toEqual([4, 5, 6, 9, 15]);
+    expect(na.map((x) => x.ruleId)).toEqual([4, 5, 6, 9, 15, 19]);
     expect(na.every((x) => x.needs.includes('pcCase'))).toBe(true);
   });
 

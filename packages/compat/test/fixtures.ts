@@ -1,6 +1,8 @@
 /** 테스트용 부품. 전부 채워진 정상 조합을 기준으로 두고 필요한 필드만 덮어쓴다. */
 
-import type { Build, Cpu, CpuCooler, Gpu, Motherboard, PcCase, Psu, RamKit } from '../src/parts';
+import type {
+  Build, Cpu, CpuCooler, Gpu, Motherboard, PcCase, Psu, RamKit, StorageDrive,
+} from '../src/parts';
 
 export const cpu: Cpu = {
   id: 'cpu-1',
@@ -21,6 +23,9 @@ export const motherboard: Motherboard = {
   memoryType: 'DDR5',
   memorySlots: 4,
   memoryMaxGb: 256,
+  m2Slots: 3,
+  sataPorts: 6,
+  sataPorts3Gbs: 0,
   releaseYear: 2024,
   biosFlashback: true,
 };
@@ -53,6 +58,8 @@ export const pcCase: PcCase = {
   maxGpuLengthMm: 420,
   maxCpuCoolerHeightMm: 167,
   expansionSlots: 8,
+  internal35Bays: 6,
+  internal25Bays: 3,
 };
 
 export const psu: Psu = {
@@ -71,6 +78,24 @@ export const cooler: CpuCooler = {
   supportedSockets: ['AM5', 'LGA1700', 'LGA1851'],
 };
 
+export const drive: StorageDrive = {
+  id: 'ssd-1',
+  name: 'Samsung 990 PRO 2TB',
+  formFactor: 'M.2-2280',
+  interface: 'M.2 PCIe 4.0 x4',
+  storageType: 'SSD',
+  capacityGb: 2000,
+};
+
+export const sataDrive: StorageDrive = {
+  id: 'hdd-1',
+  name: 'Seagate BarraCuda 4TB',
+  formFactor: '3.5"',
+  interface: 'SATA 6.0 Gb/s',
+  storageType: 'HDD',
+  capacityGb: 4000,
+};
+
 export const goodBuild: Build = {
   cpu,
   motherboard,
@@ -79,6 +104,7 @@ export const goodBuild: Build = {
   pcCase,
   psu,
   cooler,
+  storage: [drive],
 };
 
 /** 기준 견적에서 일부만 바꾼 견적. */

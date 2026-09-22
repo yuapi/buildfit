@@ -57,6 +57,23 @@ const BLANK: Record<string, () => Build> = {
       motherboard: { ...f.motherboard, memoryMaxGb: null },
       cpu: { ...f.cpu, memoryMaxGb: null },
     }),
+  'Storage.form_factor': () => f.withBuild({ storage: [{ ...f.drive, formFactor: null }] }),
+  'Storage.interface': () => f.withBuild({ storage: [{ ...f.drive, interface: null }] }),
+  'Motherboard.m2_slots': () => f.withBuild({ motherboard: { ...f.motherboard, m2Slots: null } }),
+  // 3Gb/s만 남아 있으면 판정이 된다. 둘 다 비워야 판정 불가다 (§18)
+  'Motherboard.sata_ports': () =>
+    f.withBuild({ motherboard: { ...f.motherboard, sataPorts: null, sataPorts3Gbs: null } }),
+  // 3.5" 드라이브가 있어야 그 베이 수를 본다 (§19)
+  'PCCase.internal_3_5_bays': () =>
+    f.withBuild({
+      storage: [f.sataDrive],
+      pcCase: { ...f.pcCase, internal35Bays: null },
+    }),
+  'PCCase.internal_2_5_bays': () =>
+    f.withBuild({
+      storage: [{ ...f.sataDrive, formFactor: '2.5"' }],
+      pcCase: { ...f.pcCase, internal25Bays: null },
+    }),
   'GPU.total_slot_width': () => f.withBuild({ gpu: { ...f.gpu, totalSlotWidth: null } }),
   'PCCase.expansion_slots': () => f.withBuild({ pcCase: { ...f.pcCase, expansionSlots: null } }),
 };

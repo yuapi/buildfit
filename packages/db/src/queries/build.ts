@@ -17,6 +17,7 @@ import type {
   PcCase,
   Psu,
   RamKit,
+  StorageDrive,
 } from '@buildfit/compat';
 import { inArray } from 'drizzle-orm';
 import type { Database } from '../client';
@@ -134,6 +135,9 @@ function toMotherboard(p: RawPart): Motherboard {
     memoryType: str(p.specs, 'memory_type'),
     memorySlots: num(p.specs, 'memory_slots'),
     memoryMaxGb: num(p.specs, 'memory_max_gb'),
+    m2Slots: num(p.specs, 'm2_slots'),
+    sataPorts: num(p.specs, 'sata_ports'),
+    sataPorts3Gbs: num(p.specs, 'sata_ports_3gbs'),
     releaseYear: p.releaseYear,
     biosFlashback: bool(p.specs, 'bios_flashback'),
   };
@@ -180,6 +184,20 @@ function toPcCase(p: RawPart): PcCase {
     maxGpuLengthMm: num(p.specs, 'max_gpu_length_mm'),
     maxCpuCoolerHeightMm: num(p.specs, 'max_cpu_cooler_height_mm'),
     expansionSlots: num(p.specs, 'expansion_slots'),
+    internal35Bays: num(p.specs, 'internal_3_5_bays'),
+    internal25Bays: num(p.specs, 'internal_2_5_bays'),
+  };
+}
+
+function toStorage(p: RawPart): StorageDrive {
+  return {
+    id: p.id,
+    name: p.modelName,
+    slug: p.slug,
+    formFactor: str(p.specs, 'form_factor'),
+    interface: str(p.specs, 'interface'),
+    storageType: str(p.specs, 'storage_type'),
+    capacityGb: num(p.specs, 'capacity_gb'),
   };
 }
 
@@ -217,6 +235,7 @@ export interface BuildSelection {
   readonly pcCase?: string | undefined;
   readonly psu?: string | undefined;
   readonly cooler?: string | undefined;
+  readonly storage?: readonly string[] | undefined;
 }
 
 /**
@@ -234,6 +253,7 @@ export async function loadBuild(db: Database, sel: BuildSelection): Promise<Buil
     sel.psu,
     sel.cooler,
     ...(sel.ram ?? []),
+    ...(sel.storage ?? []),
   ].filter((v): v is string => typeof v === 'string');
 
   const raw = await loadRaw(db, ids);
@@ -252,6 +272,9 @@ export async function loadBuild(db: Database, sel: BuildSelection): Promise<Buil
   const ram = (sel.ram ?? [])
     .map((id) => pick(id, 'RAM'))
     .filter((p): p is RawPart => p !== null);
+  const storage = (sel.storage ?? [])
+    .map((id) => pick(id, 'Storage'))
+    .filter((p): p is RawPart => p !== null);
 
   return {
     cpu: cpu ? toCpu(cpu) : null,
@@ -261,5 +284,6 @@ export async function loadBuild(db: Database, sel: BuildSelection): Promise<Buil
     pcCase: pcCase ? toPcCase(pcCase) : null,
     psu: psu ? toPsu(psu) : null,
     cooler: cooler ? toCpuCooler(cooler) : null,
+    storage: storage.map(toStorage),
   };
 }

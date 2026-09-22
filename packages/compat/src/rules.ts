@@ -7,7 +7,8 @@
  */
 
 import { describeCaseReference } from './case-reference';
-import type { Build, Gpu } from './parts';
+import type { Build, Gpu, StorageDrive } from './parts';
+import { bayKind, unplacedDrives, usesM2Slot, usesSataPort } from './storage';
 import {
   type FieldRef,
   type RuleResult,
@@ -524,6 +525,145 @@ export const rule16: Rule = ({ cpu, motherboard, ram }) => {
   return pass(16, `메모리 ${total}GB / ${boundLabel} 한계 ${limit}GB.`);
 };
 
+// --- 17. M.2 드라이브 수 ≤ 보드 M.2 슬롯 수 ---------------------------------
+
+export const rule17: Rule = ({ motherboard, storage }) => {
+  if (storage.length === 0 || !motherboard) return null;
+
+  const gaps: FieldRef[] = [];
+  for (const d of storage) {
+    if (!isFilled(d.formFactor)) gaps.push(ref(d, '규격'));
+  }
+  if (!isFilled(motherboard.m2Slots)) gaps.push(ref(motherboard, 'M.2 슬롯 수'));
+  if (gaps.length > 0) {
+    return missing(17, 'M.2 슬롯 정보가 없어 판정하지 못했습니다.', gaps);
+  }
+
+  const slots = motherboard.m2Slots!;
+  /**
+   * `0`은 값이다 — DDR2의 100%, DDR3의 86.3%가 M.2 없는 보드다.
+   * DDR5만 다르다. 1,066건 중 0이 3건뿐이고 전부 M.2가 있는 보드였다 (§17.2).
+   */
+  if (slots === 0 && motherboard.memoryType === 'DDR5') {
+    return inconsistent(
+      17,
+      'M.2 슬롯 수가 0으로 적혀 있어 판정하지 못했습니다.',
+      'DDR5 보드에 M.2가 없는 경우는 확인되지 않았습니다. 미입력을 0으로 채운 값으로 보입니다.',
+      [ref(motherboard, 'M.2 슬롯 수')],
+    );
+  }
+
+  const need = storage.filter(usesM2Slot).length;
+  const notes = unplacedNote(storage);
+  if (need > slots) {
+    return {
+      ...fail(17, 'error', `M.2 드라이브가 ${need}개인데 메인보드 슬롯은 ${slots}개입니다.`),
+      ...(notes ? { notes } : {}),
+    };
+  }
+  return { ...pass(17, `M.2 ${need}개 / 슬롯 ${slots}개.`), ...(notes ? { notes } : {}) };
+};
+
+// --- 18. SATA 드라이브 수 ≤ 보드 SATA 포트 수 -------------------------------
+
+export const rule18: Rule = ({ motherboard, storage }) => {
+  if (storage.length === 0 || !motherboard) return null;
+
+  const gaps: FieldRef[] = [];
+  for (const d of storage) {
+    if (!isFilled(d.interface)) gaps.push(ref(d, '인터페이스'));
+  }
+  if (!isFilled(motherboard.sataPorts) && !isFilled(motherboard.sataPorts3Gbs)) {
+    gaps.push(ref(motherboard, 'SATA 포트 수'));
+  }
+  if (gaps.length > 0) {
+    return missing(18, 'SATA 포트 정보가 없어 판정하지 못했습니다.', gaps);
+  }
+
+  // 6Gb/s와 3Gb/s를 합산한다. 둘 다 드라이브가 꽂히는 자리다.
+  const ports = (motherboard.sataPorts ?? 0) + (motherboard.sataPorts3Gbs ?? 0);
+  /**
+   * `0`은 미입력이다 — 규칙 17과 반대다. 세대별 경향이 없이 24.9%가 0이고,
+   * SATA가 보편적이던 DDR2·DDR3 보드도 0으로 적혀 있다 (§18.2).
+   */
+  if (ports === 0) {
+    return inconsistent(
+      18,
+      'SATA 포트 수가 0으로 적혀 있어 판정하지 못했습니다.',
+      'SATA 포트가 없는 보드는 드물고, 0으로 적힌 것의 대부분이 미입력이었습니다.',
+      [ref(motherboard, 'SATA 포트 수')],
+    );
+  }
+
+  const need = storage.filter(usesSataPort).length;
+  if (need > ports) {
+    return fail(18, 'error', `SATA 드라이브가 ${need}개인데 메인보드 포트는 ${ports}개입니다.`);
+  }
+  return pass(18, `SATA ${need}개 / 포트 ${ports}개.`);
+};
+
+// --- 19. 3.5"·2.5" 드라이브 수 ≤ 케이스 베이 수 -----------------------------
+
+export const rule19: Rule = ({ pcCase, storage }) => {
+  if (storage.length === 0 || !pcCase) return null;
+
+  const gaps: FieldRef[] = [];
+  for (const d of storage) {
+    if (!isFilled(d.formFactor)) gaps.push(ref(d, '규격'));
+  }
+  if (gaps.length > 0) {
+    return missing(19, '드라이브 규격 정보가 없어 판정하지 못했습니다.', gaps);
+  }
+
+  const need35 = storage.filter((d) => bayKind(d) === '3.5').length;
+  const need25 = storage.filter((d) => bayKind(d) === '2.5').length;
+  if (need35 === 0 && need25 === 0) {
+    return pass(19, '케이스 베이를 쓰는 드라이브가 없습니다.');
+  }
+
+  // 필요한 쪽의 베이 수만 본다. 3.5"를 안 쓰는데 3.5" 베이가 결측이라고
+  // 판정 불가로 만들지 않는다.
+  if (need35 > 0 && !isFilled(pcCase.internal35Bays)) {
+    return missing(19, '케이스 베이 정보가 없어 판정하지 못했습니다.', [ref(pcCase, '3.5" 베이 수')]);
+  }
+  if (need25 > 0 && !isFilled(pcCase.internal25Bays)) {
+    return missing(19, '케이스 베이 정보가 없어 판정하지 못했습니다.', [ref(pcCase, '2.5" 베이 수')]);
+  }
+
+  // 3.5"는 3.5" 베이 말고 갈 곳이 없다. 넘으면 오류다 (§19.2).
+  if (need35 > 0 && need35 > pcCase.internal35Bays!) {
+    return fail(
+      19,
+      'error',
+      `3.5" 드라이브가 ${need35}개인데 케이스 베이는 ${pcCase.internal35Bays}개입니다.`,
+    );
+  }
+  // 2.5"는 3.5" 베이나 트레이 뒷면에 붙는 경우가 많다. 오류로 단정하지 않는다.
+  if (need25 > 0 && need25 > pcCase.internal25Bays!) {
+    return fail(
+      19,
+      'warning',
+      `2.5" 드라이브가 ${need25}개인데 케이스 베이는 ${pcCase.internal25Bays}개입니다. 3.5" 베이나 트레이 뒷면에 붙는 케이스가 많으니 설명서를 확인해 주세요.`,
+    );
+  }
+  const parts: string[] = [];
+  if (need35 > 0) parts.push(`3.5" ${need35}개 / 베이 ${pcCase.internal35Bays}개`);
+  if (need25 > 0) parts.push(`2.5" ${need25}개 / 베이 ${pcCase.internal25Bays}개`);
+  return pass(19, `${parts.join(', ')}.`);
+};
+
+/**
+ * 어느 자리도 세지 못한 드라이브를 결과에 적는다.
+ *
+ * 조용히 빠지면 사용자는 검사한 줄 안다. `PCIe`(AIC)와 `mSATA`가 여기 해당한다.
+ */
+function unplacedNote(storage: readonly StorageDrive[]): string[] | undefined {
+  const out = unplacedDrives(storage);
+  if (out.length === 0) return undefined;
+  const names = out.map((d) => `${d.name}(${d.formFactor})`).join(', ');
+  return [`${names}\uB294 M.2\uB3C4 \uCF00\uC774\uC2A4 \uBCA0\uC774\uB3C4 \uC544\uB2C8\uB77C \uC138\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4.`];
+}
+
 // --- 12. BIOS 업데이트 필요 여부 (Phase 1) ----------------------------------
 
 export const rule12: Rule = ({ cpu, motherboard }) => {
@@ -564,4 +704,13 @@ export const rule12: Rule = ({ cpu, motherboard }) => {
 export const phase0Rules: readonly Rule[] = [rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8];
 
 /** Phase 1에서 추가된 규칙까지. 명세 §4.2 */
-export const phase1Rules: readonly Rule[] = [...phase0Rules, rule9, rule12, rule15, rule16];
+export const phase1Rules: readonly Rule[] = [
+  ...phase0Rules,
+  rule9,
+  rule12,
+  rule15,
+  rule16,
+  rule17,
+  rule18,
+  rule19,
+];

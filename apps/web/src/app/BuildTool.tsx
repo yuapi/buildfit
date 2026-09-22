@@ -82,6 +82,7 @@ const EMPTY: Build = {
   pcCase: null,
   psu: null,
   cooler: null,
+  storage: [],
 };
 
 /*

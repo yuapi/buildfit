@@ -14,7 +14,15 @@
 import type { Build } from './parts';
 
 /** `Build`에서 부품 하나를 가리키는 키. */
-export type PartSlot = 'cpu' | 'motherboard' | 'ram' | 'gpu' | 'pcCase' | 'psu' | 'cooler';
+export type PartSlot =
+  | 'cpu'
+  | 'motherboard'
+  | 'ram'
+  | 'gpu'
+  | 'pcCase'
+  | 'psu'
+  | 'cooler'
+  | 'storage';
 
 export const SLOT_LABELS: Readonly<Record<PartSlot, string>> = {
   cpu: 'CPU',
@@ -24,6 +32,7 @@ export const SLOT_LABELS: Readonly<Record<PartSlot, string>> = {
   pcCase: '케이스',
   psu: '파워',
   cooler: 'CPU 쿨러',
+  storage: '스토리지',
 };
 
 /** 규칙 번호 → 그 규칙이 판정하려면 있어야 하는 부품들. */
@@ -42,6 +51,9 @@ export const RULE_PARTS: Readonly<Record<number, readonly PartSlot[]>> = {
   15: ['gpu', 'pcCase'],
   // CPU는 없어도 된다. 보드 최대만으로도 판정한다 (rules.ts §16.1)
   16: ['ram', 'motherboard'],
+  17: ['storage', 'motherboard'],
+  18: ['storage', 'motherboard'],
+  19: ['storage', 'pcCase'],
 };
 
 /**
@@ -63,10 +75,15 @@ export const RULE_SUMMARY: Readonly<Record<number, string>> = {
   12: 'CPU가 보드보다 나중에 나와 BIOS 업데이트가 필요한가',
   15: 'GPU 두께가 케이스 확장 슬롯 안에 들어가는가',
   16: '메모리 총 용량이 보드·CPU 최대 안인가',
+  17: 'M.2 드라이브가 보드 슬롯 수 안인가',
+  18: 'SATA 드라이브가 보드 포트 수 안인가',
+  19: '3.5\"·2.5\" 드라이브가 케이스 베이 수 안인가',
 };
 
 function isPicked(build: Build, slot: PartSlot): boolean {
-  return slot === 'ram' ? build.ram.length > 0 : build[slot] !== null;
+  if (slot === 'ram') return build.ram.length > 0;
+  if (slot === 'storage') return build.storage.length > 0;
+  return build[slot] !== null;
 }
 
 export interface NotApplicable {

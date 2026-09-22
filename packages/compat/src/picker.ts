@@ -23,6 +23,7 @@
 
 import type { PartSlot } from './applicability';
 import type { Build } from './parts';
+import { bayKind, usesM2Slot } from './storage';
 
 /** 후보의 `part_specs.key`에 걸리는 조건. DB 계층이 SQL로 옮긴다. */
 export type Constraint =
@@ -44,6 +45,14 @@ export type Constraint =
   /** 숫자 스펙이 `value`보다 작으면 제외 */
   | { readonly kind: 'atLeast'; readonly key: string; readonly value: number; readonly ruleId: number; readonly because: string };
 
+/**
+ * M.2 슬롯을 쓰지 않는 드라이브 규격. 규칙 17의 좁히기에 쓴다.
+ *
+ * `requirements.ts`의 `STORAGE_FORM_FACTORS`에서 M.2를 뺀 것이고,
+ * 둘이 어긋나지 않는지는 테스트가 지킨다.
+ */
+const NON_M2_FORM_FACTORS: readonly string[] = ['2.5"', '3.5"', 'PCIe', 'mSATA'];
+
 /** 슬롯 두께로 받아들일 수 있는 범위. docs/compat-rules.md §15.2 */
 const MIN_SANE_SLOT_WIDTH = 1;
 const MAX_SANE_SLOT_WIDTH = 5;
@@ -63,7 +72,7 @@ function filled<T>(v: T | null | undefined): v is T {
  */
 export function pickerConstraints(build: Build, slot: PartSlot): Constraint[] {
   const out: Constraint[] = [];
-  const { cpu, motherboard, gpu, pcCase, psu } = build;
+  const { cpu, motherboard, gpu, pcCase, psu, storage } = build;
 
   // --- 규칙 1: 소켓 ---
   if (slot === 'cpu' && motherboard && filled(motherboard.socket)) {
@@ -146,6 +155,43 @@ export function pickerConstraints(build: Build, slot: PartSlot): Constraint[] {
       value: Math.ceil(gpu.totalSlotWidth!),
       ruleId: 15,
       because: `${gpu.name}이 차지하는 ${Math.ceil(gpu.totalSlotWidth!)}칸`,
+    });
+  }
+
+  // --- 규칙 17·19: 스토리지가 들어갈 자리 ---
+  // 이미 고른 드라이브가 자리를 다 먹었으면 같은 자리를 쓰는 후보를 뺀다.
+  // 규칙 18(SATA)은 포트 수가 두 키에 나뉘어 있어 제약 하나로 못 옮긴다.
+  const m2Picked = storage.filter(usesM2Slot).length;
+  const picked35 = storage.filter((d) => bayKind(d) === '3.5').length;
+  if (slot === 'storage' && motherboard && filled(motherboard.m2Slots)) {
+    // DDR5 보드의 0은 미입력이다 (§17.2). 그것으로 목록을 줄이지 않는다.
+    const trustZero = motherboard.m2Slots! > 0 || motherboard.memoryType !== 'DDR5';
+    if (trustZero && m2Picked >= motherboard.m2Slots!) {
+      out.push({
+        kind: 'oneOf',
+        key: 'form_factor',
+        values: NON_M2_FORM_FACTORS,
+        ruleId: 17,
+        because: `${motherboard.name}의 M.2 슬롯 ${motherboard.m2Slots}개를 이미 채웠습니다`,
+      });
+    }
+  }
+  if (slot === 'motherboard' && m2Picked > 0) {
+    out.push({
+      kind: 'atLeast',
+      key: 'm2_slots',
+      value: m2Picked,
+      ruleId: 17,
+      because: `고른 M.2 드라이브 ${m2Picked}개`,
+    });
+  }
+  if (slot === 'pcCase' && picked35 > 0) {
+    out.push({
+      kind: 'atLeast',
+      key: 'internal_3_5_bays',
+      value: picked35,
+      ruleId: 19,
+      because: `고른 3.5" 드라이브 ${picked35}개`,
     });
   }
 

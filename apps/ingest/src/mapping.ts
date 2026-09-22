@@ -93,6 +93,9 @@ export const CATEGORY_SPECS: Readonly<Record<string, SpecMap>> = {
     max_cpu_cooler_height_mm: 'max_cpu_cooler_height',
     max_psu_length_mm: 'max_psu_length',
     expansion_slots: 'expansion_slots',
+    // 규칙 19. 3.5"는 99.4%, 2.5"는 99.4% 채워져 있다
+    internal_3_5_bays: 'internal_3_5_bays',
+    internal_2_5_bays: 'internal_2_5_bays',
     // 라디에이터 장착 필드는 OpenDB에 없다 (조사 §7.2). 수동 보강 대상
   },
   PSU: {
