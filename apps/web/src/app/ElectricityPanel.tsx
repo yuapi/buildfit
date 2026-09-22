@@ -12,11 +12,8 @@
  */
 
 import {
-  KEPCO_RESIDENTIAL_LOW_VOLTAGE as TARIFF,
   type Build,
   type Season,
-  addedElectricityCost,
-  describeTariffExcluded,
   estimatePower,
   monthlyKwh,
   seasonOf,
@@ -28,12 +25,7 @@ import {
   savePrefs,
   subscribeStorage,
 } from "@/lib/storage";
-
-const SEASON_LABEL: Readonly<Record<Season, string>> = {
-  summer: "하계 (7·8월)",
-  winter: "동계 (12·1·2월)",
-  other: "기타계절",
-};
+import { BillResult, SEASON_LABEL, TariffSource } from "@/components/BillResult";
 
 export function ElectricityPanel({ build }: { build: Build }) {
   const householdId = useId();
@@ -78,22 +70,6 @@ export function ElectricityPanel({ build }: { build: Build }) {
     Number.isFinite(hoursPerDay) &&
     householdKwh > 0 &&
     hoursPerDay > 0;
-
-  // 소비전력이 구간이므로 요금도 구간이다 (ADR-0004).
-  const low = ready
-    ? addedElectricityCost({
-        baselineKwh: householdKwh,
-        addedKwh: monthlyKwh({ watts: est.minW, hoursPerDay }),
-        season,
-      })
-    : null;
-  const high = ready
-    ? addedElectricityCost({
-        baselineKwh: householdKwh,
-        addedKwh: monthlyKwh({ watts: est.maxW, hoursPerDay }),
-        season,
-      })
-    : null;
 
   const remember = (patch: { householdKwh?: number; pcHoursPerDay?: number }) => {
     // 저장 실패는 정상 경로다 (§8A.4). 계산은 그대로 된다.
@@ -180,72 +156,21 @@ export function ElectricityPanel({ build }: { build: Build }) {
         </div>
       </fieldset>
 
-      {low === null || high === null ? (
+      {!ready ? (
         <p className="mt-4 border-t border-border pt-3 text-sm text-fg-subtle">
           두 칸을 채우면 추가 요금을 계산합니다.
         </p>
       ) : (
-        <div className="mt-4 border-t border-border pt-3">
-          <p className="text-xs text-fg-muted">PC 때문에 더 내는 금액 (월)</p>
-          <p className="mt-1 flex items-baseline gap-1.5">
-            <span className="stat text-3xl">{Math.round(low.addedWon).toLocaleString("ko-KR")}</span>
-            <span className="text-fg-subtle">~</span>
-            <span className="stat text-3xl">{Math.round(high.addedWon).toLocaleString("ko-KR")}</span>
-            <span className="text-sm text-fg-muted">원</span>
-          </p>
-
-          <dl className="mt-3 space-y-1.5 text-sm">
-            <div className="flex items-baseline justify-between gap-2">
-              <dt className="text-fg-muted">PC 사용량</dt>
-              <dd className="tnum">
-                {monthlyKwh({ watts: est.minW, hoursPerDay }).toFixed(0)}~
-                {monthlyKwh({ watts: est.maxW, hoursPerDay }).toFixed(0)} kWh
-              </dd>
-            </div>
-            <div className="flex items-baseline justify-between gap-2">
-              <dt className="text-fg-muted">합산 후 월 사용량</dt>
-              <dd className="tnum">
-                {low.after.kwh.toFixed(0)}~{high.after.kwh.toFixed(0)} kWh
-              </dd>
-            </div>
-            <div className="flex items-baseline justify-between gap-2">
-              <dt className="text-fg-muted">1kWh 더 쓸 때</dt>
-              <dd className="tnum">{high.marginalWonPerKwh}원</dd>
-            </div>
-          </dl>
-
-          {/*
-            * 구간 상승이 이 기능의 핵심이다 (§2.1). 색만으로 구분하지 않고
-            * 글자로도 말한다 (ADR-0014).
-            */}
-          {high.tierRose && (
-            <p className="mt-3 rounded-(--radius-control) border border-warn-border bg-warn-bg p-2.5 text-sm">
-              <span className="font-medium">누진 구간이 올라갑니다.</span> 이 PC를 더하면
-              가구 사용량이 {low.before.kwh.toFixed(0)}kWh에서{" "}
-              {high.after.kwh.toFixed(0)}kWh로 올라 단가가{" "}
-              {high.before.marginalWonPerKwh}원에서 {high.marginalWonPerKwh}원이 됩니다.
-            </p>
-          )}
-          {high.after.superUser && (
-            <p className="mt-2 rounded-(--radius-control) border border-danger-border bg-danger-bg p-2.5 text-sm">
-              <span className="font-medium">슈퍼유저요금 구간입니다.</span> 하계·동계에
-              1,000kWh를 넘으면 초과분에 {TARIFF.summer.energy[3]?.wonPerKwh}원/kWh가 붙습니다.
-            </p>
-          )}
-
-          <p className="mt-3 text-xs leading-relaxed text-fg-subtle">
-            {describeTariffExcluded()}
-          </p>
-        </div>
+        // 결과 표시는 단독 계산기(/calc/power)와 한 벌이다
+        <BillResult
+          baselineKwh={householdKwh}
+          addedKwhLow={monthlyKwh({ watts: est.minW, hoursPerDay })}
+          addedKwhHigh={monthlyKwh({ watts: est.maxW, hoursPerDay })}
+          season={season}
+        />
       )}
 
-      <p className="mt-3 text-xs leading-relaxed text-fg-subtle">
-        주택용 저압 기준 · {TARIFF.checkedOn} 확인 ·{" "}
-        <a href={TARIFF.source.url} target="_blank" rel="noreferrer" className="link">
-          {TARIFF.source.label}
-        </a>
-        . 단가는 예고 없이 개정됩니다.
-      </p>
+      <TariffSource />
     </section>
   );
 }

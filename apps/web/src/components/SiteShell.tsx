@@ -13,6 +13,7 @@ import { ThemeToggle } from './ThemeToggle';
 const NAV = [
   { href: '/', label: '견적 구성' },
   { href: '/part', label: '부품' },
+  { href: '/calc/power', label: '전기요금' },
   { href: '/rules', label: '검사 규칙' },
 ] as const;
 
