@@ -28,6 +28,7 @@ import { PartIcon } from "@/components/Icons";
 import { buildLabel, filledSlotCount, pickedCount } from "@/lib/build-summary";
 import { addToSlot, isMultiSlot, maxForSlot, removeFromSlot } from "@/lib/multi-slot";
 import { SLOT_META, type SlotName } from "@/lib/categories";
+import { ElectricityPanel } from "./ElectricityPanel";
 import { NO_CURSOR, nextCursor } from "@/lib/list-cursor";
 import { listWithJosa } from "@/lib/korean";
 import {
@@ -351,6 +352,7 @@ export function BuildTool({ initial }: { initial?: Build }) {
             비지 않게 한다 — 빈 칸이 크면 화면이 미완성으로 보인다 (ADR-0015) */}
         <aside className="space-y-4 lg:sticky lg:top-20">
           <PowerPanel build={build} />
+          <ElectricityPanel build={build} />
           <FitPanel build={build} />
           <VerdictPanel verdict={verdict} build={build} />
         </aside>
