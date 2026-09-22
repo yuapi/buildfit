@@ -50,6 +50,8 @@ const BLANK: Record<string, () => Build> = {
   // 보게 만들려면 CPU가 더 나중인 상황을 함께 만들어야 한다.
   'Motherboard.bios_flashback': () =>
     f.withBuild({ motherboard: { ...f.motherboard, releaseYear: 2022, biosFlashback: null } }),
+  'GPU.total_slot_width': () => f.withBuild({ gpu: { ...f.gpu, totalSlotWidth: null } }),
+  'PCCase.expansion_slots': () => f.withBuild({ pcCase: { ...f.pcCase, expansionSlots: null } }),
 };
 
 describe('요구사항 선언 ↔ 규칙 구현 정합성', () => {

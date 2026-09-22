@@ -49,7 +49,10 @@ describeIfDb('후보 좁히기 SQL (ADR-0016)', () => {
         ('aaaaaaaa-0000-4000-8000-00000000000b', 'cpu-empty',    'CPU', '빈 문자열 씨피유'),
         ('aaaaaaaa-0000-4000-8000-00000000000c', 'cpu-number',   'CPU', '숫자 소켓 씨피유'),
         ('aaaaaaaa-0000-4000-8000-00000000000d', 'case-emptyarr','PCCase', '빈 배열 케이스'),
-        ('aaaaaaaa-0000-4000-8000-00000000000e', 'gpu-strnum',   'GPU', '문자열 길이 그래픽카드')
+        ('aaaaaaaa-0000-4000-8000-00000000000e', 'gpu-strnum',   'GPU', '문자열 길이 그래픽카드'),
+        ('aaaaaaaa-0000-4000-8000-00000000000f', 'gpu-mm-slots', 'GPU', '두께에 mm를 적은 그래픽카드'),
+        ('aaaaaaaa-0000-4000-8000-000000000010', 'gpu-thick',    'GPU', '두꺼운 그래픽카드'),
+        ('aaaaaaaa-0000-4000-8000-000000000011', 'gpu-thin',     'GPU', '얇은 그래픽카드')
     `);
     await db.execute(sql`
       insert into part_specs (part_id, key, value) values
@@ -64,7 +67,11 @@ describeIfDb('후보 좁히기 SQL (ADR-0016)', () => {
         ('aaaaaaaa-0000-4000-8000-00000000000b', 'socket', '""'::jsonb),
         ('aaaaaaaa-0000-4000-8000-00000000000c', 'socket', '1700'::jsonb),
         ('aaaaaaaa-0000-4000-8000-00000000000d', 'supported_mobo_form_factors', '[]'::jsonb),
-        ('aaaaaaaa-0000-4000-8000-00000000000e', 'length_mm', '"400"'::jsonb)
+        ('aaaaaaaa-0000-4000-8000-00000000000e', 'length_mm', '"400"'::jsonb),
+        -- 규칙 15: 슬롯 자리에 mm를 적은 레코드가 실재한다 (4건). docs/compat-rules.md §15.2
+        ('aaaaaaaa-0000-4000-8000-00000000000f', 'total_slot_width', '120'::jsonb),
+        ('aaaaaaaa-0000-4000-8000-000000000010', 'total_slot_width', '3.5'::jsonb),
+        ('aaaaaaaa-0000-4000-8000-000000000011', 'total_slot_width', '2'::jsonb)
     `);
   }, 60_000);
 
@@ -107,15 +114,36 @@ describeIfDb('후보 좁히기 SQL (ADR-0016)', () => {
     const r = await names('GPU', [
       { kind: 'atMost', key: 'length_mm', value: 300, ruleId: 4, because: '케이스 한계' },
     ]);
-    expect(r.names).toEqual(['길이 모르는 그래픽카드', '문자열 길이 그래픽카드', '짧은 그래픽카드']);
+    // 두께 부품들은 길이 스펙이 없다. 없으면 남는 것이 이 테스트가 지키는 성질이다
+    expect(r.names).toEqual(['길이 모르는 그래픽카드', '두꺼운 그래픽카드', '두께에 mm를 적은 그래픽카드', '문자열 길이 그래픽카드', '얇은 그래픽카드', '짧은 그래픽카드']);
     expect(r.hidden).toBe(1);
+  });
+
+  it('★ atMost + ignoreAbove — 단위를 잘못 적은 값은 숨기지 않는다 (§15.2)', async () => {
+    const r = await names('GPU', [
+      { kind: 'atMost', key: 'total_slot_width', value: 3, ignoreAbove: 5, ruleId: 15, because: '케이스 확장 슬롯 3칸' },
+    ]);
+    // 3.5슬롯은 3칸에 안 들어가니 빠진다. 120은 mm를 적은 것이라 판정 대상이 아니다 —
+    // 규칙이 판정 불가로 두는 값을 거르기가 숨기면 그 부품을 찾을 길이 없다.
+    expect(r.names).toContain('두께에 mm를 적은 그래픽카드');
+    expect(r.names).toContain('얇은 그래픽카드');
+    expect(r.names).not.toContain('두꺼운 그래픽카드');
+    expect(r.hidden).toBe(1);
+  });
+
+  it('ignoreAbove가 없으면 예전 그대로 — 넘으면 전부 뺀다', async () => {
+    const r = await names('GPU', [
+      { kind: 'atMost', key: 'total_slot_width', value: 3, ruleId: 15, because: '상한 없음' },
+    ]);
+    expect(r.names).not.toContain('두께에 mm를 적은 그래픽카드');
+    expect(r.hidden).toBe(2);
   });
 
   it('atLeast — 방향이 뒤집혀도 결측은 남는다', async () => {
     const r = await names('GPU', [
       { kind: 'atLeast', key: 'length_mm', value: 300, ruleId: 4, because: '최소 길이' },
     ]);
-    expect(r.names).toEqual(['긴 그래픽카드', '길이 모르는 그래픽카드', '문자열 길이 그래픽카드']);
+    expect(r.names).toEqual(['긴 그래픽카드', '길이 모르는 그래픽카드', '두꺼운 그래픽카드', '두께에 mm를 적은 그래픽카드', '문자열 길이 그래픽카드', '얇은 그래픽카드']);
     expect(r.hidden).toBe(1);
   });
 
@@ -143,6 +171,6 @@ describeIfDb('후보 좁히기 SQL (ADR-0016)', () => {
       { kind: 'atMost', key: 'length_mm', value: 300, ruleId: 4, because: 'a' },
       { kind: 'atLeast', key: 'length_mm', value: 200, ruleId: 4, because: 'b' },
     ]);
-    expect(r.names).toEqual(['길이 모르는 그래픽카드', '문자열 길이 그래픽카드', '짧은 그래픽카드']);
+    expect(r.names).toEqual(['길이 모르는 그래픽카드', '두꺼운 그래픽카드', '두께에 mm를 적은 그래픽카드', '문자열 길이 그래픽카드', '얇은 그래픽카드', '짧은 그래픽카드']);
   });
 });

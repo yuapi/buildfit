@@ -66,6 +66,13 @@ export interface GpuConnectors {
 export interface Gpu extends PartRef {
   readonly chipset: string | null;
   readonly lengthMm: number | null;
+  /**
+   * 쿨러까지 포함해 카드가 차지하는 슬롯 두께. 규칙 15 (§15).
+   *
+   * OpenDB의 `case_expansion_slot_width`를 쓰지 않는다 — 값이 틀렸다.
+   * 두 필드가 다 있는 1,518건 중 48.8%에서 그 값이 이 값보다 작다 (§15.1).
+   */
+  readonly totalSlotWidth: number | null;
   readonly tdp: number | null;
   readonly connectors: GpuConnectors;
   /**
@@ -84,6 +91,8 @@ export interface PcCase extends PartRef {
   readonly supportedPsuFormFactors: readonly string[] | null;
   readonly maxGpuLengthMm: number | null;
   readonly maxCpuCoolerHeightMm: number | null;
+  /** 뒷면 확장 슬롯 구멍의 개수. 규칙 15 (§15) */
+  readonly expansionSlots: number | null;
 }
 
 /** PSU 커넥터. PSU는 6핀·8핀을 6+2로 합쳐 세고 12V-2x6을 따로 두지 않는다. */

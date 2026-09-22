@@ -155,6 +155,7 @@ function toGpu(p: RawPart): Gpu {
     slug: p.slug,
     chipset: str(p.specs, 'chipset'),
     lengthMm: num(p.specs, 'length_mm'),
+    totalSlotWidth: num(p.specs, 'total_slot_width'),
     tdp: num(p.specs, 'tdp_w'),
     connectors: {
       pcie6: num(p.specs, 'pcie_6_pin'),
@@ -175,6 +176,7 @@ function toPcCase(p: RawPart): PcCase {
     supportedPsuFormFactors: strArray(p.specs, 'supported_psu_form_factors'),
     maxGpuLengthMm: num(p.specs, 'max_gpu_length_mm'),
     maxCpuCoolerHeightMm: num(p.specs, 'max_cpu_cooler_height_mm'),
+    expansionSlots: num(p.specs, 'expansion_slots'),
   };
 }
 

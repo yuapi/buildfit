@@ -82,6 +82,7 @@ export {
   rule8,
   rule9,
   rule12,
+  rule15,
   phase0Rules,
   phase1Rules,
 } from './rules';
