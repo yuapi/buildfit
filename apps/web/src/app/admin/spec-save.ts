@@ -54,13 +54,34 @@ export async function saveSpecCore(
   if (!parsed.ok) return parsed;
   const value = parsed.value;
 
-  await saveSpec(getDb(), {
-    partId,
-    key: specKey,
-    value,
-    unit: null,
-    sourceUrl: String(source.value),
-  });
+  /**
+   * DB 계층이 던지는 것을 **결과로 바꾼다.**
+   *
+   * `saveSpec`은 마지막 문이라 카테고리 불일치·범위 밖·없는 부품에 대해 던진다.
+   * 그대로 두면 서버 동작이 거부되고 화면에는 아무 말도 남지 않는다 —
+   * 수천 건을 채우는 사람이 무엇이 잘못됐는지 알 수 없다.
+   *
+   * **메시지를 그대로 내보내지 않는다.** 이 경로는 어드민 전용이지만, 던진 것이
+   * DB 오류면 쿼리문이 딸려 온다.
+   */
+  try {
+    await saveSpec(getDb(), {
+      partId,
+      key: specKey,
+      value,
+      unit: null,
+      sourceUrl: String(source.value),
+    });
+  } catch (err) {
+    const known =
+      err instanceof Error &&
+      (KNOWN_REFUSALS.some((k) => err.message.startsWith(k)) ||
+        err.message.includes('를 저장할 수 없습니다'));
+    return {
+      ok: false,
+      message: known ? (err as Error).message : '저장하지 못했습니다. 값을 확인해 주세요.',
+    };
+  }
 
   return {
     ok: true,
@@ -68,3 +89,11 @@ export async function saveSpecCore(
     saved: { partId, category, specKey },
   };
 }
+
+/**
+ * 사용자에게 그대로 보여도 되는 거절 사유.
+ *
+ * `saveSpec`이 던지는 것 중 **우리가 문구를 쓴 것**만이다. DB가 던진 것은
+ * 여기 걸리지 않고 일반 문구로 나간다.
+ */
+const KNOWN_REFUSALS = ['출처 URL 없이', '없는 부품', '출시 연도는'] as const;

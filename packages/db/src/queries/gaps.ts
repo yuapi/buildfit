@@ -294,6 +294,31 @@ export async function saveSpec(
     throw new Error('출처 URL 없이 저장할 수 없습니다 (§5.5).');
   }
 
+  /**
+   * ★ 부품의 카테고리와 필드의 카테고리가 맞는지 본다.
+   *
+   * 없을 때 확인해 보니 **CPU에 `supported_psu_form_factors`가 그대로 들어갔다.**
+   * 어드민만 부를 수 있는 경로지만, 화면 버그 하나로도 조용히 그렇게 된다.
+   * 그러면 결측 집계가 그 CPU를 "케이스 필드를 가진 것"으로 세고, 표가 거짓말을
+   * 하기 시작한다.
+   *
+   * **마지막 문 앞에서 본다.** 화면 쪽(`saveSpecCore`)에도 검사가 있지만,
+   * 이 함수는 테스트와 스크립트가 직접 부른다.
+   */
+  const [part] = await db
+    .select({ category: parts.category })
+    .from(parts)
+    .where(eq(parts.id, input.partId));
+  if (!part) throw new Error('없는 부품입니다.');
+
+  const known = SPEC_REQUIREMENTS.filter((r) => r.specKey === input.key);
+  if (known.length > 0 && !known.some((r) => r.category === part.category)) {
+    throw new Error(
+      `${part.category}에는 ${input.key}를 저장할 수 없습니다 ` +
+        `(${[...new Set(known.map((r) => r.category))].join(', ')} 전용).`,
+    );
+  }
+
   // `parts` 컬럼에 있는 입력 (이슈 #15). 출처를 함께 남길 자리가 없다 —
   // `parts`에는 컬럼별 source_url이 없다. **그래서 흔적을 `part_specs`에도
   // 남긴다**: 컬럼이 판정에 쓰이는 값이고, 그 행이 출처와 확인 시각을 든다.
@@ -305,6 +330,17 @@ export async function saveSpec(
     }
     const year = Number(input.value);
     if (!Number.isInteger(year)) throw new Error('출시 연도는 정수여야 합니다.');
+    // 선언된 범위 밖은 여기서 막는다. 막지 않으면 int4를 넘겨 **DB가 던지고**,
+    // 서버 동작이 그 원시 오류를 그대로 올린다.
+    const bounds = SPEC_REQUIREMENTS.find(
+      (r) => r.specKey === input.key && r.category === part.category,
+    );
+    if (bounds?.min !== undefined && year < bounds.min) {
+      throw new Error(`출시 연도는 ${bounds.min} 이상이어야 합니다.`);
+    }
+    if (bounds?.max !== undefined && year > bounds.max) {
+      throw new Error(`출시 연도는 ${bounds.max} 이하여야 합니다.`);
+    }
     await db.transaction(async (tx) => {
       await tx
         .update(parts)
