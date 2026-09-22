@@ -163,26 +163,26 @@ export function pickerConstraints(build: Build, slot: PartSlot): Constraint[] {
   // 규칙 18(SATA)은 포트 수가 두 키에 나뉘어 있어 제약 하나로 못 옮긴다.
   const m2Picked = storage.filter(usesM2Slot).length;
   const picked35 = storage.filter((d) => bayKind(d) === '3.5').length;
-  if (slot === 'storage' && motherboard && filled(motherboard.m2Slots)) {
+  /**
+   * **개수로 좁히지 않는다** (§17.4). 원본의 M.2 배열 길이가 슬롯 수가 아니다 —
+   * 위아래 어느 쪽으로도 틀리므로 「몇 개 남았다」를 셀 수 없다.
+   *
+   * 셀 수 있는 것은 **없다**뿐이다. M.2 슬롯이 없는 보드에서는 M.2 드라이브를
+   * 뺀다. 그 보드에서는 어떤 M.2도 안 들어가므로 좁혀도 잃는 것이 없다.
+   */
+  if (
+    slot === 'storage' &&
+    motherboard &&
+    motherboard.m2Slots === 0 &&
     // DDR5 보드의 0은 미입력이다 (§17.2). 그것으로 목록을 줄이지 않는다.
-    const trustZero = motherboard.m2Slots! > 0 || motherboard.memoryType !== 'DDR5';
-    if (trustZero && m2Picked >= motherboard.m2Slots!) {
-      out.push({
-        kind: 'oneOf',
-        key: 'form_factor',
-        values: NON_M2_FORM_FACTORS,
-        ruleId: 17,
-        because: `${motherboard.name}의 M.2 슬롯 ${motherboard.m2Slots}개를 이미 채웠습니다`,
-      });
-    }
-  }
-  if (slot === 'motherboard' && m2Picked > 0) {
+    motherboard.memoryType !== 'DDR5'
+  ) {
     out.push({
-      kind: 'atLeast',
-      key: 'm2_slots',
-      value: m2Picked,
+      kind: 'oneOf',
+      key: 'form_factor',
+      values: NON_M2_FORM_FACTORS,
       ruleId: 17,
-      because: `고른 M.2 드라이브 ${m2Picked}개`,
+      because: `${motherboard.name}에는 M.2 슬롯이 없습니다`,
     });
   }
   if (slot === 'pcCase' && picked35 > 0) {

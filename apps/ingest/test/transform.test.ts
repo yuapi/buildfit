@@ -269,9 +269,31 @@ describe('파생 스펙 — 경로 하나로 안 되는 것 (DERIVED_SPECS)', ()
       ),
     );
 
-  it('M.2 슬롯은 배열 길이를 담는다', () => {
+  it('M.2는 행 수를 담는다 — 슬롯 수가 아니다 (compat-rules §17.4)', () => {
     const s = specs(board([{ size: '2280' }, { size: '2242-2260' }, { size: '2280' }]));
     expect(s.get('m2_slots')).toBe(3);
+  });
+
+  it('★ E키 행을 뺀다 — 와이파이 자리에 SSD가 들어가지 않는다 (§17.3)', () => {
+    // ASRock B550M-ITX/ac가 2개로 잡히는데 SSD가 들어가는 것은 1개다
+    const s = specs(board([
+      { size: '2280', key: 'M' },
+      { size: '2280', key: 'E' },
+    ]));
+    expect(s.get('m2_slots')).toBe(1);
+  });
+
+  it('M키가 아니어도 E키만 뺀다 — 아는 것만 뺀다', () => {
+    const s = specs(board([
+      { size: '2280', key: 'M' },
+      { size: '2280', key: 'B' },
+      { size: '2280' },
+    ]));
+    expect(s.get('m2_slots')).toBe(3);
+  });
+
+  it('E키만 있으면 0이다 — 저장장치 자리가 없다', () => {
+    expect(specs(board([{ size: '2230', key: 'E' }])).get('m2_slots')).toBe(0);
   });
 
   it('★ 빈 배열은 0으로 담는다 — M.2가 없는 보드는 실재한다', () => {

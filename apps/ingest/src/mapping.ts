@@ -138,16 +138,28 @@ export const DERIVED_SPECS: Readonly<
 > = {
   Motherboard: {
     /**
-     * M.2 슬롯 **개수**. 원본은 슬롯마다 크기·키·인터페이스를 담은 배열이다.
+     * M.2 **저장장치** 슬롯 수. 원본은 슬롯마다 크기·키·인터페이스를 담은 배열이다.
      *
-     * 개수만 담는다. 규칙 17이 개수를 보고, 어드민에서 사람이 스펙시트를 보고
-     * 채울 수 있는 모양이기도 하다. 크기 맞춤(2280 드라이브 ↔ 2242 전용 슬롯)은
-     * 원본의 크기 표기가 「2242/2260/2280」·「2280-22110」처럼 제각각이라
-     * 별도 조사가 필요하다 (docs/compat-rules.md §17.3).
+     * **E키 행을 뺀다.** M.2 E키는 와이파이·블루투스 카드 자리이고 SSD가 들어가지
+     * 않는다. 601개 보드(20.2%)에 섞여 있어, 그냥 세면 저장장치 슬롯이 하나
+     * 더 있는 것처럼 보인다 — ASRock B550M-ITX/ac가 2개로 잡히는데 SSD가
+     * 들어가는 것은 1개다 (docs/research/m2-slot-count.md §3).
      */
-    m2_slots: (r) => (Array.isArray(r['m2_slots']) ? r['m2_slots'].length : undefined),
+    m2_slots: (r) => storageM2Rows(r)?.length,
   },
 };
+
+/** E키(와이파이)를 뺀 M.2 행. 저장장치가 들어가는 자리만 남는다. */
+function storageM2Rows(
+  record: Record<string, unknown>,
+): { size: unknown }[] | undefined {
+  const raw = record['m2_slots'];
+  if (!Array.isArray(raw)) return undefined;
+  return raw
+    .filter((m): m is Record<string, unknown> => m !== null && typeof m === 'object')
+    .filter((m) => String(m['key'] ?? '').toUpperCase() !== 'E')
+    .map((m) => ({ size: m['size'] }));
+}
 
 /**
  * 0이 "값 없음"을 뜻하는 키.

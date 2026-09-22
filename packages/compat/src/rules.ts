@@ -529,7 +529,7 @@ export const rule16: Rule = ({ cpu, motherboard, ram }) => {
   return pass(16, `메모리 ${total}GB / ${boundLabel} 한계 ${limit}GB.`);
 };
 
-// --- 17. M.2 드라이브 수 ≤ 보드 M.2 슬롯 수 ---------------------------------
+// --- 17. M.2 드라이브를 보드가 받는가 -------------------------------------
 
 export const rule17: Rule = ({ motherboard, storage }) => {
   if (storage.length === 0 || !motherboard) return null;
@@ -543,29 +543,50 @@ export const rule17: Rule = ({ motherboard, storage }) => {
     return missing(17, 'M.2 슬롯 정보가 없어 판정하지 못했습니다.', gaps);
   }
 
-  const slots = motherboard.m2Slots!;
+  const need = storage.filter(usesM2Slot).length;
+  const notes = unplacedNote(storage);
+  const withNotes = (r: RuleResult) => (notes ? { ...r, notes } : r);
+
+  if (need === 0) {
+    return withNotes(pass(17, 'M.2 드라이브가 없습니다.'));
+  }
+
+  const rows = motherboard.m2Slots!;
   /**
    * `0`은 값이다 — DDR2의 100%, DDR3의 86.3%가 M.2 없는 보드다.
    * DDR5만 다르다. 1,066건 중 0이 3건뿐이고 전부 M.2가 있는 보드였다 (§17.2).
    */
-  if (slots === 0 && motherboard.memoryType === 'DDR5') {
-    return inconsistent(
-      17,
-      'M.2 슬롯 수가 0으로 적혀 있어 판정하지 못했습니다.',
-      'DDR5 보드에 M.2가 없는 경우는 확인되지 않았습니다. 미입력을 0으로 채운 값으로 보입니다.',
-      [ref(motherboard, 'M.2 슬롯 수')],
+  if (rows === 0) {
+    if (motherboard.memoryType === 'DDR5') {
+      return inconsistent(
+        17,
+        'M.2 슬롯 수가 0으로 적혀 있어 판정하지 못했습니다.',
+        'DDR5 보드에 M.2가 없는 경우는 확인되지 않았습니다. 미입력을 0으로 채운 값으로 보입니다.',
+        [ref(motherboard, 'M.2 슬롯 수')],
+      );
+    }
+    return withNotes(
+      fail(17, 'error', `${motherboard.name}에는 M.2 슬롯이 없는데 M.2 드라이브 ${need}개를 담았습니다.`),
     );
   }
 
-  const need = storage.filter(usesM2Slot).length;
-  const notes = unplacedNote(storage);
-  if (need > slots) {
-    return {
-      ...fail(17, 'error', `M.2 드라이브가 ${need}개인데 메인보드 슬롯은 ${slots}개입니다.`),
-      ...(notes ? { notes } : {}),
-    };
-  }
-  return { ...pass(17, `M.2 ${need}개 / 슬롯 ${slots}개.`), ...(notes ? { notes } : {}) };
+  /**
+   * ★ **개수는 세지 않는다** (§17.4).
+   *
+   * 원본의 M.2 배열 길이가 슬롯 수가 아니다. 한 슬롯을 크기마다 행으로 쪼갠
+   * 레코드가 섞여 있고(ASUS PRIME B650M-A: 슬롯 2개 · 4행), 반대로 덜 적은
+   * 레코드도 있다(Gigabyte Z790 AORUS ELITE AX: 슬롯 4개 · 3행). 같은 계열이
+   * 서로 다른 행 수로 존재하는 것이 138건이다 — 위아래 어느 쪽으로도 틀리므로
+   * 상한으로도 쓸 수 없다.
+   *
+   * 믿을 수 있는 것은 **있다 / 없다**뿐이다. 있으면 몇 개인지 모른다고 말한다.
+   */
+  return inconsistent(
+    17,
+    `M.2 슬롯이 몇 개인지 알 수 없어 드라이브 ${need}개가 다 들어가는지 판정하지 못했습니다.`,
+    '원본의 M.2 목록이 슬롯 수와 맞지 않습니다. 한 슬롯을 크기마다 따로 적은 레코드와 덜 적은 레코드가 섞여 있습니다.',
+    [ref(motherboard, 'M.2 슬롯 수')],
+  );
 };
 
 // --- 18. SATA 드라이브 수 ≤ 보드 SATA 포트 수 -------------------------------

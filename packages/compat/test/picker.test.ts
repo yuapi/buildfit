@@ -139,17 +139,22 @@ describe('제약에 근거가 달려 있다', () => {
 });
 
 describe('스토리지 좁히기 (규칙 17·19)', () => {
-  it('M.2 슬롯이 남아 있으면 드라이브를 거르지 않는다', () => {
-    // 보드 슬롯 3개, 고른 M.2 1개
-    const c = pickerConstraints(f.goodBuild, 'storage');
-    expect(c.find((x) => x.key === 'form_factor')).toBeUndefined();
+  it('★ 개수로는 좁히지 않는다 — 행 수가 슬롯 수가 아니다 (§17.4)', () => {
+    // M.2를 슬롯 수보다 많이 담아도 목록을 줄이지 않는다. 그 「슬롯 수」를 못 믿는다
+    const full = f.withBuild({
+      storage: [f.drive, { ...f.drive, id: 'b' }, { ...f.drive, id: 'c' }, { ...f.drive, id: 'd' }],
+    });
+    expect(pickerConstraints(full, 'storage').find((x) => x.key === 'form_factor')).toBeUndefined();
+    // 보드 후보도 개수로 좁히지 않는다
+    expect(pickerConstraints(full, 'motherboard').find((x) => x.key === 'm2_slots')).toBeUndefined();
   });
 
-  it('M.2 슬롯을 다 채우면 M.2가 아닌 규격만 남긴다', () => {
-    const full = f.withBuild({
-      storage: [f.drive, { ...f.drive, id: 'b' }, { ...f.drive, id: 'c' }],
+  it('M.2 슬롯이 없는 보드에서는 M.2를 뺀다 — 이것만 셀 수 있다', () => {
+    const b = f.withBuild({
+      storage: [],
+      motherboard: { ...f.motherboard, m2Slots: 0, memoryType: 'DDR4' },
     });
-    const c = pickerConstraints(full, 'storage').find((x) => x.key === 'form_factor');
+    const c = pickerConstraints(b, 'storage').find((x) => x.key === 'form_factor');
     expect(c).toMatchObject({ kind: 'oneOf', ruleId: 17 });
     const values = c?.kind === 'oneOf' ? c.values : [];
     expect(values).not.toContain('M.2-2280');
@@ -162,21 +167,10 @@ describe('스토리지 좁히기 (규칙 17·19)', () => {
       motherboard: { ...f.motherboard, m2Slots: 0, memoryType: 'DDR5' },
     });
     expect(pickerConstraints(b, 'storage').find((x) => x.key === 'form_factor')).toBeUndefined();
-    // DDR4의 0은 진짜라 줄인다
-    const ddr4 = f.withBuild({
-      storage: [],
-      motherboard: { ...f.motherboard, m2Slots: 0, memoryType: 'DDR4' },
-    });
-    expect(pickerConstraints(ddr4, 'storage').find((x) => x.key === 'form_factor')).toBeDefined();
   });
 
-  it('고른 드라이브가 보드·케이스 후보를 좁힌다', () => {
-    const b = f.withBuild({ storage: [f.drive, { ...f.drive, id: 'b' }, f.sataDrive] });
-    expect(pickerConstraints(b, 'motherboard').find((x) => x.key === 'm2_slots')).toMatchObject({
-      kind: 'atLeast',
-      value: 2,
-      ruleId: 17,
-    });
+  it('고른 3.5" 드라이브가 케이스 후보를 좁힌다', () => {
+    const b = f.withBuild({ storage: [f.drive, f.sataDrive] });
     expect(
       pickerConstraints(b, 'pcCase').find((x) => x.key === 'internal_3_5_bays'),
     ).toMatchObject({ kind: 'atLeast', value: 1, ruleId: 19 });
@@ -191,7 +185,8 @@ describe('스토리지 좁히기 (규칙 17·19)', () => {
 
   it('NON_M2_FORM_FACTORS가 선언 목록과 어긋나지 않는다', () => {
     const full = f.withBuild({
-      storage: [f.drive, { ...f.drive, id: 'b' }, { ...f.drive, id: 'c' }],
+      storage: [],
+      motherboard: { ...f.motherboard, m2Slots: 0, memoryType: 'DDR4' },
     });
     const c = pickerConstraints(full, 'storage').find((x) => x.key === 'form_factor');
     const values = c?.kind === 'oneOf' ? c.values : [];
