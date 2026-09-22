@@ -25,6 +25,8 @@ export const STATIC_PAGES: readonly { path: string; priority: number }[] = [
   { path: '/', priority: 1 },
   { path: '/part', priority: 0.8 },
   { path: '/rules', priority: 0.8 },
+  // 「PC 전기요금」은 이 사이트에만 있는 계산이다 (명세 §2.1 — 누진 구간 반영)
+  { path: '/calc/power', priority: 0.8 },
 ];
 
 /** 정적 페이지를 담는 sitemap의 id. 카테고리 이름과 겹치지 않아야 한다 */
