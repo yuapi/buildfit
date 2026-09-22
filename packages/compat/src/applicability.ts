@@ -40,6 +40,8 @@ export const RULE_PARTS: Readonly<Record<number, readonly PartSlot[]>> = {
   9: ['cooler', 'pcCase'],
   12: ['cpu', 'motherboard'],
   15: ['gpu', 'pcCase'],
+  // CPU는 없어도 된다. 보드 최대만으로도 판정한다 (rules.ts §16.1)
+  16: ['ram', 'motherboard'],
 };
 
 /**
@@ -60,6 +62,7 @@ export const RULE_SUMMARY: Readonly<Record<number, string>> = {
   9: 'CPU 쿨러 높이가 케이스 한계 안인가',
   12: 'CPU가 보드보다 나중에 나와 BIOS 업데이트가 필요한가',
   15: 'GPU 두께가 케이스 확장 슬롯 안에 들어가는가',
+  16: '메모리 총 용량이 보드·CPU 최대 안인가',
 };
 
 function isPicked(build: Build, slot: PartSlot): boolean {

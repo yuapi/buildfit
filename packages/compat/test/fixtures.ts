@@ -9,6 +9,7 @@ export const cpu: Cpu = {
   tdp: 120,
   ppt: 162,
   memoryTypes: ['DDR5'],
+  memoryMaxGb: 256,
   releaseYear: 2024,
 };
 
@@ -19,6 +20,7 @@ export const motherboard: Motherboard = {
   formFactor: 'ATX',
   memoryType: 'DDR5',
   memorySlots: 4,
+  memoryMaxGb: 256,
   releaseYear: 2024,
   biosFlashback: true,
 };
@@ -28,6 +30,7 @@ export const ramKit: RamKit = {
   name: 'G.Skill Trident Z5 DDR5-6000 CL30 32GB (2x16GB)',
   ramType: 'DDR5',
   moduleCount: 2,
+  capacityGb: 32,
   heightMm: 44,
 };
 

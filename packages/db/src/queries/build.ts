@@ -119,6 +119,7 @@ function toCpu(p: RawPart): Cpu {
     tdp: num(p.specs, 'tdp_w'),
     ppt: num(p.specs, 'ppt_w'),
     memoryTypes: strArray(p.specs, 'memory_types'),
+    memoryMaxGb: num(p.specs, 'memory_max_gb'),
     releaseYear: p.releaseYear,
   };
 }
@@ -132,6 +133,7 @@ function toMotherboard(p: RawPart): Motherboard {
     formFactor: str(p.specs, 'form_factor'),
     memoryType: str(p.specs, 'memory_type'),
     memorySlots: num(p.specs, 'memory_slots'),
+    memoryMaxGb: num(p.specs, 'memory_max_gb'),
     releaseYear: p.releaseYear,
     biosFlashback: bool(p.specs, 'bios_flashback'),
   };
@@ -144,6 +146,7 @@ function toRamKit(p: RawPart): RamKit {
     slug: p.slug,
     ramType: str(p.specs, 'ram_type'),
     moduleCount: num(p.specs, 'module_count'),
+    capacityGb: num(p.specs, 'capacity_gb'),
     heightMm: num(p.specs, 'height_mm'),
   };
 }

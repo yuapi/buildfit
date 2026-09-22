@@ -12,7 +12,9 @@ import { describe, expect, it } from 'vitest';
 import { evaluate } from '../src/engine';
 import { emptyBuild } from '../src/parts';
 import { estimatePower } from '../src/power';
-import { rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8, rule9, rule12, rule15 } from '../src/rules';
+import {
+  rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8, rule9, rule12, rule15, rule16,
+} from '../src/rules';
 import * as f from './fixtures';
 
 describe('1. CPU 소켓 = 메인보드 소켓', () => {
@@ -576,10 +578,110 @@ describe('15. GPU 두께(슬롯) ≤ 케이스 확장 슬롯 수 (Phase 1)', () 
   });
 });
 
+describe('16. 총 메모리 용량 ≤ 보드·CPU 최대 (Phase 1)', () => {
+  const build = (capGb: number | null, boardMax: number | null, cpuMax: number | null, slots = 4) =>
+    f.withBuild({
+      ram: [{ ...f.ramKit, capacityGb: capGb }],
+      motherboard: { ...f.motherboard, memoryMaxGb: boardMax, memorySlots: slots },
+      cpu: { ...f.cpu, memoryMaxGb: cpuMax },
+    });
+
+  it('한계 안이면 pass', () => {
+    expect(rule16(f.goodBuild)?.verdict).toBe('pass');
+  });
+
+  it('넘으면 경고 — 오류가 아니다 (§16.3)', () => {
+    const r = rule16(build(192, 128, 256));
+    expect(r?.verdict).toBe('fail');
+    expect(r?.severity).toBe('warning');
+    expect(r?.message).toContain('192GB');
+    expect(r?.message).toContain('128GB');
+    // "안 된다"가 아니라 "확인이 필요하다"로 말한다
+    expect(r?.message).toContain('BIOS');
+  });
+
+  it('★ 키트를 여럿 담으면 합산한다 — 규칙 3과 같다', () => {
+    const two = f.withBuild({
+      ram: [
+        { ...f.ramKit, id: 'a', capacityGb: 64 },
+        { ...f.ramKit, id: 'b', capacityGb: 64 },
+      ],
+      motherboard: { ...f.motherboard, memoryMaxGb: 128 },
+      cpu: { ...f.cpu, memoryMaxGb: 96 },
+    });
+    // 합계 128 > CPU 96. 킷 하나만 보면 64라서 통과했을 것이다
+    const r = rule16(two);
+    expect(r?.verdict).toBe('fail');
+    expect(r?.message).toContain('128GB');
+  });
+
+  it('★ 어느 쪽이 한계인지 말한다 (§16.1)', () => {
+    expect(rule16(build(192, 256, 128))?.message).toContain('CPU 사양은 128GB');
+    expect(rule16(build(192, 128, 256))?.message).toContain('메인보드 사양은 128GB');
+  });
+
+  it('한쪽만 있으면 있는 쪽으로 판정한다', () => {
+    expect(rule16(build(192, null, 128))?.verdict).toBe('fail');
+    expect(rule16(build(192, 128, null))?.verdict).toBe('fail');
+    expect(rule16(build(64, null, 128))?.verdict).toBe('pass');
+  });
+
+  it('둘 다 없으면 unknown', () => {
+    const r = rule16(build(64, null, null));
+    expect(r?.verdict).toBe('unknown');
+    expect(r?.reason?.kind).toBe('missing');
+  });
+
+  it('메모리 용량이 없으면 unknown', () => {
+    expect(rule16(build(null, 128, 256))?.verdict).toBe('unknown');
+  });
+
+  it('★ 작은 값을 이상치로 거르지 않는다 — 4GB는 LGA775에서 맞다 (§16.2)', () => {
+    // 2슬롯 DDR2 보드의 최대 4GB. 실재하고 맞는 값이다 (22건)
+    expect(rule16(build(4, 4, null, 2))?.verdict).toBe('pass');
+    expect(rule16(build(8, 4, null, 2))?.verdict).toBe('fail');
+    // Atom N550 보드의 2GB도 맞다
+    expect(rule16(build(2, 2, null, 2))?.verdict).toBe('pass');
+  });
+
+  it('★ 최대가 슬롯 수보다 작으면 모순이다 (§16.2)', () => {
+    // 실재하는 5건: X570/X399 Taichi·MEG X399의 0, H570-PLUS·TRX50-SAGE의 1
+    for (const [max, slots] of [[0, 4], [0, 8], [1, 4]] as const) {
+      const r = rule16(build(64, max, null, slots));
+      expect(r?.verdict, `최대 ${max} / 슬롯 ${slots}`).toBe('unknown');
+      expect(r?.reason?.kind).toBe('inconsistent');
+    }
+  });
+
+  it('보드가 모순이어도 CPU 값이 있으면 그쪽으로 판정한다', () => {
+    const r = rule16(build(192, 0, 128, 4));
+    expect(r?.verdict).toBe('fail');
+    expect(r?.message).toContain('CPU 사양은 128GB');
+  });
+
+  it('CPU의 0은 결측으로 본다 — 48건이 그렇다 (§16.2)', () => {
+    // CPU가 0이라고 모든 메모리를 경고하지 않는다
+    expect(rule16(build(64, 128, 0))?.verdict).toBe('pass');
+  });
+
+  it('CPU를 안 골랐어도 보드만으로 판정한다', () => {
+    const r = rule16(
+      f.withBuild({ cpu: null, ram: [{ ...f.ramKit, capacityGb: 512 }] }),
+    );
+    expect(r?.verdict).toBe('fail');
+    expect(r?.message).toContain('메인보드');
+  });
+
+  it('부품을 안 골랐으면 null', () => {
+    expect(rule16(f.withBuild({ ram: [] }))).toBeNull();
+    expect(rule16(f.withBuild({ motherboard: null }))).toBeNull();
+  });
+});
+
 describe('엔진', () => {
-  it('정상 견적은 11개 규칙이 전부 통과한다', () => {
+  it('정상 견적은 12개 규칙이 전부 통과한다', () => {
     const v = evaluate(f.goodBuild);
-    expect(v.counts.pass).toBe(11);
+    expect(v.counts.pass).toBe(12);
     expect(v.counts.fail).toBe(0);
     expect(v.counts.unknown).toBe(0);
   });
@@ -587,8 +689,9 @@ describe('엔진', () => {
   it('고르지 않은 부품의 규칙은 결과에서 빠진다', () => {
     const v = evaluate(f.withBuild({ gpu: null, pcCase: null, psu: null }));
     const ids = v.results.map((r) => r.ruleId);
-    // 12는 CPU+보드만으로 판정된다. 케이스·GPU·파워를 안 골라도 남는다
-    expect(ids).toEqual([1, 2, 3, 12]);
+    // 12는 CPU+보드만으로, 16은 메모리+보드만으로 판정된다.
+    // 케이스·GPU·파워를 안 골라도 남는다
+    expect(ids).toEqual([1, 2, 3, 12, 16]);
   });
 
   it('빈 견적은 적용할 규칙이 없다', () => {
