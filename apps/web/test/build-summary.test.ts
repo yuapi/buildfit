@@ -11,11 +11,13 @@
 
 import { emptyBuild, evaluate } from '@buildfit/compat';
 import { describe, expect, it } from 'vitest';
-import { cpu, gpu, goodBuild, ramKit, withBuild } from '../../../packages/compat/test/fixtures';
+import { cpu, drive, gpu, goodBuild, ramKit, withBuild } from '../../../packages/compat/test/fixtures';
+import { SLOT_META } from '../src/lib/categories';
 import {
   buildLabel,
   buildSummary,
   filledSlotCount,
+  nameOf,
   pickedCount,
 } from '../src/lib/build-summary';
 
@@ -40,7 +42,8 @@ describe('알아볼 이름', () => {
 
 describe('개수', () => {
   it('부품 수는 묶음마다 하나로 센다', () => {
-    expect(pickedCount(goodBuild)).toBe(7);
+    // CPU·보드·메모리·GPU·케이스·파워·쿨러·드라이브
+    expect(pickedCount(goodBuild)).toBe(8);
     expect(pickedCount({ ...emptyBuild, cpu, gpu, ram: [ramKit] })).toBe(3);
     expect(pickedCount(emptyBuild)).toBe(0);
   });
@@ -57,9 +60,19 @@ describe('개수', () => {
       ...goodBuild,
       ram: [ramKit, { ...ramKit, id: 'r2' }, { ...ramKit, id: 'r3' }, { ...ramKit, id: 'r4' }],
     };
-    expect(pickedCount(full)).toBe(10);
-    // 칸은 일곱 개뿐이다.
-    expect(filledSlotCount(full)).toBe(7);
+    expect(pickedCount(full)).toBe(11);
+    // 칸은 여덟 개뿐이다.
+    expect(filledSlotCount(full)).toBe(8);
+    expect(filledSlotCount(full)).toBeLessThanOrEqual(SLOT_META.length);
+  });
+
+  it('★ 스토리지도 몇 개든 한 칸이다', () => {
+    const many = {
+      ...emptyBuild,
+      storage: [drive, { ...drive, id: 'd2' }, { ...drive, id: 'd3' }],
+    };
+    expect(pickedCount(many)).toBe(3);
+    expect(filledSlotCount(many)).toBe(1);
   });
 });
 
@@ -68,7 +81,7 @@ describe('요약 한 줄', () => {
     const s = buildSummary(goodBuild, evaluate(goodBuild));
     expect(s).toMatch(/통과 \d/);
     expect(s).toMatch(/소비전력 \d+~\d+W/);
-    expect(s).toContain('부품 7개');
+    expect(s).toContain('부품 8개');
   });
 
   it('★ 판정이 없으면 판정을 말하지 않는다', () => {
@@ -101,5 +114,20 @@ describe('요약 한 줄', () => {
 
   it('빈 견적도 던지지 않는다', () => {
     expect(buildSummary(emptyBuild, evaluate(emptyBuild))).toBe('부품 0개');
+  });
+});
+
+describe('한 칸을 한 줄로', () => {
+  it('하나면 이름만', () => {
+    expect(nameOf(goodBuild, 'cpu')).toBe(cpu.name);
+  });
+
+  it('★ 여럿이면 몇 개인지 말한다 — 지우지 않는다', () => {
+    const two = { ...emptyBuild, ram: [ramKit, { ...ramKit, id: 'r2' }] };
+    expect(nameOf(two, 'ram')).toBe(`${ramKit.name} 외 1개`);
+  });
+
+  it('비면 null', () => {
+    expect(nameOf(emptyBuild, 'storage')).toBeNull();
   });
 });
