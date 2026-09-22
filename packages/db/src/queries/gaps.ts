@@ -8,7 +8,20 @@
 import { SPEC_REQUIREMENTS, rulesBlockedBy, type FieldRequirement } from '@buildfit/compat';
 import { and, eq, inArray, sql, type SQL } from 'drizzle-orm';
 import type { Database } from '../client';
+import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import { partSpecs, parts } from '../schema';
+
+/**
+ * `storedOnPart` 필드의 `specKey` → `parts` 컬럼 (이슈 #15).
+ *
+ * 규칙 엔진은 값이 어디 저장되는지 모른다. 그 대응을 아는 곳은 DB 계층뿐이므로
+ * 여기 한 군데에 둔다. **선언에 새 `storedOnPart` 필드가 생기면 여기도 와야
+ * 하고, 빠뜨리면 그 필드가 조용히 100% 결측으로 잡힌다** —
+ * `apps/ingest/test/mapping-coverage.test.ts`가 그 누락을 잡는다.
+ */
+export const PART_COLUMNS: Readonly<Record<string, AnyPgColumn>> = {
+  release_year: parts.releaseYear,
+};
 
 export interface FieldGap {
   readonly category: string;
@@ -43,7 +56,7 @@ export async function fieldGapSummary(db: Database): Promise<FieldGap[]> {
    * 그러면 `have > total`이 되어 결측이 0으로 눌린다 — 표가 "다 채워졌다"고
    * 거짓말한다. 이 수는 공개 페이지(`/rules`)가 그대로 보여주는 값이다.
    */
-  const [totalRows, haveRows] = await db.transaction(
+  const [totalRows, haveRows, columnRows] = await db.transaction(
     async (tx) =>
       await Promise.all([
         tx
@@ -61,6 +74,20 @@ export async function fieldGapSummary(db: Database): Promise<FieldGap[]> {
           .innerJoin(parts, eq(parts.id, partSpecs.partId))
           .where(inArray(partSpecs.key, keys))
           .groupBy(parts.category, partSpecs.key),
+        // `parts` 컬럼에 있는 입력 (이슈 #15). 컬럼마다 "값이 있는 부품 수"를
+        // 한 쿼리에서 같이 센다.
+        tx
+          .select({
+            category: parts.category,
+            ...Object.fromEntries(
+              Object.entries(PART_COLUMNS).map(([key, col]) => [
+                key,
+                sql<number>`count(${col})::int`,
+              ]),
+            ),
+          })
+          .from(parts)
+          .groupBy(parts.category),
       ]),
     // 두 쿼리가 같은 시점을 보게 한다. 기본 격리 수준은 문장마다 스냅샷이 바뀐다.
     { isolationLevel: 'repeatable read' },
@@ -68,6 +95,11 @@ export async function fieldGapSummary(db: Database): Promise<FieldGap[]> {
 
   const totals = new Map(totalRows.map((r) => [r.category, r.n]));
   const have = new Map(haveRows.map((r) => [`${r.category}\u0000${r.key}`, r.n]));
+  for (const r of columnRows as unknown as Record<string, unknown>[]) {
+    for (const key of Object.keys(PART_COLUMNS)) {
+      have.set(`${String(r['category'])}\u0000${key}`, Number(r[key] ?? 0));
+    }
+  }
 
   const out: FieldGap[] = [];
   for (const req of required) {
@@ -111,8 +143,15 @@ export interface GapCounts {
   readonly withSource: number;
 }
 
-/** 특정 필드가 비어 있는 부품의 조건. 목록과 집계가 같은 것을 세야 한다. */
+/**
+ * 특정 필드가 비어 있는 부품의 조건. 목록과 집계가 같은 것을 세야 한다.
+ *
+ * `parts` 컬럼에 있는 입력(이슈 #15)은 `part_specs`를 보지 않는다 — 행이 없는
+ * 것이 아니라 컬럼이 `null`인 것이다.
+ */
 function missingWhere(category: string, specKey: string): SQL {
+  const column = PART_COLUMNS[specKey];
+  if (column) return sql`${eq(parts.category, category)} and ${column} is null`;
   return sql`${eq(parts.category, category)} and not exists (
     select 1 from ${partSpecs} s
     where s.part_id = ${parts.id} and s.key = ${specKey}
@@ -224,6 +263,9 @@ export async function partWithSpecs(db: Database, id: string): Promise<PartWithS
     .orderBy(partSpecs.key);
 
   const have = new Set(specs.map((s) => s.key));
+  // `parts` 컬럼에 있는 입력도 센다 (이슈 #15). 여기서 빠뜨리면 보강 화면이
+  // "비어 있음" 표시를 안 붙이고, 작업자가 채울 대상으로 보지 않는다.
+  if (part.releaseYear !== null) have.add('release_year');
   const missing = SPEC_REQUIREMENTS.filter(
     (r) => r.category === part.category && r.optional !== true && !have.has(r.specKey),
   );
@@ -251,6 +293,47 @@ export async function saveSpec(
   if (!input.sourceUrl.trim()) {
     throw new Error('출처 URL 없이 저장할 수 없습니다 (§5.5).');
   }
+
+  // `parts` 컬럼에 있는 입력 (이슈 #15). 출처를 함께 남길 자리가 없다 —
+  // `parts`에는 컬럼별 source_url이 없다. **그래서 흔적을 `part_specs`에도
+  // 남긴다**: 컬럼이 판정에 쓰이는 값이고, 그 행이 출처와 확인 시각을 든다.
+  // 적재는 컬럼을 덮어쓰지만 그 행은 사람이 넣은 것이라 지우지 않는다
+  // (「낡은 스펙 정리」가 OpenDB 출처만 지운다).
+  if (PART_COLUMNS[input.key]) {
+    if (input.key !== 'release_year') {
+      throw new Error(`컬럼 ${input.key}를 저장하는 방법이 정의되지 않았습니다.`);
+    }
+    const year = Number(input.value);
+    if (!Number.isInteger(year)) throw new Error('출시 연도는 정수여야 합니다.');
+    await db.transaction(async (tx) => {
+      await tx
+        .update(parts)
+        .set({ releaseYear: year, updatedAt: sql`now()` })
+        .where(eq(parts.id, input.partId));
+      await tx
+        .insert(partSpecs)
+        .values({
+          partId: input.partId,
+          key: input.key,
+          value: year as never,
+          unit: null,
+          sourceUrl: input.sourceUrl,
+          verifiedAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: [partSpecs.partId, partSpecs.key],
+          set: {
+            value: sql`excluded.value`,
+            sourceUrl: sql`excluded.source_url`,
+            verifiedAt: sql`excluded.verified_at`,
+            disputed: sql`false`,
+            updatedAt: sql`now()`,
+          },
+        });
+    });
+    return;
+  }
+
   await db
     .insert(partSpecs)
     .values({

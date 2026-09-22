@@ -53,6 +53,11 @@ async function main(): Promise<void> {
       pcCase: await find('PCCase', 'O11 Dynamic EVO'),
       psu: await find('PSU', 'RM850x'),
       cooler: await find('CPUCooler', 'NH-D15'),
+      // 스토리지가 빠져 있어 규칙 17·18·19가 이 표에서 아예 보이지 않았다.
+      // M.2 하나와 SATA 하나를 담아 두 갈래를 다 태운다.
+      storage: [await find('Storage', '990 PRO'), await find('Storage', '870 EVO')].filter(
+        (v): v is string => !!v,
+      ),
     };
 
     const build = await loadBuild(db, sel);
@@ -87,6 +92,11 @@ async function main(): Promise<void> {
       pcCase: await pickRandom(db, 'PCCase', SAMPLE_BUILDS),
       psu: await pickRandom(db, 'PSU', SAMPLE_BUILDS),
       cooler: await pickRandom(db, 'CPUCooler', SAMPLE_BUILDS),
+      // 무작위 표본에도 드라이브를 넣는다. 없으면 규칙 17·18·19가 "판정할
+      // 대상이 없음"으로 빠져 **실측 기준선에 구멍이 생긴다** — 스토리지
+      // 규칙만 전수 수치가 없는 상태였다.
+      storage: await pickRandom(db, 'Storage', SAMPLE_BUILDS),
+      storage2: await pickRandom(db, 'Storage', SAMPLE_BUILDS),
     };
 
     const perRule = new Map<number, { pass: number; fail: number; unknown: number }>();
@@ -102,6 +112,9 @@ async function main(): Promise<void> {
         pcCase: pools.pcCase[i],
         psu: pools.psu[i],
         cooler: pools.cooler[i],
+        // 드라이브 둘. 하나만 담으면 규칙 18(SATA 포트 수)이 거의 통과로만
+        // 나와 포트 부족을 보지 못한다.
+        storage: [pools.storage[i], pools.storage2[i]].filter((v): v is string => !!v),
       });
       const v = evaluate(b);
       if (v.counts.unknown > 0) buildsWithUnknown += 1;

@@ -247,8 +247,8 @@ Claude에게 넘기지 않는 작업.
                                              localhost:3000이 색인에 굳는다.
                                              오류가 나지 않는다 (deployment.md §2)
 □ 배포 플랫폼의 헬스체크를 /healthz로  ← 공개 화면은 DB가 끊겨도 200이다
-□ git remote를 buildfit으로  ← `git remote set-url origin
-                               https://github.com/yuapi/buildfit`
+□ git remote를 새 레포 이름으로  ← `git remote set-url origin <새 주소>`
+                                   지금은 GitHub 리다이렉트로 동작한다
 ```
 
 배포 절차와 확인 항목은 `docs/deployment.md`에 있다. **프로덕션 빌드로 실제

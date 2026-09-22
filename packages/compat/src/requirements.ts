@@ -25,6 +25,17 @@ export interface FieldRequirement {
    * 예: 규칙 2의 CPU 지원 메모리 규격은 결측이면 건너뛴다 (docs/compat-rules.md §2).
    */
   readonly optional?: true;
+  /**
+   * 이 값이 `part_specs` 행이 아니라 **`parts` 컬럼**에 있다 (이슈 #15).
+   *
+   * 없으면 `part_specs.key`로 본다. `specKey`는 그대로 컬럼 이름이다.
+   *
+   * **선언에서 빼두면 안 된다.** 규칙이 읽는데 선언에 없으면 `/rules`가 그 결측을
+   * 보여주지 못하고, 어드민도 채울 수 없다. 실제로 규칙 12가 그랬다 — 화면은
+   * 결측 0.7%라고 적는데 판정 불가는 85.7%였다. 저장·집계 쪽에서 갈라 쓰는
+   * 것이 화면마다 특례를 넣는 것보다 낫다.
+   */
+  readonly storedOnPart?: true;
   /** 이 키가 없을 때 대신 쓸 수 있는 키. 예: ppt_w ← tdp_w */
   readonly fallbackKey?: string;
   /** 어드민 입력 위젯을 고르는 데 쓴다. */
@@ -103,8 +114,15 @@ export const SPEC_REQUIREMENTS: readonly FieldRequirement[] = [
   { ruleId: 9, category: 'PCCase', specKey: 'max_cpu_cooler_height_mm', label: '쿨러 최대 높이', severity: 'warning', valueType: 'number' },
 
   // 12. BIOS 업데이트 필요 여부 (Phase 1)
-  // 출시 연도는 part_specs가 아니라 parts 컬럼이라 어드민 보강 대상이 아니다.
-  // 여기 싣는 것은 bios_flashback뿐이다.
+  //
+  // 출시 연도가 이 규칙의 **본체**다. bios_flashback은 경고 등급을 가르는 보조
+  // 신호일 뿐이다. 연도는 parts 컬럼이라 `storedOnPart`로 표시한다 (이슈 #15) —
+  // 빼두었더니 /rules가 "결측 0.7%"라고 적는데 판정 불가는 85.7%였다.
+  //
+  // 메인보드 연도가 진짜 병목이다: 757/3,701 (20.5%). 원본에 다른 경로가 없다
+  // (docs/research/opendb-schema-analysis.md §10).
+  { ruleId: 12, category: 'CPU', specKey: 'release_year', label: '출시 연도', severity: 'warning', valueType: 'number', storedOnPart: true },
+  { ruleId: 12, category: 'Motherboard', specKey: 'release_year', label: '출시 연도', severity: 'warning', valueType: 'number', storedOnPart: true },
   { ruleId: 12, category: 'Motherboard', specKey: 'bios_flashback', label: 'BIOS Flashback 지원', severity: 'warning', valueType: 'boolean' },
 
   // 15. GPU 두께(슬롯) ≤ 케이스 확장 슬롯 수 (Phase 1)
