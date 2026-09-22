@@ -1,7 +1,7 @@
 # ADR-0019: 이름은 buildfit으로 한다 — 레포 이름을 제품에 맞춘다
 
 ## 상태
-채택 (2026-09-21)
+채택 (2026-09-21) · **완료 (2026-09-22)** — 레포를 `buildfit`으로 바꿨다
 
 ## 배경
 
@@ -76,9 +76,10 @@ apps/web/src/app/build/[code]/   공유 링크
 
 ## 결과
 
-- **사용자가 할 일 하나**: GitHub Settings → General → Repository name → `buildfit`.
-  그 뒤 로컬에서 `git remote set-url origin https://github.com/yuapi/buildfit`
-  (안 해도 자동 전달로 동작하지만 정리해 두는 편이 낫다)
+- ~~**사용자가 할 일 하나**: GitHub Settings → General → Repository name → `buildfit`~~
+  → **2026-09-22에 완료됐다.** 예상대로 **코드 변경 0건**이었다. `grep -rn "partfit"`이
+  이 문서 하나만 잡고, 기존 clone은 GitHub 자동 전달로 계속 동작한다. 푸시도 이슈
+  댓글도 옛 주소로 그대로 된다
 - 이름을 코드에 박지 않는다. 지금도 레포 이름은 어디에도 없고, **그 상태를 유지한다** —
   박아두면 다음 개명이 코드 변경이 된다
 - 문서의 이슈 링크는 `../../issues/N` 상대 경로다 (14곳). 레포 이름이 바뀌어도 그대로 동작한다
