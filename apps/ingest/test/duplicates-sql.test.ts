@@ -13,6 +13,7 @@
 import { createDb } from '@buildfit/db';
 import { loadBuild } from '@buildfit/db/build';
 import { partBySlug, partsInCategory, slugsInCategory } from '@buildfit/db/part';
+import { conflictingSpecs } from '@buildfit/db/queries';
 import { searchCandidates } from '@buildfit/db/picker';
 import { matchQuote } from '@buildfit/db/quote';
 import { sql } from 'drizzle-orm';
@@ -165,6 +166,39 @@ describeIfDb('중복 레코드 묶기 (이슈 #11)', () => {
     expect(ids).not.toContain(A);
     expect(ids).not.toContain(C);
     expect(ids).toHaveLength(2);
+  });
+
+  // --- 어드민 작업 목록 (이슈 #12) -----------------------------------------
+
+  it('어긋난 값을 나란히 내놓는다', async () => {
+    const rows = await conflictingSpecs(db);
+    expect(rows).toHaveLength(1);
+    const row = rows[0]!;
+    expect(row.specKey).toBe('capacity_gb');
+    expect(row.canonicalId).toBe(B);
+    // 같은 값을 든 둘은 한 줄로 묶인다. "32가 2건, 16이 1건"이 보여야 판단이 된다
+    const byValue = new Map(row.values.map((v) => [JSON.stringify(v.value), v.partIds]));
+    expect([...(byValue.get('32') ?? [])].sort()).toEqual([A, B].sort());
+    expect(byValue.get('16')).toEqual([C]);
+  });
+
+  it('값이 같은 키는 목록에 올리지 않는다 — 멀쩡한 것을 띄우면 목록이 의미를 잃는다', async () => {
+    const rows = await conflictingSpecs(db);
+    expect(rows.map((r) => r.specKey)).not.toContain('memory_type');
+  });
+
+  it('★ 어드민 목록과 적재의 disputed가 같은 것을 센다', async () => {
+    // 기준이 두 벌이면 「검증 중」이 붙은 값이 목록에 없거나 그 반대가 된다.
+    const rows = await conflictingSpecs(db, 10_000);
+    const pairs = new Set(rows.map((r) => `${r.canonicalId}.${r.specKey}`));
+
+    const flagged = await db.execute<{ canon: string; key: string }>(sql`
+      select coalesce(p.duplicate_of, p.id)::text as canon, s.key
+      from part_specs s join parts p on p.id = s.part_id
+      where s.disputed
+      group by 1, 2
+    `);
+    expect(new Set(flagged.map((f) => `${f.canon}.${f.key}`))).toEqual(pairs);
   });
 
   // --- 주소는 살려 두는 쪽 (ADR-0012) -------------------------------------

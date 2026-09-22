@@ -229,3 +229,111 @@ export async function saveSpec(
       },
     });
 }
+
+// --- 값이 어긋나는 스펙 -------------------------------------------------------
+
+export interface ConflictingValue {
+  readonly value: unknown;
+  readonly unit: string | null;
+  /** 이 값을 들고 있는 레코드들 */
+  readonly partIds: readonly string[];
+}
+
+export interface SpecConflict {
+  readonly category: string;
+  /**
+   * 어긋난 스펙 키.
+   *
+   * 표시 이름은 여기서 붙이지 않는다 — 필수 필드 선언(`SPEC_REQUIREMENTS`)에 없는
+   * 키도 어긋날 수 있고, 그때 선언에서 이름을 찾으면 키가 그대로 나온다.
+   * 화면이 자기 표시 이름표를 쓴다.
+   */
+  readonly specKey: string;
+  /** 대표 레코드. 이름은 그룹 전체가 같다 (그게 같은 제품으로 묶은 근거다) */
+  readonly canonicalId: string;
+  readonly modelName: string;
+  readonly brand: string | null;
+  /** 이 필드를 입력으로 쓰는 규칙 번호 */
+  readonly affectsRules: readonly number[];
+  readonly values: readonly ConflictingValue[];
+}
+
+/**
+ * 같은 제품 안에서 **값이 어긋나는** 스펙 — 이슈 #12.
+ *
+ * 같은 제품이면 스펙도 같아야 한다. 어긋나면 하나는 틀렸다. **정답을 몰라도
+ * 얻는 신호다** — 이 프로젝트에서 검증 근거를 구하기가 가장 어려운데(외부 도메인이
+ * 막혀 있다) 이것은 데이터 안에서 나온다.
+ *
+ * 빈 필드 목록(수만 건)보다 훨씬 작고 훨씬 정확한 작업 목록이다. 127쌍 · 85그룹이고
+ * 규칙 8의 입력 세 개가 포함된다.
+ *
+ * **어느 쪽이 맞는지 고르지 않는다.** 다수결도 최신순도 근거가 아니다 — 어긋난
+ * 값을 나란히 보여주고 사람이 출처를 보고 채운다 (§5.5).
+ *
+ * 그룹은 `coalesce(duplicate_of, id)`다. 적재가 이미 계산해 둔 답을 쓴다 —
+ * 이름·제조사·연도로 여기서 다시 묶으면 기준이 두 벌이 되고 조용히 어긋난다.
+ */
+export async function conflictingSpecs(db: Database, limit = 100): Promise<SpecConflict[]> {
+  const rows = await db.execute<{
+    canonical_id: string;
+    key: string;
+    category: string;
+    model_name: string;
+    brand: string | null;
+    values: { value: unknown; unit: string | null; partIds: string[] }[];
+  }>(sql`
+    with canon as (
+      select distinct duplicate_of as id from ${parts} where duplicate_of is not null
+    ), grp as (
+      -- ★ 중복 그룹에 든 레코드만 본다 (2.03%, 1,036건).
+      --
+      -- 전체를 훑으면 26,485건의 스펙 전부를 그룹핑해 950ms가 나온다. 어드민이
+      -- 요청마다 도는 화면이다. 중복이 없는 부품은 **어긋날 수가 없다** —
+      -- part_specs의 PK가 (part_id, key)라 키 하나에 값이 하나다. 그래서
+      -- 좁혀도 결과가 같다.
+      select p.id, coalesce(p.duplicate_of, p.id) as canon
+      from ${parts} p
+      where p.duplicate_of is not null or exists (select 1 from canon c where c.id = p.id)
+    ), vals as (
+      -- 같은 값을 여럿이 들고 있으면 한 줄로 묶는다. "true 2건 vs false 1건"이
+      -- 보여야 사람이 판단할 수 있다.
+      --
+      -- 단위는 min()으로 딸려 보낸다. 묶는 기준에 넣으면 단위만 다른 경우가
+      -- 어긋난 값으로 세어져 적재의 disputed와 수가 달라진다.
+      select g.canon, s.key, s.value, min(s.unit) as unit,
+             jsonb_agg(g.id order by g.id) as part_ids
+      from grp g join ${partSpecs} s on s.part_id = g.id
+      group by g.canon, s.key, s.value
+    ), conflicting as (
+      select canon, key, count(*)::int as n,
+             jsonb_agg(
+               jsonb_build_object('value', value, 'unit', unit, 'partIds', part_ids)
+               order by value::text
+             ) as values
+      from vals group by canon, key having count(*) > 1
+    )
+    select
+      c.canon::text as canonical_id,
+      c.key,
+      p.category,
+      p.model_name,
+      p.brand,
+      c.values
+    from conflicting c
+    join ${parts} p on p.id = c.canon
+    -- 어긋난 값이 많은 것부터. 셋으로 갈린 것이 둘로 갈린 것보다 나쁘다
+    order by c.n desc, p.category, c.key, p.model_name
+    limit ${limit}
+  `);
+
+  return rows.map((r) => ({
+    category: r.category,
+    specKey: r.key,
+    canonicalId: r.canonical_id,
+    modelName: r.model_name,
+    brand: r.brand,
+    affectsRules: rulesBlockedBy(r.category, r.key),
+    values: r.values ?? [],
+  }));
+}

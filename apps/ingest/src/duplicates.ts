@@ -90,21 +90,40 @@ export async function markDuplicates(db: Database): Promise<DuplicateResult> {
  *
  * **사람이 신고해 세운 것을 지우지 않는다.** 세우기만 한다 — 어느 쪽이 세웠는지
  * 구분할 방법이 없어서다. 어드민이 값을 채우면 그때 풀린다.
+ *
+ * **`markDuplicates` 다음에 부른다.** `duplicate_of`를 그룹으로 쓴다.
  */
-export async function flagConflictingSpecs(db: Database): Promise<number> {
+export interface ConflictResult {
+  /** 이번에 새로 세운 행 수 */
+  readonly marked: number;
+  /** 지금 서 있는 행 수. 두 번째 적재부터 `marked`는 0이 된다 */
+  readonly standing: number;
+}
+
+export async function flagConflictingSpecs(db: Database): Promise<ConflictResult> {
   const result = await db.execute(sql`
     with grp as (
-      select p.id, ${GROUP_KEY} as k from parts p
+      -- ★ markDuplicates가 계산해 둔 답을 쓴다. 여기서 GROUP_KEY로 다시 묶으면
+      -- 기준이 두 벌이 되고, 한쪽만 고치는 날 조용히 어긋난다.
+      -- 어드민 목록(conflictingSpecs)도 같은 식을 쓴다.
+      select id, coalesce(duplicate_of, id) as canon from parts
     ), conflicting as (
-      select g.k, s.key
+      select g.canon, s.key
       from grp g join part_specs s on s.part_id = g.id
-      group by g.k, s.key
+      group by g.canon, s.key
       having count(distinct s.value::text) > 1
     )
     update part_specs s
     set disputed = true
     from grp g, conflicting c
-    where s.part_id = g.id and g.k = c.k and s.key = c.key and s.disputed = false
+    where s.part_id = g.id and g.canon = c.canon and s.key = c.key and s.disputed = false
   `);
-  return Number(result.count ?? 0);
+
+  // 서 있는 총수를 따로 센다. 두 번째 적재부터 위 update는 0행이고, 로그에
+  // 0만 찍히면 "어긋난 값이 없다"로 읽힌다 — 실제로는 274행이 서 있다.
+  const [total] = await db.execute<{ n: number }>(
+    sql`select count(*)::int as n from part_specs where disputed`,
+  );
+
+  return { marked: Number(result.count ?? 0), standing: Number(total?.n ?? 0) };
 }
