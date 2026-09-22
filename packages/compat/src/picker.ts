@@ -24,6 +24,7 @@
 import type { PartSlot } from './applicability';
 import type { Build } from './parts';
 import { bayKind, usesM2Slot } from './storage';
+import { socketAliases } from './sockets';
 
 /** 후보의 `part_specs.key`에 걸리는 조건. DB 계층이 SQL로 옮긴다. */
 export type Constraint =
@@ -70,28 +71,35 @@ function filled<T>(v: T | null | undefined): v is T {
  * 고르지 않았거나 값이 비어 있으면 제약을 만들지 않는다 — 없는 근거로
  * 목록을 좁히지 않는다.
  */
+/**
+ * 소켓 제약. 등가 표기가 없으면 전처럼 `equals`, 있으면 그 표기 전부를 받는 `oneOf`.
+ *
+ * 한 가지로 통일하지 않은 이유: 소켓 대부분은 등가 표기가 없고, 그때 `equals`와
+ * `oneOf [하나]`는 SQL에서 같은 동작이다. 모양을 바꾸면 기존 제약의 뜻이 그대로인데도
+ * 비교하는 코드와 테스트가 전부 흔들린다.
+ */
+function socketConstraint(socket: string, because: string): Constraint {
+  const aliases = socketAliases(socket);
+  return aliases.length > 1
+    ? { kind: 'oneOf', key: 'socket', values: aliases, ruleId: 1, because }
+    : { kind: 'equals', key: 'socket', value: socket, ruleId: 1, because };
+}
+
 export function pickerConstraints(build: Build, slot: PartSlot): Constraint[] {
   const out: Constraint[] = [];
   const { cpu, motherboard, gpu, pcCase, psu, storage } = build;
 
   // --- 규칙 1: 소켓 ---
+  // 규칙 1과 **같은 등가 표**를 쓴다 (이슈 #16). 표기만 다른 같은 소켓(TR4/sTR4)을
+  // 여기서 문자열로 비교하면, X399 보드를 고른 순간 맞는 Threadripper가 전부
+  // 숨는다 — 판정은 통과시키는데 고를 수가 없게 된다.
   if (slot === 'cpu' && motherboard && filled(motherboard.socket)) {
-    out.push({
-      kind: 'equals',
-      key: 'socket',
-      value: motherboard.socket,
-      ruleId: 1,
-      because: `${motherboard.name}의 소켓 ${motherboard.socket}`,
-    });
+    out.push(
+      socketConstraint(motherboard.socket, `${motherboard.name}의 소켓 ${motherboard.socket}`),
+    );
   }
   if (slot === 'motherboard' && cpu && filled(cpu.socket)) {
-    out.push({
-      kind: 'equals',
-      key: 'socket',
-      value: cpu.socket,
-      ruleId: 1,
-      because: `${cpu.name}의 소켓 ${cpu.socket}`,
-    });
+    out.push(socketConstraint(cpu.socket, `${cpu.name}의 소켓 ${cpu.socket}`));
   }
 
   // --- 규칙 2: 메모리 규격 ---
