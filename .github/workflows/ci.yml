@@ -17,8 +17,14 @@ on:
 # 검증이 취소되고, 그 커밋은 통합 브랜치에 검증되지 않은 채로 남는다.
 # 실제로 한 번 그랬다 (run #4가 #5에 취소됨). 통합 브랜치의 모든 커밋은
 # 각자 검증 기록을 남겨야 한다.
+#
+# ★ `cancel-in-progress: false`만으로는 그 보장이 **없다** (run #74가 #75에
+# 취소됨). 그 설정은 **실행 중인** 것만 지킨다. 같은 그룹에서 **대기 중인**
+# 실행은 새 실행이 들어오면 무조건 갈아치워진다 — 셋을 연달아 머지하면 가운데
+# 것이 사라진다. 그래서 통합 브랜치에서는 **커밋마다 그룹을 따로** 둔다.
+# 그룹이 겹치지 않으니 대기열 교체가 일어날 수 없다.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.ref }}${{ (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main') && format('-{0}', github.sha) || '' }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/develop' && github.ref != 'refs/heads/main' }}
 
 jobs:
