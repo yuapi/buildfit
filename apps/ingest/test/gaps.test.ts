@@ -9,7 +9,13 @@
 
 import { SPEC_REQUIREMENTS } from '@buildfit/compat';
 import { createDb } from '@buildfit/db';
-import { fieldGapSummary, gapCounts, partsMissingField } from '@buildfit/db/queries';
+import {
+  fieldGapSummary,
+  gapCounts,
+  partWithSpecs,
+  partsMissingField,
+  saveSpec,
+} from '@buildfit/db/queries';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createScratchDb, type Scratch } from './helpers/scratch-db';
@@ -117,6 +123,75 @@ describeIfDb('결측 현황 집계', () => {
     const counts = await gapCounts(db, 'CPU', 'socket');
     const rows = await partsMissingField(db, 'CPU', 'socket', { limit: 1000 });
     expect(counts.missing).toBe(rows.length);
+  });
+
+  // --- parts 컬럼에 있는 입력 (이슈 #15) ---------------------------------
+
+  it('★ 출시 연도 결측을 part_specs가 아니라 컬럼으로 센다', async () => {
+    // CPU 셋 중 둘에만 연도를 넣는다. part_specs에는 아무 행도 없다.
+    await db.execute(sql`
+      update parts set release_year = 2024
+      where slug in ('g-cpu1', 'g-cpu2')`);
+    const g = (await fieldGapSummary(db)).find(
+      (r) => r.category === 'CPU' && r.specKey === 'release_year',
+    );
+    expect(g, '출시 연도가 결측 집계에 없다 — /rules가 규칙 12의 병목을 숨긴다').toBeDefined();
+    expect(g?.totalParts).toBe(3);
+    expect(g?.missingParts).toBe(1);
+    expect(g?.blocksRules).toContain(12);
+  });
+
+  it('빈 필드 목록과 건수도 컬럼으로 센다', async () => {
+    const rows = await partsMissingField(db, 'CPU', 'release_year');
+    expect(rows.map((r) => r.slug)).toEqual(['g-cpu3']);
+    expect(await gapCounts(db, 'CPU', 'release_year')).toEqual({ missing: 1, withSource: 0 });
+  });
+
+  it('★ 저장이 컬럼과 흔적을 함께 남긴다 — 컬럼에는 출처를 담을 자리가 없다', async () => {
+    const id = 'a3333333-3333-4333-8333-333333333333';
+    await saveSpec(db, {
+      partId: id,
+      key: 'release_year',
+      value: 2021,
+      sourceUrl: 'https://example.test/mb',
+    });
+
+    const [row] = await db.execute<{ release_year: number }>(
+      sql`select release_year from parts where id = ${id}`,
+    );
+    expect(row?.release_year, '컬럼에 들어가지 않으면 규칙이 읽지 못한다').toBe(2021);
+
+    const detail = await partWithSpecs(db, id);
+    const trace = detail?.specs.find((x) => x.key === 'release_year');
+    expect(trace?.value, '흔적이 없으면 사람이 넣었다는 증거가 사라진다').toBe(2021);
+    expect(trace?.sourceUrl).toBe('https://example.test/mb');
+    expect(trace?.verifiedAt).not.toBeNull();
+
+    // 「비어 있음」 목록에서도 빠져야 한다
+    expect(detail?.missing.map((m) => m.specKey)).not.toContain('release_year');
+    expect(await gapCounts(db, 'CPU', 'release_year')).toEqual({ missing: 0, withSource: 0 });
+  });
+
+  it('출처 없이 컬럼을 저장할 수 없다', async () => {
+    await expect(
+      saveSpec(db, {
+        partId: 'a1111111-1111-4111-8111-111111111111',
+        key: 'release_year',
+        value: 2020,
+        sourceUrl: '   ',
+      }),
+    ).rejects.toThrow();
+  });
+
+  it('정수가 아닌 연도를 받지 않는다', async () => {
+    await expect(
+      saveSpec(db, {
+        partId: 'a1111111-1111-4111-8111-111111111111',
+        key: 'release_year',
+        value: 2020.5,
+        sourceUrl: 'https://example.test/x',
+      }),
+    ).rejects.toThrow();
   });
 
   it('빈 DB에서도 던지지 않는다', async () => {
