@@ -12,9 +12,25 @@
 import { type Build, type BuildVerdict, estimatePower } from '@buildfit/compat';
 import { SLOT_META, type SlotName } from './categories';
 
-function nameOf(build: Build, slot: SlotName): string | null {
-  if (slot === 'ram') return build.ram[0]?.name ?? null;
-  return build[slot]?.name ?? null;
+/** 한 칸에 들어 있는 부품들. 메모리·스토리지는 여럿일 수 있다. */
+export function partsInSlot(build: Build, slot: SlotName) {
+  if (slot === 'ram') return build.ram;
+  if (slot === 'storage') return build.storage;
+  const one = build[slot];
+  return one ? [one] : [];
+}
+
+/**
+ * 한 칸을 한 줄로. 여럿이면 **몇 개인지 말한다.**
+ *
+ * 첫 번째만 적고 나머지를 지우면, 두 묶음을 담은 견적을 공유했는데 미리보기가
+ * 한 묶음짜리처럼 보인다.
+ */
+export function nameOf(build: Build, slot: SlotName): string | null {
+  const parts = partsInSlot(build, slot);
+  const first = parts[0]?.name;
+  if (!first) return null;
+  return parts.length > 1 ? `${first} 외 ${parts.length - 1}개` : first;
 }
 
 /**
@@ -29,16 +45,18 @@ export function buildLabel(build: Build): string {
   return any ?? '빈 견적';
 }
 
-/** 고른 부품 개수. 메모리는 묶음마다 하나로 센다 */
+/** 고른 부품 개수. 메모리·스토리지는 하나하나 센다 */
 export function pickedCount(build: Build): number {
   return (
     [build.cpu, build.motherboard, build.gpu, build.pcCase, build.psu, build.cooler].filter(Boolean)
-      .length + build.ram.length
+      .length +
+    build.ram.length +
+    build.storage.length
   );
 }
 
 /**
- * 채운 **칸** 수. 메모리는 몇 묶음이든 한 칸이다.
+ * 채운 **칸** 수. 메모리·스토리지는 몇 개든 한 칸이다.
  *
  * 「4 / 7」처럼 칸 수를 분모로 쓰는 자리에서는 이쪽을 써야 한다.
  * 부품 수를 쓰면 메모리를 여러 묶음 넣었을 때 **분자가 분모를 넘는다**
@@ -47,7 +65,9 @@ export function pickedCount(build: Build): number {
 export function filledSlotCount(build: Build): number {
   return (
     [build.cpu, build.motherboard, build.gpu, build.pcCase, build.psu, build.cooler].filter(Boolean)
-      .length + (build.ram.length > 0 ? 1 : 0)
+      .length +
+    (build.ram.length > 0 ? 1 : 0) +
+    (build.storage.length > 0 ? 1 : 0)
   );
 }
 

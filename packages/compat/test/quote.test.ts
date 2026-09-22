@@ -29,8 +29,14 @@ describe('줄 앞 이름표는 찾는 말이 아니라 어디서 찾을지를 �
   it('★ 다루지 않는 부품은 "못 찾음"과 구분한다', () => {
     // 사용자가 할 행동이 다르다. "못 찾았다"는 다시 쳐보게 만들지만
     // "아직 다루지 않는다"는 그렇지 않다.
-    const r = readQuoteLine('SSD: 삼성 990 PRO 2TB');
+    const r = readQuoteLine('모니터: LG 27GP850');
     expect(r.label?.category).toBeNull();
+    expect(r.label?.label).toBe('모니터');
+  });
+
+  it('스토리지는 이제 다룬다 — 규칙 17·18·19가 본다', () => {
+    const r = readQuoteLine('SSD: 삼성 990 PRO 2TB');
+    expect(r.label?.category).toBe('Storage');
     expect(r.label?.label).toBe('스토리지');
   });
 });

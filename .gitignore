@@ -63,6 +63,11 @@ node_modules/
 out/
 build/
 dist/
+# ★ 위의 `build/`는 산출물 폴더를 겨냥한 것인데 **라우트 폴더까지 삼켰다.**
+# `/build/[code]`는 공유 링크 화면이고 이 프로젝트의 핵심이다 (ADR-0012) —
+# 그런데도 한동안 커밋되지 않고 있었다. CI는 파일이 없는 것을 모른다.
+# `apps/web/test/routes-tracked.test.ts`가 이제 그것을 잡는다.
+!apps/web/src/app/build/
 *.tsbuildinfo
 next-env.d.ts
 .pnp.*

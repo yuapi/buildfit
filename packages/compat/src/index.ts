@@ -23,6 +23,7 @@ export type {
   Cpu,
   Motherboard,
   RamKit,
+  StorageDrive,
   Gpu,
   GpuConnectors,
   PcCase,
@@ -70,6 +71,8 @@ export { KO_ALIASES, OMITTED_ALIASES, squash, searchTerms, isImpossible } from '
 export type { QuoteLabel, QuoteLine, QuoteOptions } from './quote';
 export { QUOTE_LABELS, readQuoteLine } from './quote';
 
+export { bayKind, unplacedDrives, usesM2Slot, usesSataPort } from './storage';
+
 export type { Rule } from './rules';
 export {
   rule1,
@@ -84,6 +87,9 @@ export {
   rule12,
   rule15,
   rule16,
+  rule17,
+  rule18,
+  rule19,
   phase0Rules,
   phase1Rules,
 } from './rules';

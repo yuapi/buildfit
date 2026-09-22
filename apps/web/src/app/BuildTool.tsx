@@ -25,7 +25,7 @@ import { decodeBuildCode, encodeBuildCode } from "@/lib/build-code";
 import { FitBar } from "@/components/FitBar";
 import { PartIcon } from "@/components/Icons";
 import { buildLabel, filledSlotCount, pickedCount } from "@/lib/build-summary";
-import { MAX_RAM_KITS, addRamKit, removeRamKit } from "@/lib/ram-slots";
+import { addToSlot, isMultiSlot, maxForSlot, removeFromSlot } from "@/lib/multi-slot";
 import { SLOT_META, type SlotName } from "@/lib/categories";
 import { NO_CURSOR, nextCursor } from "@/lib/list-cursor";
 import { listWithJosa } from "@/lib/korean";
@@ -54,10 +54,11 @@ function toSelection(build: Build) {
     psu: build.psu?.id,
     cooler: build.cooler?.id,
     ram: build.ram.map((k) => k.id),
+    storage: build.storage.map((d) => d.id),
   };
 }
 
-/** 한 칸에 들어 있는 부품들. 메모리만 여럿일 수 있다 */
+/** 한 칸에 들어 있는 부품들. 메모리와 스토리지는 여럿일 수 있다 */
 interface PickedPart {
   readonly id: string;
   readonly name: string;
@@ -65,8 +66,14 @@ interface PickedPart {
   readonly href: string | null;
 }
 
+function partsInSlot(build: Build, slot: SlotName) {
+  if (slot === "ram") return build.ram;
+  if (slot === "storage") return build.storage;
+  return [build[slot]];
+}
+
 function pickedIn(build: Build, meta: (typeof SLOT_META)[number]): PickedPart[] {
-  const parts = meta.slot === "ram" ? build.ram : [build[meta.slot]];
+  const parts = partsInSlot(build, meta.slot);
   return parts.filter((p) => p != null).map((p) => ({
     id: p.id,
     name: p.name,
@@ -82,6 +89,7 @@ const EMPTY: Build = {
   pcCase: null,
   psu: null,
   cooler: null,
+  storage: [],
 };
 
 /*
@@ -185,6 +193,8 @@ export function BuildTool({ initial }: { initial?: Build }) {
           // v1 코드에는 쿨러가 없다. 그 경우 undefined가 그대로 들어간다
           cooler: sel.cooler,
           ram: [...(sel.ram ?? [])],
+          // v1·v2 코드에는 스토리지가 없다. 그 경우 빈 배열이다
+          storage: [...(sel.storage ?? [])],
         },
         opts,
       );
@@ -217,9 +227,10 @@ export function BuildTool({ initial }: { initial?: Build }) {
   const choose = useCallback(
     (slot: SlotName, id: string) => {
       const next = { ...selection };
-      // 메모리는 **덧붙인다** (`lib/ram-slots.ts`).
-      if (slot === "ram") next.ram = addRamKit(next.ram, id);
-      else next[slot] = id;
+      // 메모리·스토리지는 **덧붙인다** (`lib/multi-slot.ts`).
+      if (isMultiSlot(slot)) {
+        next[slot] = addToSlot(next[slot] ?? [], id, maxForSlot(slot));
+      } else next[slot] = id;
       setOpenSlot(null);
       apply(next);
     },
@@ -236,8 +247,9 @@ export function BuildTool({ initial }: { initial?: Build }) {
     (picks: readonly QuotePick[]) => {
       const next = { ...selection };
       for (const p of picks) {
-        if (p.slot === "ram") next.ram = addRamKit(next.ram, p.id);
-        else next[p.slot] = p.id;
+        if (isMultiSlot(p.slot)) {
+          next[p.slot] = addToSlot(next[p.slot] ?? [], p.id, maxForSlot(p.slot));
+        } else next[p.slot] = p.id;
       }
       setOpenSlot(null);
       apply(next);
@@ -248,8 +260,8 @@ export function BuildTool({ initial }: { initial?: Build }) {
   const clear = useCallback(
     (slot: SlotName, id?: string) => {
       const next = { ...selection };
-      // 메모리는 묶음이 여럿일 수 있다. 어느 것을 뺄지 받는다.
-      if (slot === "ram") next.ram = removeRamKit(next.ram, id);
+      // 메모리·스토리지는 여럿일 수 있다. 어느 것을 뺄지 받는다.
+      if (isMultiSlot(slot)) next[slot] = removeFromSlot(next[slot] ?? [], id);
       else next[slot] = undefined;
       apply(next);
     },
@@ -319,7 +331,10 @@ export function BuildTool({ initial }: { initial?: Build }) {
                 label={meta.label}
                 picked={pickedIn(build, meta)}
                 constraints={pickerConstraints(build, meta.slot)}
-                full={meta.slot === "ram" && build.ram.length >= MAX_RAM_KITS}
+                full={
+                  isMultiSlot(meta.slot) &&
+                  partsInSlot(build, meta.slot).length >= maxForSlot(meta.slot)
+                }
                 open={openSlot === meta.slot}
                 onToggle={() =>
                   setOpenSlot(openSlot === meta.slot ? null : meta.slot)
@@ -491,9 +506,9 @@ function SlotRow({
   /** id를 주면 그것만, 안 주면 전부 뺀다 */
   onClear: (id?: string) => void;
 }) {
-  const many = slot === "ram";
+  const many = isMultiSlot(slot);
   /*
-   * 메모리는 **덧붙인다.** 그래서 이미 있어도 「변경」이 아니라 「추가」다.
+   * 메모리·스토리지는 **덧붙인다.** 그래서 이미 있어도 「변경」이 아니라 「추가」다.
    * 바꾸려면 빼고 넣는다 — 그편이 무엇이 들어 있는지 분명하다.
    */
   const actionLabel = open ? "닫기" : picked.length === 0 ? "선택" : many ? "추가" : "변경";
@@ -945,7 +960,7 @@ function partHref(
 ): string | null {
   if (!build || !slug) return null;
   for (const meta of SLOT_META) {
-    const candidates = meta.slot === "ram" ? build.ram : [build[meta.slot]];
+    const candidates = partsInSlot(build, meta.slot);
     if (candidates.some((p) => p?.slug === slug)) {
       return `/part/${meta.category.toLowerCase()}/${slug}`;
     }

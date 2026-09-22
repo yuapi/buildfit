@@ -13,7 +13,8 @@ import { evaluate } from '../src/engine';
 import { emptyBuild } from '../src/parts';
 import { estimatePower } from '../src/power';
 import {
-  rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8, rule9, rule12, rule15, rule16,
+  rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8, rule9,
+  rule12, rule15, rule16, rule17, rule18, rule19,
 } from '../src/rules';
 import * as f from './fixtures';
 
@@ -678,10 +679,183 @@ describe('16. 총 메모리 용량 ≤ 보드·CPU 최대 (Phase 1)', () => {
   });
 });
 
+describe('17. M.2 드라이브 수 ≤ 보드 M.2 슬롯 수 (Phase 1)', () => {
+  const m2 = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({ ...f.drive, id: `m2-${i}` }));
+  const build = (drives: number, slots: number | null, memoryType = 'DDR5') =>
+    f.withBuild({
+      storage: m2(drives),
+      motherboard: { ...f.motherboard, m2Slots: slots, memoryType },
+    });
+
+  it('들어가면 pass', () => {
+    expect(rule17(build(3, 3))?.verdict).toBe('pass');
+  });
+
+  it('넘으면 error', () => {
+    const r = rule17(build(4, 3));
+    expect(r?.verdict).toBe('fail');
+    expect(r?.severity).toBe('error');
+    expect(r?.message).toContain('4개');
+    expect(r?.message).toContain('3개');
+  });
+
+  it('★ 슬롯 0은 값이다 — M.2 없는 보드는 실재한다 (§17.2)', () => {
+    // DDR2의 100%, DDR3의 86.3%가 0이다
+    const r = rule17(build(1, 0, 'DDR3'));
+    expect(r?.verdict).toBe('fail');
+    expect(r?.severity).toBe('error');
+    // DDR4의 135건도 H110·A320 같은 보급형이라 진짜 0이다
+    expect(rule17(build(1, 0, 'DDR4'))?.verdict).toBe('fail');
+  });
+
+  it('★ DDR5 보드의 0만 판정하지 않는다 (§17.2)', () => {
+    // 1,066건 중 3건뿐이고 전부 M.2가 있는 보드였다
+    const r = rule17(build(1, 0, 'DDR5'));
+    expect(r?.verdict).toBe('unknown');
+    expect(r?.reason?.kind).toBe('inconsistent');
+  });
+
+  it('M.2가 아닌 드라이브는 세지 않는다', () => {
+    const b = f.withBuild({
+      storage: [f.sataDrive, { ...f.sataDrive, id: 'h2' }],
+      motherboard: { ...f.motherboard, m2Slots: 0, memoryType: 'DDR4' },
+    });
+    expect(rule17(b)?.verdict).toBe('pass');
+  });
+
+  it('★ 자리를 세지 못한 드라이브는 그 사실을 적는다 (§17.1)', () => {
+    const aic = { ...f.drive, id: 'aic', name: 'Intel Optane 905P', formFactor: 'PCIe' };
+    const r = rule17(f.withBuild({ storage: [f.drive, aic] }));
+    expect(r?.verdict).toBe('pass');
+    expect(r?.notes?.join(' ')).toContain('Optane');
+    expect(r?.notes?.join(' ')).toContain('세지 않았습니다');
+  });
+
+  it('슬롯 수나 규격이 없으면 unknown', () => {
+    expect(rule17(build(1, null))?.verdict).toBe('unknown');
+    expect(
+      rule17(f.withBuild({ storage: [{ ...f.drive, formFactor: null }] }))?.verdict,
+    ).toBe('unknown');
+  });
+
+  it('부품을 안 골랐으면 null', () => {
+    expect(rule17(f.withBuild({ storage: [] }))).toBeNull();
+    expect(rule17(f.withBuild({ motherboard: null }))).toBeNull();
+  });
+});
+
+describe('18. SATA 드라이브 수 ≤ 보드 SATA 포트 수 (Phase 1)', () => {
+  const sata = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({ ...f.sataDrive, id: `s-${i}` }));
+  const build = (drives: number, p6: number | null, p3: number | null = 0) =>
+    f.withBuild({
+      storage: sata(drives),
+      motherboard: { ...f.motherboard, sataPorts: p6, sataPorts3Gbs: p3 },
+      pcCase: { ...f.pcCase, internal35Bays: 99 },
+    });
+
+  it('들어가면 pass', () => {
+    expect(rule18(build(4, 6))?.verdict).toBe('pass');
+  });
+
+  it('넘으면 error', () => {
+    const r = rule18(build(7, 6));
+    expect(r?.verdict).toBe('fail');
+    expect(r?.severity).toBe('error');
+  });
+
+  it('★ 6Gb/s와 3Gb/s를 합산한다', () => {
+    expect(rule18(build(6, 4, 2))?.verdict).toBe('pass');
+    expect(rule18(build(7, 4, 2))?.verdict).toBe('fail');
+  });
+
+  it('★ 포트 0은 미입력이다 — 규칙 17과 반대다 (§18.2)', () => {
+    // 세대별 경향 없이 24.9%가 0이고, DDR2·DDR3 보드도 0으로 적혀 있다
+    const r = rule18(build(1, 0, 0));
+    expect(r?.verdict).toBe('unknown');
+    expect(r?.reason?.kind).toBe('inconsistent');
+  });
+
+  it('★ M.2 SATA는 세지 않는다 — 칩셋에 달려 있다 (§18.1)', () => {
+    const m2sata = { ...f.drive, id: 'm2s', interface: 'M.2 SATA' };
+    const b = f.withBuild({
+      storage: [m2sata],
+      motherboard: { ...f.motherboard, sataPorts: 0, sataPorts3Gbs: 1 },
+    });
+    // 포트 1개인데 M.2 SATA를 셌다면 통과했을지 아닐지가 달라진다
+    const r = rule18(b);
+    expect(r?.verdict).toBe('pass');
+    expect(r?.message).toContain('SATA 0개');
+  });
+
+  it('SAS도 세지 않는다 — 일반 보드에 포트가 없다', () => {
+    const sas = { ...f.sataDrive, id: 'sas', interface: 'SAS 12.0 Gb/s' };
+    expect(rule18(f.withBuild({ storage: [sas] }))?.message).toContain('SATA 0개');
+  });
+
+  it('둘 다 결측이면 unknown, 한쪽만 있으면 판정한다', () => {
+    expect(rule18(build(1, null, null))?.verdict).toBe('unknown');
+    expect(rule18(build(1, null, 2))?.verdict).toBe('pass');
+  });
+});
+
+describe('19. 3.5"·2.5" 드라이브 수 ≤ 케이스 베이 수 (Phase 1)', () => {
+  const drives = (ff: string, n: number) =>
+    Array.from({ length: n }, (_, i) => ({ ...f.sataDrive, id: `${ff}-${i}`, formFactor: ff }));
+  const build = (ff: string, n: number, b35: number | null, b25: number | null) =>
+    f.withBuild({
+      storage: drives(ff, n),
+      pcCase: { ...f.pcCase, internal35Bays: b35, internal25Bays: b25 },
+    });
+
+  it('들어가면 pass', () => {
+    expect(rule19(build('3.5"', 2, 6, 3))?.verdict).toBe('pass');
+  });
+
+  it('★ 3.5"가 넘으면 오류 — 갈 곳이 없다 (§19.2)', () => {
+    const r = rule19(build('3.5"', 3, 2, 3));
+    expect(r?.verdict).toBe('fail');
+    expect(r?.severity).toBe('error');
+  });
+
+  it('★ 2.5"가 넘으면 경고 — 3.5" 베이·트레이 뒷면에 붙는다 (§19.2)', () => {
+    const r = rule19(build('2.5"', 4, 6, 2));
+    expect(r?.verdict).toBe('fail');
+    expect(r?.severity).toBe('warning');
+    expect(r?.message).toContain('설명서');
+  });
+
+  it('★ 베이 0은 값이다 — Mini-ITX에 실재한다 (§19.1)', () => {
+    const r = rule19(build('3.5"', 1, 0, 2));
+    expect(r?.verdict).toBe('fail');
+    expect(r?.severity).toBe('error');
+  });
+
+  it('M.2만 담으면 베이를 쓰지 않는다', () => {
+    const r = rule19(f.withBuild({ storage: [f.drive] }));
+    expect(r?.verdict).toBe('pass');
+    expect(r?.message).toContain('쓰는 드라이브가 없습니다');
+  });
+
+  it('★ 쓰지 않는 크기의 베이 결측은 판정을 막지 않는다', () => {
+    // 3.5"만 담았는데 2.5" 베이가 비어 있다고 판정 불가로 만들지 않는다
+    expect(rule19(build('3.5"', 1, 6, null))?.verdict).toBe('pass');
+    expect(rule19(build('2.5"', 1, null, 3))?.verdict).toBe('pass');
+    // 쓰는 쪽이 비면 판정 불가다
+    expect(rule19(build('3.5"', 1, null, 3))?.verdict).toBe('unknown');
+  });
+
+  it('부품을 안 골랐으면 null', () => {
+    expect(rule19(f.withBuild({ storage: [] }))).toBeNull();
+    expect(rule19(f.withBuild({ pcCase: null }))).toBeNull();
+  });
+});
+
 describe('엔진', () => {
-  it('정상 견적은 12개 규칙이 전부 통과한다', () => {
+  it('정상 견적은 15개 규칙이 전부 통과한다', () => {
     const v = evaluate(f.goodBuild);
-    expect(v.counts.pass).toBe(12);
+    expect(v.counts.pass).toBe(15);
     expect(v.counts.fail).toBe(0);
     expect(v.counts.unknown).toBe(0);
   });
@@ -689,9 +863,9 @@ describe('엔진', () => {
   it('고르지 않은 부품의 규칙은 결과에서 빠진다', () => {
     const v = evaluate(f.withBuild({ gpu: null, pcCase: null, psu: null }));
     const ids = v.results.map((r) => r.ruleId);
-    // 12는 CPU+보드만으로, 16은 메모리+보드만으로 판정된다.
-    // 케이스·GPU·파워를 안 골라도 남는다
-    expect(ids).toEqual([1, 2, 3, 12, 16]);
+    // 12는 CPU+보드만으로, 16은 메모리+보드, 17·18은 스토리지+보드만으로
+    // 판정된다. 케이스·GPU·파워를 안 골라도 남는다
+    expect(ids).toEqual([1, 2, 3, 12, 16, 17, 18]);
   });
 
   it('빈 견적은 적용할 규칙이 없다', () => {

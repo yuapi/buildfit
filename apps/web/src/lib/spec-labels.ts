@@ -47,6 +47,12 @@ const EXTRA: Readonly<Record<string, string>> = {
   cpu_sockets: '지원 소켓',
   water_cooled: '수랭',
   fan_size_mm: '팬 크기',
+  m2_slots: 'M.2 슬롯 수',
+  sata_ports_3gbs: 'SATA 3Gb/s 포트 수',
+  internal_3_5_bays: '내부 3.5" 베이',
+  internal_2_5_bays: '내부 2.5" 베이',
+  storage_type: '종류',
+  nvme: 'NVMe',
 };
 
 const FROM_RULES: Record<string, string> = {};

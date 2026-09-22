@@ -7,7 +7,17 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { MAX_RAM_KITS, addRamKit, removeRamKit } from '../src/lib/ram-slots';
+import {
+  MAX_RAM_KITS,
+  MAX_STORAGE_DRIVES,
+  addToSlot,
+  isMultiSlot,
+  maxForSlot,
+  removeFromSlot,
+} from '../src/lib/multi-slot';
+
+const addRamKit = (cur: readonly string[], id: string) => addToSlot(cur, id, MAX_RAM_KITS);
+const removeRamKit = removeFromSlot;
 
 const A = 'aaaaaaaa-1111-4111-8111-111111111111';
 const B = 'bbbbbbbb-2222-4222-8222-222222222222';
@@ -70,5 +80,28 @@ describe('상한 자체', () => {
     // 코드는 255까지 담지만 주소가 길어질 이유가 없다.
     expect(MAX_RAM_KITS).toBeGreaterThan(1);
     expect(MAX_RAM_KITS).toBeLessThan(255);
+  });
+});
+
+describe('칸마다 상한이 다르다', () => {
+  it('메모리와 스토리지만 여럿을 담는다', () => {
+    expect(isMultiSlot('ram')).toBe(true);
+    expect(isMultiSlot('storage')).toBe(true);
+    expect(isMultiSlot('cpu')).toBe(false);
+    expect(isMultiSlot('pcCase')).toBe(false);
+  });
+
+  it('상한을 칸별로 준다', () => {
+    expect(maxForSlot('ram')).toBe(MAX_RAM_KITS);
+    expect(maxForSlot('storage')).toBe(MAX_STORAGE_DRIVES);
+    // 여럿을 담지 않는 칸은 1이다
+    expect(maxForSlot('cpu')).toBe(1);
+  });
+
+  it('스토리지는 메모리보다 많이 담는다', () => {
+    const ids = Array.from({ length: MAX_STORAGE_DRIVES + 2 }, (_, i) => `d${i}`);
+    const out = ids.reduce<string[]>((cur, id) => addToSlot(cur, id, MAX_STORAGE_DRIVES), []);
+    expect(out).toHaveLength(MAX_STORAGE_DRIVES);
+    expect(MAX_STORAGE_DRIVES).toBeGreaterThan(MAX_RAM_KITS);
   });
 });

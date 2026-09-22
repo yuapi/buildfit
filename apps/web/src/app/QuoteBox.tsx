@@ -16,7 +16,7 @@ import { useCallback, useState, useTransition } from "react";
 import type { QuoteLineResult } from "@buildfit/db/quote";
 import { SLOT_META, categoryLabel, type SlotName } from "@/lib/categories";
 import { MAX_QUOTE_CHARS } from "@/lib/picker";
-import { MAX_RAM_KITS } from "@/lib/ram-slots";
+import { MAX_RAM_KITS } from "@/lib/multi-slot";
 import { readQuote } from "./actions";
 
 /** 카테고리 → 슬롯. 견적에 넣을 수 없는 카테고리면 undefined */

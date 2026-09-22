@@ -50,7 +50,13 @@ export const PSU_FORM_FACTORS = [
 
 export const MEMORY_TYPES = ['DDR3', 'DDR4', 'DDR5', 'LPDDR4', 'LPDDR5'] as const;
 
-// Phase 0의 8개 규칙 + Phase 1의 규칙 9·12·15·16. 규칙이 늘면 여기도 는다.
+/** 드라이브 규격. 규칙 17·19가 이 값으로 자리를 가른다 (docs/compat-rules.md §17.1). */
+export const STORAGE_FORM_FACTORS = [
+  'M.2-2280', 'M.2-2230', 'M.2-2242', 'M.2-2260', 'M.2-22110',
+  '2.5\"', '3.5\"', 'PCIe', 'mSATA',
+] as const;
+
+// Phase 0의 8개 규칙 + Phase 1의 규칙 9·12·15~19. 규칙이 늘면 여기도 는다.
 export const SPEC_REQUIREMENTS: readonly FieldRequirement[] = [
   // 1. CPU 소켓 = 메인보드 소켓
   { ruleId: 1, category: 'CPU', specKey: 'socket', label: '소켓', severity: 'error', valueType: 'string' },
@@ -111,6 +117,15 @@ export const SPEC_REQUIREMENTS: readonly FieldRequirement[] = [
   { ruleId: 16, category: 'RAM', specKey: 'capacity_gb', label: '용량', severity: 'warning', valueType: 'number' },
   { ruleId: 16, category: 'Motherboard', specKey: 'memory_max_gb', label: '최대 메모리', severity: 'warning', valueType: 'number' },
   { ruleId: 16, category: 'CPU', specKey: 'memory_max_gb', label: '최대 메모리', severity: 'warning', valueType: 'number', optional: true },
+
+  // 17·18·19. 스토리지 (Phase 1)
+  { ruleId: 17, category: 'Storage', specKey: 'form_factor', label: '규격', severity: 'error', valueType: 'string', options: STORAGE_FORM_FACTORS },
+  { ruleId: 17, category: 'Motherboard', specKey: 'm2_slots', label: 'M.2 슬롯 수', severity: 'error', valueType: 'number' },
+  { ruleId: 18, category: 'Storage', specKey: 'interface', label: '인터페이스', severity: 'error', valueType: 'string' },
+  { ruleId: 18, category: 'Motherboard', specKey: 'sata_ports', label: 'SATA 6Gb/s 포트 수', severity: 'error', valueType: 'number' },
+  { ruleId: 18, category: 'Motherboard', specKey: 'sata_ports_3gbs', label: 'SATA 3Gb/s 포트 수', severity: 'error', valueType: 'number', optional: true },
+  { ruleId: 19, category: 'PCCase', specKey: 'internal_3_5_bays', label: '3.5\" 베이 수', severity: 'error', valueType: 'number' },
+  { ruleId: 19, category: 'PCCase', specKey: 'internal_2_5_bays', label: '2.5\" 베이 수', severity: 'warning', valueType: 'number' },
 ];
 
 /** 이 카테고리에서 반드시 필요한 (보조 아닌) 필드들. 어드민의 구멍 계산 대상. */

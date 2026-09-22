@@ -39,6 +39,17 @@ export interface Motherboard extends PartRef {
   readonly memoryType: string | null;
   readonly memorySlots: number | null;
   /**
+   * M.2 슬롯 **개수**. 규칙 17 (§17).
+   *
+   * **`0`은 값이다.** M.2가 없는 보드는 실재한다 — DDR2의 100%, DDR3의 86.3%가
+   * 그렇다. DDR5의 0만 미입력으로 본다 (§17.2).
+   */
+  readonly m2Slots: number | null;
+  /** SATA 6Gb/s 포트 수. 규칙 18 (§18) */
+  readonly sataPorts: number | null;
+  /** SATA 3Gb/s 포트 수. 6Gb/s와 합산한다 — 둘 다 드라이브가 꽂히는 자리다 */
+  readonly sataPorts3Gbs: number | null;
+  /**
    * 보드가 지원하는 최대 총 용량 (GB). 규칙 16 (§16).
    *
    * **작다고 이상치가 아니다.** 4GB는 LGA775·Atom 보드에서 맞는 값이다.
@@ -104,6 +115,10 @@ export interface PcCase extends PartRef {
   readonly maxCpuCoolerHeightMm: number | null;
   /** 뒷면 확장 슬롯 구멍의 개수. 규칙 15 (§15) */
   readonly expansionSlots: number | null;
+  /** 내부 3.5" 베이. 규칙 19 (§19). **`0`은 값이다** — Mini-ITX에 실재한다 */
+  readonly internal35Bays: number | null;
+  /** 내부 2.5" 베이. 규칙 19 */
+  readonly internal25Bays: number | null;
 }
 
 /** PSU 커넥터. PSU는 6핀·8핀을 6+2로 합쳐 세고 12V-2x6을 따로 두지 않는다. */
@@ -130,6 +145,23 @@ export interface CpuCooler extends PartRef {
   readonly supportedSockets: readonly string[] | null;
 }
 
+/**
+ * 스토리지 드라이브. 여러 개를 담을 수 있다.
+ *
+ * 전력은 담지 않는다. NVMe·SATA의 소비전력 범위를 출처와 함께 확보하지 못했고,
+ * **추정치를 지어내지 않는다.** 규칙 7은 스토리지를 빼고 계산하며 뺐다는 사실을
+ * 결과에 적는다 (docs/compat-rules.md §7.4, 이슈 #5).
+ */
+export interface StorageDrive extends PartRef {
+  /** `M.2-2280` · `2.5"` · `3.5"` · `PCIe` · `mSATA`. 규칙 17·19 (§17, §19) */
+  readonly formFactor: string | null;
+  /** `SATA 6.0 Gb/s` · `M.2 PCIe 4.0 x4` · `M.2 SATA` 등. 규칙 18 (§18) */
+  readonly interface: string | null;
+  /** `SSD` · `HDD` · `SSHD`. 판정에는 쓰지 않는다 — 화면 표시용이다 */
+  readonly storageType: string | null;
+  readonly capacityGb: number | null;
+}
+
 /** 견적. 아직 고르지 않은 부품은 `null`이다 (결측과 구분된다). */
 export interface Build {
   readonly cpu: Cpu | null;
@@ -139,6 +171,8 @@ export interface Build {
   readonly pcCase: PcCase | null;
   readonly psu: Psu | null;
   readonly cooler: CpuCooler | null;
+  /** 드라이브 여럿. 메모리 킷과 같은 모양이다 */
+  readonly storage: readonly StorageDrive[];
 }
 
 export const emptyBuild: Build = {
@@ -149,4 +183,5 @@ export const emptyBuild: Build = {
   pcCase: null,
   psu: null,
   cooler: null,
+  storage: [],
 };

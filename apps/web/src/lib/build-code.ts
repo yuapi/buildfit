@@ -9,11 +9,12 @@
  */
 
 /**
- * 새로 만드는 코드의 버전. **읽기는 v1도 계속 지원한다.**
+ * 새로 만드는 코드의 버전. **읽기는 v1·v2도 계속 지원한다.**
  *
- * v2에서 CPU 쿨러 슬롯이 늘었다 (`docs/compat-rules.md` §9.4).
+ * - v2: CPU 쿨러 슬롯 (`docs/compat-rules.md` §9.4)
+ * - v3: 스토리지 (여러 개, `docs/compat-rules.md` §17~§19)
  */
-export const BUILD_CODE_VERSION = 2;
+export const BUILD_CODE_VERSION = 3;
 
 export interface BuildSelection {
   readonly cpu?: string | undefined;
@@ -24,6 +25,8 @@ export interface BuildSelection {
   readonly ram?: readonly string[] | undefined;
   /** v2에서 추가. v1 코드에는 없다 */
   readonly cooler?: string | undefined;
+  /** v3에서 추가. v1·v2 코드에는 없다 */
+  readonly storage?: readonly string[] | undefined;
 }
 
 /**
@@ -37,14 +40,29 @@ const SLOTS_V1 = ['cpu', 'motherboard', 'gpu', 'pcCase', 'psu'] as const;
 /** v2 = v1 + 쿨러. **앞의 다섯 개 순서를 그대로 둔다** — 디코더를 공유한다. */
 const SLOTS_V2 = [...SLOTS_V1, 'cooler'] as const;
 
+/** v3은 단일 슬롯이 v2와 같다. 늘어난 것은 가변 목록(스토리지)뿐이다. */
+const SLOTS_V3 = SLOTS_V2;
+
 type Slot = (typeof SLOTS_V2)[number];
 
-/** 메모리는 개수가 가변이라 단일 슬롯 뒤의 비트를 따로 쓴다. 버전마다 위치가 다르다. */
+/** 가변 목록은 단일 슬롯 뒤의 비트를 따로 쓴다. 버전마다 위치가 다르다. */
 const RAM_BIT_V1 = 1 << SLOTS_V1.length;
 const RAM_BIT_V2 = 1 << SLOTS_V2.length;
+const RAM_BIT_V3 = 1 << SLOTS_V3.length;
+/**
+ * 스토리지 목록 비트. v3에서 추가.
+ *
+ * **마스크 한 바이트를 여기서 다 쓴다** — 단일 슬롯 6개(비트 0~5) + 메모리(6) +
+ * 스토리지(7). 슬롯을 또 늘리려면 v4에서 마스크를 두 바이트로 넓혀야 한다.
+ */
+const STORAGE_BIT_V3 = RAM_BIT_V3 << 1;
 
-const SLOTS = SLOTS_V2;
-const RAM_BIT = RAM_BIT_V2;
+const SLOTS = SLOTS_V3;
+const RAM_BIT = RAM_BIT_V3;
+const STORAGE_BIT = STORAGE_BIT_V3;
+
+/** 가변 목록 하나가 담을 수 있는 최대 개수. 길이를 한 바이트에 적는다. */
+const MAX_LIST = 255;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -99,13 +117,19 @@ export function encodeBuildCode(sel: BuildSelection): string {
     single.push({ slot, bytes });
   });
 
-  const ramIds = (sel.ram ?? [])
-    .map((id) => uuidToBytes(id))
-    .filter((b): b is Uint8Array => b !== null)
-    .slice(0, 255);
-  if (ramIds.length > 0) mask |= RAM_BIT;
+  const toIdBytes = (ids: readonly string[] | undefined) =>
+    (ids ?? [])
+      .map((id) => uuidToBytes(id))
+      .filter((b): b is Uint8Array => b !== null)
+      .slice(0, MAX_LIST);
 
-  const size = 2 + single.length * 16 + (ramIds.length > 0 ? 1 + ramIds.length * 16 : 0);
+  const ramIds = toIdBytes(sel.ram);
+  if (ramIds.length > 0) mask |= RAM_BIT;
+  const storageIds = toIdBytes(sel.storage);
+  if (storageIds.length > 0) mask |= STORAGE_BIT;
+
+  const listSize = (n: number) => (n > 0 ? 1 + n * 16 : 0);
+  const size = 2 + single.length * 16 + listSize(ramIds.length) + listSize(storageIds.length);
   const buf = new Uint8Array(size);
   buf[0] = BUILD_CODE_VERSION;
   buf[1] = mask;
@@ -115,10 +139,12 @@ export function encodeBuildCode(sel: BuildSelection): string {
     buf.set(bytes, at);
     at += 16;
   }
-  if (ramIds.length > 0) {
-    buf[at] = ramIds.length;
+  // 목록 순서는 **메모리 먼저, 스토리지 나중**이다. 버전마다 고정이다.
+  for (const ids of [ramIds, storageIds]) {
+    if (ids.length === 0) continue;
+    buf[at] = ids.length;
     at += 1;
-    for (const bytes of ramIds) {
+    for (const bytes of ids) {
       buf.set(bytes, at);
       at += 16;
     }
@@ -141,10 +167,12 @@ export function decodeBuildCode(code: string): BuildSelection | null {
   // 모르는 버전은 조용히 실패한다. 미래 버전 코드를 아는 척 읽으면 엉뚱한 부품이 나온다.
   const layout =
     buf[0] === 1
-      ? { slots: SLOTS_V1 as readonly Slot[], ramBit: RAM_BIT_V1 }
+      ? { slots: SLOTS_V1 as readonly Slot[], ramBit: RAM_BIT_V1, storageBit: 0 }
       : buf[0] === 2
-        ? { slots: SLOTS_V2 as readonly Slot[], ramBit: RAM_BIT_V2 }
-        : null;
+        ? { slots: SLOTS_V2 as readonly Slot[], ramBit: RAM_BIT_V2, storageBit: 0 }
+        : buf[0] === 3
+          ? { slots: SLOTS_V3 as readonly Slot[], ramBit: RAM_BIT_V3, storageBit: STORAGE_BIT_V3 }
+          : null;
   if (!layout) return null;
 
   const mask = buf[1] ?? 0;
@@ -158,23 +186,28 @@ export function decodeBuildCode(code: string): BuildSelection | null {
     at += 16;
   }
 
-  if ((mask & layout.ramBit) !== 0) {
+  // 인코더와 같은 순서로 읽는다 — 메모리 먼저, 스토리지 나중.
+  for (const [bit, key] of [
+    [layout.ramBit, 'ram'],
+    [layout.storageBit, 'storage'],
+  ] as const) {
+    if (bit === 0 || (mask & bit) === 0) continue;
     if (at >= buf.length) return null;
     const count = buf[at] ?? 0;
     at += 1;
     if (count === 0 || at + count * 16 > buf.length) return null;
-    const ram: string[] = [];
+    const ids: string[] = [];
     for (let i = 0; i < count; i += 1) {
-      ram.push(bytesToUuid(buf, at));
+      ids.push(bytesToUuid(buf, at));
       at += 16;
     }
-    out['ram'] = ram;
+    out[key] = ids;
   }
 
   // 남는 바이트가 있으면 손상된 코드다.
   if (at !== buf.length) return null;
   // 쓰지 않는 비트가 서 있으면 우리가 모르는 배치다. 절반만 읽고 넘기지 않는다.
   const knownBits = (1 << layout.slots.length) - 1;
-  if ((mask & ~(knownBits | layout.ramBit)) !== 0) return null;
+  if ((mask & ~(knownBits | layout.ramBit | layout.storageBit)) !== 0) return null;
   return out as BuildSelection;
 }

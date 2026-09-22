@@ -36,6 +36,9 @@ export const CATEGORY_SPECS: Readonly<Record<string, SpecMap>> = {
     // 규칙 12의 경고 심각도를 나누는 신호. 99% 충전 (조사 §7.4)
     bios_flashback: 'bios_features.flashback',
     sata_ports: 'storage_devices.sata_6_gb_s',
+    // 3Gb/s 포트도 드라이브가 꽂히는 자리다. 합산은 규칙 18이 한다 —
+    // 원본이 말한 대로 담고 판정은 엔진에서 (docs/compat-rules.md §18).
+    sata_ports_3gbs: 'storage_devices.sata_3_gb_s',
   },
   RAM: {
     ram_type: 'ram_type',
@@ -90,6 +93,9 @@ export const CATEGORY_SPECS: Readonly<Record<string, SpecMap>> = {
     max_cpu_cooler_height_mm: 'max_cpu_cooler_height',
     max_psu_length_mm: 'max_psu_length',
     expansion_slots: 'expansion_slots',
+    // 규칙 19. 3.5"는 99.4%, 2.5"는 99.4% 채워져 있다
+    internal_3_5_bays: 'internal_3_5_bays',
+    internal_2_5_bays: 'internal_2_5_bays',
     // 라디에이터 장착 필드는 OpenDB에 없다 (조사 §7.2). 수동 보강 대상
   },
   PSU: {
@@ -103,12 +109,43 @@ export const CATEGORY_SPECS: Readonly<Record<string, SpecMap>> = {
     eps_8_pin: 'connectors.eps_8_pin',
     atx_24_pin: 'connectors.atx_24_pin',
   },
+  Storage: {
+    capacity_gb: 'capacity',
+    storage_type: 'storage_type',
+    // 규칙 17·19가 본다. M.2-2280 / 2.5" / 3.5" 같은 값이다
+    form_factor: 'form_factor',
+    interface: 'interface',
+    nvme: 'nvme',
+  },
   CPUCooler: {
     height_mm: 'height',
     cpu_sockets: 'cpu_sockets',
     water_cooled: 'water_cooled',
     radiator_size_mm: 'radiator_size',
     fan_size_mm: 'fan_size',
+  },
+};
+
+/**
+ * 경로 하나로 안 되는 스펙.
+ *
+ * `CATEGORY_SPECS`와 같은 허용 목록이지만 원본 모양이 그대로 쓸 수 없는 경우다.
+ * **여기도 보면 무엇이 판정에 쓰이는지 알 수 있어야 한다** — 계산은 짧게 두고
+ * 판단은 규칙 엔진에 남긴다.
+ */
+export const DERIVED_SPECS: Readonly<
+  Record<string, Readonly<Record<string, (record: Record<string, unknown>) => unknown>>>
+> = {
+  Motherboard: {
+    /**
+     * M.2 슬롯 **개수**. 원본은 슬롯마다 크기·키·인터페이스를 담은 배열이다.
+     *
+     * 개수만 담는다. 규칙 17이 개수를 보고, 어드민에서 사람이 스펙시트를 보고
+     * 채울 수 있는 모양이기도 하다. 크기 맞춤(2280 드라이브 ↔ 2242 전용 슬롯)은
+     * 원본의 크기 표기가 「2242/2260/2280」·「2280-22110」처럼 제각각이라
+     * 별도 조사가 필요하다 (docs/compat-rules.md §17.3).
+     */
+    m2_slots: (r) => (Array.isArray(r['m2_slots']) ? r['m2_slots'].length : undefined),
   },
 };
 
@@ -146,6 +183,9 @@ export const POSITIVE_ONLY_KEYS: ReadonlySet<string> = new Set([
   'max_psu_length_mm',
   'speed_mts',
   'module_count',
+  // 0GB 드라이브·0GB 킷은 없다. m2_slots와 sata_ports는 여기 넣지 않는다 —
+  // M.2가 없는 보드는 실재한다 (DDR3의 86.3%, DDR2의 100%).
+  'capacity_gb',
 ]);
 
 /** 단위. 없는 키는 단위가 없는 값이다. */

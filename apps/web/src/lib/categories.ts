@@ -1,8 +1,8 @@
 /**
- * 견적 슬롯 정의. MVP 6종 (`pc-builder-spec.md` §3) + Phase 1의 CPU 쿨러.
+ * 견적 슬롯 정의. MVP 6종 (`pc-builder-spec.md` §3) + Phase 1의 CPU 쿨러·스토리지.
  *
- * 순서가 화면 순서다. 쿨러는 CPU 바로 뒤가 아니라 마지막에 둔다 —
- * 필수 부품 여섯 개를 먼저 고르는 흐름을 끊지 않는다.
+ * 순서가 화면 순서다. 쿨러와 스토리지는 CPU·메모리 바로 뒤가 아니라 마지막에
+ * 둔다 — 필수 부품 여섯 개를 먼저 고르는 흐름을 끊지 않는다.
  */
 
 export const SLOT_META = [
@@ -13,6 +13,7 @@ export const SLOT_META = [
   { slot: 'pcCase', category: 'PCCase', label: '케이스' },
   { slot: 'psu', category: 'PSU', label: '파워' },
   { slot: 'cooler', category: 'CPUCooler', label: 'CPU 쿨러' },
+  { slot: 'storage', category: 'Storage', label: '스토리지' },
 ] as const;
 
 export type SlotName = (typeof SLOT_META)[number]['slot'];
