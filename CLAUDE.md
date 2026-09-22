@@ -12,8 +12,9 @@ PC 견적 검증 도구. 부품 조합의 호환성·전력·전기요금을 판
 
 상세: `docs/pc-builder-spec.md`
 
-**새 세션이면 먼저 `docs/handoff-guide.md` §8을 본다.** 컨테이너가 새로 뜨면
-DB·원본·적재 데이터가 없다. 다시 만드는 순서와 확인 방법, 이 환경의 함정이 있다.
+**새 세션이면 먼저 `docs/handoff-guide.md` §8을 본다.** 클라우드 세션에서는
+`.claude/hooks/session-start.sh`가 DB·원본·적재를 자동으로 세우고 `DATABASE_URL`을
+넘긴다. 훅이 실패했을 때의 수동 절차와 이 환경의 함정이 §8에 있다.
 
 ## 작업 규칙
 
