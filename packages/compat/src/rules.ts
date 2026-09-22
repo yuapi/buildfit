@@ -26,6 +26,7 @@ import {
   describeExcluded,
   estimatePower,
 } from './power';
+import { sameSocket } from './sockets';
 
 export type Rule = (build: Build) => RuleResult | null;
 
@@ -45,8 +46,9 @@ export const rule1: Rule = ({ cpu, motherboard }) => {
   if (gaps.length > 0) {
     return missing(1, '소켓 정보가 없어 판정하지 못했습니다.', gaps);
   }
-  // 두 필드가 같은 enum 값 집합을 공유한다. 정규화 불필요. docs/compat-rules.md §1
-  return cpu.socket === motherboard.socket
+  // 같은 소켓을 다르게 적은 표기가 있다 (TR4/sTR4). 확실한 것만 묶는다 —
+  // 묶지 않은 쌍은 오류로 남는다. docs/compat-rules.md §1.1, 이슈 #16
+  return sameSocket(cpu.socket!, motherboard.socket!)
     ? pass(1, `소켓이 일치합니다 (${cpu.socket}).`)
     : fail(
         1,

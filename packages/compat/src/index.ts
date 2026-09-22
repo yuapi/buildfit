@@ -118,3 +118,5 @@ export {
 } from './requirements';
 
 export { evaluate } from './engine';
+
+export { sameSocket, socketAliases } from './sockets';
