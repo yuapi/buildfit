@@ -86,8 +86,8 @@ describeIfDb('견적서 매칭 SQL (ADR-0018)', () => {
   });
 
   it('★ 다루지 않는 부품은 찾지 않고 그렇다고 말한다', async () => {
-    const [row] = await run('SSD: 삼성 990 PRO 2TB');
-    expect(row!.unsupported).toBe('스토리지');
+    const [row] = await run('모니터: LG 27GP850');
+    expect(row!.unsupported).toBe('모니터');
     // 찾으면 엉뚱한 것이 걸린다. 아예 찾지 않는다.
     expect(row!.candidates).toHaveLength(0);
   });

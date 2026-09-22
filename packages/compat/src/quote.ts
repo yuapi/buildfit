@@ -49,7 +49,7 @@ export const QUOTE_LABELS: readonly QuoteLabel[] = [
   { words: ['쿨러', 'cpu쿨러', '공냉쿨러', '수냉쿨러', 'cooler'], category: 'CPUCooler', label: 'CPU 쿨러' },
 
   // 아직 다루지 않는 것들. **못 찾은 것과 구분해서 말하려고** 적어둔다.
-  { words: ['ssd', 'hdd', '저장장치', '스토리지', 'nvme', 'storage'], category: null, label: '스토리지' },
+  { words: ['ssd', 'hdd', '저장장치', '스토리지', 'nvme', 'storage'], category: 'Storage', label: '스토리지' },
   { words: ['모니터', 'monitor'], category: null, label: '모니터' },
   { words: ['키보드', '마우스', 'keyboard', 'mouse'], category: null, label: '입력장치' },
   { words: ['os', '운영체제', '윈도우', 'windows'], category: null, label: '운영체제' },
