@@ -23,6 +23,7 @@ import {
   PCIE_SLOT_POWER_W,
   TIGHT_FIT_RATIO,
   describeAssumptions,
+  describeExcluded,
   estimatePower,
 } from './power';
 
@@ -214,7 +215,7 @@ export const rule6: Rule = ({ psu, pcCase }) => {
 
 // --- 7. 소비전력 대비 PSU 정격 (구간 판정) ------------------------------------
 
-export const rule7: Rule = ({ cpu, gpu, psu, ram }) => {
+export const rule7: Rule = ({ cpu, gpu, psu, ram, storage }) => {
   if (!cpu || !psu) return null;
 
   const gaps: FieldRef[] = [];
@@ -234,12 +235,15 @@ export const rule7: Rule = ({ cpu, gpu, psu, ram }) => {
     cpuW: cpuW ?? null,
     gpuW: gpu?.tdp ?? null,
     ramModules: ram.reduce((n, kit) => n + (kit.moduleCount ?? 0), 0),
+    storageCount: storage.length,
   });
   const minTotal = est.minW;
   const maxTotal = est.maxW;
   const recommended = est.recommendedW;
   const wattage = psu.wattage ?? 0;
-  const notes = [describeAssumptions()];
+  // 빠진 부품을 먼저 적는다. 가정 설명보다 앞선다 — 구간 자체가 낮다는 뜻이라서다.
+  const left = describeExcluded(est.excluded);
+  const notes = left ? [left, describeAssumptions()] : [describeAssumptions()];
   const estimate = `총 소비전력 약 ${minTotal}~${maxTotal}W로 추정됩니다`;
 
   if (wattage >= recommended) {

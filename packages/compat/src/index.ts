@@ -39,6 +39,7 @@ export type { PowerRange, PowerSource, PowerAssumptions, PowerEstimate } from '.
 export {
   POWER_ASSUMPTIONS,
   describeAssumptions,
+  describeExcluded,
   estimatePower,
   PCIE_SLOT_POWER_W,
   PSU_HEADROOM_MULTIPLIER,

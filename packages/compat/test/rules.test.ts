@@ -279,7 +279,8 @@ describe('7. 소비전력 대비 PSU 정격 — 구간 판정', () => {
   });
 
   it('가정 범위와 출처를 결과에 싣는다 (§7.4)', () => {
-    const notes = rule7(withPsu(850))?.notes ?? [];
+    // 드라이브가 없으면 가정 설명 한 줄뿐이다. 있으면 빠진 부품이 앞에 붙는다 (§7.4.1)
+    const notes = rule7(f.withBuild({ psu: { ...f.psu, wattage: 850 }, storage: [] }))?.notes ?? [];
     expect(notes).toHaveLength(1);
     expect(notes[0]).toContain('메인보드 25~80W');
     expect(notes[0]).toContain('메모리 모듈당 2~5W');
@@ -287,7 +288,8 @@ describe('7. 소비전력 대비 PSU 정격 — 구간 판정', () => {
   });
 
   it('1차 출처 미확인 상태를 숨기지 않는다', () => {
-    expect(rule7(withPsu(850))?.notes?.[0]).toContain('원문 미확인');
+    const notes = rule7(withPsu(850))?.notes?.join(' ') ?? '';
+    expect(notes).toContain('원문 미확인');
   });
 
   it('GPU를 고르지 않으면 GPU 전력 없이 계산한다 (내장그래픽 구성)', () => {
@@ -908,5 +910,37 @@ describe('estimatePower — 판정과 화면이 같은 수치를 쓴다', () => 
       expect(est.minW).toBeLessThanOrEqual(est.maxW);
       expect(est.maxW).toBeLessThanOrEqual(est.recommendedW);
     }
+  });
+});
+
+describe('7.4.1 계산에서 빠진 부품을 말한다 (§7.4.1)', () => {
+  it('★ 드라이브가 있으면 빠졌다고 적는다', () => {
+    const r = rule7(f.goodBuild);
+    const notes = r?.notes?.join(' ') ?? '';
+    expect(notes).toContain('드라이브 1개');
+    expect(notes).toContain('계산에 넣지 않았습니다');
+    // 어느 쪽으로 틀렸는지까지 말한다
+    expect(notes).toContain('이 구간보다 높습니다');
+  });
+
+  it('빠진 부품을 가정 설명보다 앞에 적는다', () => {
+    const notes = rule7(f.goodBuild)?.notes ?? [];
+    expect(notes[0]).toContain('드라이브');
+    expect(notes[1]).toContain('가정');
+  });
+
+  it('드라이브가 없으면 그 말을 하지 않는다', () => {
+    const notes = rule7(f.withBuild({ storage: [] }))?.notes?.join(' ') ?? '';
+    expect(notes).not.toContain('드라이브');
+    expect(notes).toContain('가정');
+  });
+
+  it('★ 드라이브를 전력 합계에 넣지 않는다 — 추정치를 지어내지 않는다', () => {
+    const none = rule7(f.withBuild({ storage: [] }));
+    const many = rule7(
+      f.withBuild({ storage: [f.drive, { ...f.drive, id: 'd2' }, { ...f.drive, id: 'd3' }] }),
+    );
+    const watts = (m: string | undefined) => m?.match(/약 (\d+)~(\d+)W/)?.slice(1, 3);
+    expect(watts(many?.message)).toEqual(watts(none?.message));
   });
 });

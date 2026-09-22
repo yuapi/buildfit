@@ -17,6 +17,7 @@ import {
   SLOT_LABELS,
   TIGHT_FIT_RATIO,
   blockingSlots,
+  describeExcluded,
   estimatePower,
   evaluate,
   pickerConstraints,
@@ -436,8 +437,14 @@ function PowerPanel({ build }: { build: Build }) {
   const modules = build.ram.reduce((n, k) => n + (k.moduleCount ?? 0), 0);
   if (cpuW === null && gpuW === null) return null;
 
-  const est = estimatePower({ cpuW, gpuW, ramModules: modules });
+  const est = estimatePower({
+    cpuW,
+    gpuW,
+    ramModules: modules,
+    storageCount: build.storage.length,
+  });
   const psuW = build.psu?.wattage ?? null;
+  const left = describeExcluded(est.excluded);
 
   return (
     <section className="card p-4 sm:p-5" aria-labelledby="power-heading">
@@ -476,6 +483,16 @@ function PowerPanel({ build }: { build: Build }) {
           </div>
         )}
       </dl>
+
+      {/*
+        * 빠진 부품을 말한다. 조용히 빼면 사용자는 합계가 전부인 줄 아는데,
+        * 그러면 이 구간은 실제보다 낮다 (§7.4, 이슈 #5).
+        */}
+      {left !== null && (
+        <p className="mt-3 border-t border-border pt-3 text-xs leading-relaxed text-fg-subtle">
+          {left}
+        </p>
+      )}
     </section>
   );
 }
