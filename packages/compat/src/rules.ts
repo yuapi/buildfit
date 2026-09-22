@@ -15,6 +15,7 @@ import {
   inconsistent,
   isFilled,
   missing,
+  outOfRange,
   pass,
 } from './verdict';
 import {
@@ -393,6 +394,76 @@ export const rule9: Rule = ({ cooler, pcCase }) => {
       );
 };
 
+// --- 15. GPU 두께(슬롯) ≤ 케이스 확장 슬롯 수 ------------------------------
+
+/**
+ * 슬롯 두께로 받아들일 수 있는 범위. docs/compat-rules.md §15.2
+ *
+ * 정상 범위는 0.95(로우프로파일)~5이고, 이 밖의 값은 전부 슬롯 자리에 **mm를 넣은**
+ * 레코드였다 (120 · 77 · 55.6 · 44). 4건뿐이지만 그대로 두면 멀쩡한 케이스가
+ * 전부 오류로 뜬다.
+ */
+const SLOT_WIDTH_MIN = 1;
+const SLOT_WIDTH_MAX = 5;
+
+export const rule15: Rule = ({ gpu, pcCase }) => {
+  if (!gpu || !pcCase) return null;
+
+  // 칩만 고른 경우 두께를 단정하지 않는다 (규칙 4의 chipOnly와 같은 이유, §4.1)
+  if (gpu.chipOnly === true) {
+    return missing(
+      15,
+      `${gpu.chipset}은 모델에 따라 두께가 다릅니다. 구체적인 모델을 선택해 주세요.`,
+      [ref(gpu, 'AIB 모델 (두께)')],
+    );
+  }
+
+  const gaps: FieldRef[] = [];
+  if (!isFilled(gpu.totalSlotWidth)) gaps.push(ref(gpu, '슬롯 두께'));
+  if (!isFilled(pcCase.expansionSlots)) gaps.push(ref(pcCase, '확장 슬롯 수'));
+  if (gaps.length > 0) {
+    return missing(15, '슬롯 정보가 없어 판정하지 못했습니다.', gaps);
+  }
+
+  const width = gpu.totalSlotWidth!;
+  const slots = pcCase.expansionSlots!;
+
+  if (width < SLOT_WIDTH_MIN || width > SLOT_WIDTH_MAX) {
+    return outOfRange(
+      15,
+      'GPU 두께 값이 슬롯 수로 보이지 않아 판정하지 못했습니다.',
+      `두께가 ${width}슬롯으로 적혀 있습니다. 슬롯이 아니라 mm를 적은 것으로 보입니다.`,
+      [ref(gpu, '슬롯 두께')],
+    );
+  }
+  // 확장 슬롯이 없는 케이스는 없다. 0은 미입력을 채운 값이다 (§15.2, §8.4와 같은 처리)
+  if (slots <= 0) {
+    return outOfRange(
+      15,
+      '케이스 확장 슬롯 수가 0으로 적혀 있어 판정하지 못했습니다.',
+      '확장 슬롯이 없는 케이스는 없습니다. 미입력을 0으로 채운 값으로 보입니다.',
+      [ref(pcCase, '확장 슬롯 수')],
+    );
+  }
+
+  // 브래킷이 아니라 쿨러 기준이다. 2.5슬롯 카드는 3번째 칸 자리를 먹는다 (§15.1).
+  const need = Math.ceil(width);
+  if (need > slots) {
+    return fail(
+      15,
+      'error',
+      `GPU가 슬롯 ${need}칸을 차지하는데 케이스에는 ${slots}칸뿐입니다. 들어가지 않습니다.`,
+    );
+  }
+  return {
+    ...pass(15, `GPU ${need}칸 / 케이스 ${slots}칸.`),
+    // 통과를 "확인됨"으로 읽지 않게 한다. 이 규칙은 필요조건이지 충분조건이 아니다 (§15.3).
+    notes: [
+      '확장 슬롯 수는 뒷면 구멍의 총 개수입니다. GPU가 꽂히는 자리는 메인보드의 x16 슬롯 위치에 달려 있어, 아래로 남는 칸은 이보다 적을 수 있습니다.',
+    ],
+  };
+};
+
 // --- 12. BIOS 업데이트 필요 여부 (Phase 1) ----------------------------------
 
 export const rule12: Rule = ({ cpu, motherboard }) => {
@@ -433,4 +504,4 @@ export const rule12: Rule = ({ cpu, motherboard }) => {
 export const phase0Rules: readonly Rule[] = [rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8];
 
 /** Phase 1에서 추가된 규칙까지. 명세 §4.2 */
-export const phase1Rules: readonly Rule[] = [...phase0Rules, rule9, rule12];
+export const phase1Rules: readonly Rule[] = [...phase0Rules, rule9, rule12, rule15];

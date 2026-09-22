@@ -12,7 +12,7 @@ import { describe, expect, it } from 'vitest';
 import { evaluate } from '../src/engine';
 import { emptyBuild } from '../src/parts';
 import { estimatePower } from '../src/power';
-import { rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8, rule9, rule12 } from '../src/rules';
+import { rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8, rule9, rule12, rule15 } from '../src/rules';
 import * as f from './fixtures';
 
 describe('1. CPU 소켓 = 메인보드 소켓', () => {
@@ -498,10 +498,88 @@ describe('12. BIOS 업데이트 필요 여부 (Phase 1)', () => {
   });
 });
 
+describe('15. GPU 두께(슬롯) ≤ 케이스 확장 슬롯 수 (Phase 1)', () => {
+  const build = (width: number | null, slots: number | null) =>
+    f.withBuild({
+      gpu: { ...f.gpu, totalSlotWidth: width },
+      pcCase: { ...f.pcCase, expansionSlots: slots },
+    });
+
+  it('들어가면 pass', () => {
+    // 2.5슬롯 카드가 8칸짜리 케이스에. 필요 3칸
+    expect(rule15(f.goodBuild)?.verdict).toBe('pass');
+  });
+
+  it('pass에도 한계를 적는다 — 통과가 "확인됨"이 아니다 (§15.3)', () => {
+    const r = rule15(f.goodBuild);
+    expect(r?.notes?.join(' ')).toContain('x16 슬롯 위치');
+  });
+
+  it('두께가 슬롯 수를 넘으면 error', () => {
+    const r = rule15(build(4, 2));
+    expect(r?.verdict).toBe('fail');
+    expect(r?.severity).toBe('error');
+    expect(r?.message).toContain('4칸');
+    expect(r?.message).toContain('2칸');
+  });
+
+  it('★ 브래킷이 아니라 쿨러 기준이다 — 2.5슬롯은 3칸을 먹는다 (§15.1)', () => {
+    // 2.5 ≤ 2가 아니므로 당연히 실패지만, 경계는 2.5 vs 3이다
+    expect(rule15(build(2.5, 2))?.verdict).toBe('fail');
+    expect(rule15(build(2.5, 3))?.verdict).toBe('pass');
+    // 정확히 3슬롯 카드는 3칸에 들어간다. ceil이 3을 4로 올리지 않는다
+    expect(rule15(build(3, 3))?.verdict).toBe('pass');
+  });
+
+  it('한쪽이라도 결측이면 unknown', () => {
+    expect(rule15(build(null, 8))?.verdict).toBe('unknown');
+    expect(rule15(build(2.5, null))?.verdict).toBe('unknown');
+    expect(rule15(build(null, null))?.reason?.fields).toHaveLength(2);
+  });
+
+  it('★ 슬롯 자리에 mm가 들어간 값은 판정하지 않는다 (§15.2)', () => {
+    // 실재하는 4건: 120 · 77 · 55.6 · 44
+    for (const bad of [120, 77, 55.6, 44]) {
+      const r = rule15(build(bad, 7));
+      expect(r?.verdict, `${bad}슬롯`).toBe('unknown');
+      expect(r?.reason?.kind).toBe('out-of-range');
+    }
+    // 이 값들을 그대로 믿으면 멀쩡한 ATX 미드타워가 전부 오류로 뜬다
+    expect(rule15(build(120, 7))?.severity).not.toBe('error');
+  });
+
+  it('★ 확장 슬롯 0은 미입력이다. 그대로 믿지 않는다 (§15.2)', () => {
+    const r = rule15(build(2.5, 0));
+    expect(r?.verdict).toBe('unknown');
+    expect(r?.reason?.kind).toBe('out-of-range');
+    // 0을 그대로 쓰면 모든 GPU가 오류가 된다
+    expect(r?.message).not.toContain('들어가지 않습니다');
+  });
+
+  it('정상 범위의 양 끝은 판정한다', () => {
+    expect(rule15(build(1, 1))?.verdict).toBe('pass');
+    expect(rule15(build(5, 5))?.verdict).toBe('pass');
+    expect(rule15(build(5, 4))?.verdict).toBe('fail');
+  });
+
+  it('칩만 고른 경우 두께를 단정하지 않는다', () => {
+    const r = rule15(
+      f.withBuild({ gpu: { ...f.gpu, chipOnly: true, totalSlotWidth: null } }),
+    );
+    expect(r?.verdict).toBe('unknown');
+    expect(r?.message).toContain('모델');
+  });
+
+  it('부품을 안 골랐으면 null — 판정 불가와 다르다', () => {
+    expect(rule15(f.withBuild({ gpu: null }))).toBeNull();
+    expect(rule15(f.withBuild({ pcCase: null }))).toBeNull();
+  });
+});
+
 describe('엔진', () => {
-  it('정상 견적은 10개 규칙이 전부 통과한다', () => {
+  it('정상 견적은 11개 규칙이 전부 통과한다', () => {
     const v = evaluate(f.goodBuild);
-    expect(v.counts.pass).toBe(10);
+    expect(v.counts.pass).toBe(11);
     expect(v.counts.fail).toBe(0);
     expect(v.counts.unknown).toBe(0);
   });

@@ -39,6 +39,7 @@ export const RULE_PARTS: Readonly<Record<number, readonly PartSlot[]>> = {
   8: ['gpu', 'psu'],
   9: ['cooler', 'pcCase'],
   12: ['cpu', 'motherboard'],
+  15: ['gpu', 'pcCase'],
 };
 
 /**
@@ -58,6 +59,7 @@ export const RULE_SUMMARY: Readonly<Record<number, string>> = {
   8: 'GPU 보조전원 커넥터를 파워가 댈 수 있는가',
   9: 'CPU 쿨러 높이가 케이스 한계 안인가',
   12: 'CPU가 보드보다 나중에 나와 BIOS 업데이트가 필요한가',
+  15: 'GPU 두께가 케이스 확장 슬롯 안에 들어가는가',
 };
 
 function isPicked(build: Build, slot: PartSlot): boolean {

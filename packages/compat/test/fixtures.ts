@@ -36,6 +36,7 @@ export const gpu: Gpu = {
   name: 'MSI GAMING TRIO GeForce RTX 5080 16GB',
   chipset: 'GeForce RTX 5080',
   lengthMm: 337,
+  totalSlotWidth: 2.5,
   tdp: 360,
   connectors: { pcie6: 0, pcie8: 0, pcie12vhpwr: 1, pcie12v2x6: 0 },
 };
@@ -48,6 +49,7 @@ export const pcCase: PcCase = {
   supportedPsuFormFactors: ['ATX', 'SFX', 'SFX-L'],
   maxGpuLengthMm: 420,
   maxCpuCoolerHeightMm: 167,
+  expansionSlots: 8,
 };
 
 export const psu: Psu = {

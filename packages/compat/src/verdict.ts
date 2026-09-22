@@ -102,6 +102,21 @@ export function missing(
   return unknown(ruleId, message, { kind: 'missing', fields }, notes);
 }
 
+/**
+ * 값이 그 필드에 있을 수 없는 크기인 경우. docs/compat-rules.md §15.2
+ *
+ * `inconsistent`와 다르다. 저쪽은 두 필드를 맞대 보고 알아내지만, 이쪽은 값 하나만
+ * 보고도 안다 — 슬롯 수 칸에 120이 들어 있으면 그것은 mm다.
+ */
+export function outOfRange(
+  ruleId: number,
+  message: string,
+  detail: string,
+  fields: readonly FieldRef[],
+): RuleResult {
+  return unknown(ruleId, message, { kind: 'out-of-range', detail, fields });
+}
+
 /** 값은 있으나 다른 필드와 물리적으로 양립 불가한 경우. docs/compat-rules.md §8.4 */
 export function inconsistent(
   ruleId: number,

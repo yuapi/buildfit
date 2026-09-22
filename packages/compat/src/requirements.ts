@@ -50,7 +50,7 @@ export const PSU_FORM_FACTORS = [
 
 export const MEMORY_TYPES = ['DDR3', 'DDR4', 'DDR5', 'LPDDR4', 'LPDDR5'] as const;
 
-// Phase 0의 8개 규칙 + Phase 1의 규칙 9. 규칙이 늘면 여기도 는다.
+// Phase 0의 8개 규칙 + Phase 1의 규칙 9·12·15. 규칙이 늘면 여기도 는다.
 export const SPEC_REQUIREMENTS: readonly FieldRequirement[] = [
   // 1. CPU 소켓 = 메인보드 소켓
   { ruleId: 1, category: 'CPU', specKey: 'socket', label: '소켓', severity: 'error', valueType: 'string' },
@@ -100,6 +100,11 @@ export const SPEC_REQUIREMENTS: readonly FieldRequirement[] = [
   // 출시 연도는 part_specs가 아니라 parts 컬럼이라 어드민 보강 대상이 아니다.
   // 여기 싣는 것은 bios_flashback뿐이다.
   { ruleId: 12, category: 'Motherboard', specKey: 'bios_flashback', label: 'BIOS Flashback 지원', severity: 'warning', valueType: 'boolean' },
+
+  // 15. GPU 두께(슬롯) ≤ 케이스 확장 슬롯 수 (Phase 1)
+  // GPU의 case_expansion_slot_width를 쓰지 않는다 — 값이 틀렸다 (docs/compat-rules.md §15.1).
+  { ruleId: 15, category: 'GPU', specKey: 'total_slot_width', label: '슬롯 두께', severity: 'error', valueType: 'number' },
+  { ruleId: 15, category: 'PCCase', specKey: 'expansion_slots', label: '확장 슬롯 수', severity: 'error', valueType: 'number' },
 ];
 
 /** 이 카테고리에서 반드시 필요한 (보조 아닌) 필드들. 어드민의 구멍 계산 대상. */

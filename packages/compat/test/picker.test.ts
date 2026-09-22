@@ -100,8 +100,9 @@ describe('★ 오류를 내는 규칙에서만 제약을 유도한다', () => {
    * - 규칙 9(쿨러 높이): 경고만. 오류 경계가 없다 (§9.1)
    * - 규칙 12(BIOS): 경고·정보만
    * - 규칙 4: 오류 경계(한계 초과)만 쓰고 빠듯함 경고 구간은 쓰지 않는다 (§4)
+   * - 규칙 15(GPU 두께): 오류만. 경고 구간이 없다 (§15)
    */
-  const ERROR_CAPABLE = new Set([1, 2, 3, 4, 5, 6, 7, 8]);
+  const ERROR_CAPABLE = new Set([1, 2, 3, 4, 5, 6, 7, 8, 15]);
 
   it('제약의 ruleId가 전부 오류를 낼 수 있는 규칙이다', () => {
     const slots = ['cpu', 'motherboard', 'ram', 'gpu', 'pcCase', 'psu', 'cooler'] as const;
