@@ -4,6 +4,9 @@
 
 ---
 
+> **새 세션으로 이어받는다면 §8부터 본다** (2026-09-22). 컨테이너가 새로 뜨면
+> DB·원본·적재 데이터가 없다 — 다시 만드는 순서와 이 환경의 함정이 거기 있다.
+>
 > **이 문서를 지금 어떻게 읽어야 하나** (2026-09-21 기준)
 >
 > §1~3은 **이미 지난 단계다.** 레포도 코드도 있고, `CLAUDE.md`의 정본은 레포 루트에 있다
@@ -255,3 +258,137 @@ Claude에게 넘기지 않는 작업.
 확인한 것만** 적혀 있다.
 
 **방화벽 설정은 반드시 직접 한다.** 공인 IP에 6443이 열리는 사고는 한 번이면 끝이고, 지금은 브로커도 워치독도 없어 자율 운영의 전제 장치가 하나도 없는 상태다.
+
+---
+
+## 8. 새 세션으로 이어받기 (2026-09-22)
+
+클라우드 세션은 **컨테이너가 새로 뜬다.** 코드는 git으로 넘어가지만, 아래 것들은
+git에 없어서 새 세션에서 다시 만들어야 한다. 이 절을 빠뜨리면 새 세션은 빈 DB
+위에서 시작하고, DB에 기대는 테스트가 전부 건너뛰거나 깨진다.
+
+### 8.1 넘길 때의 상태
+
+| | |
+|---|---|
+| 코드 | `develop` = `origin/develop` = `824b195`. 작업 트리 깨끗. 머지한 feature 브랜치 없음 |
+| CI | 61~63 성공. `develop`의 모든 머지 커밋이 CI를 돈다 |
+| 열린 이슈 | #1 네이버 API 키 · #3 케이스 데이터 입력 · #4 원본에 필드 없음 · #5 스토리지 전력 출처 · #8 네이버 약관 — **전부 사람이 풀어야 한다** (§7) |
+| 닫은 이슈 (이번 흐름) | #11 중복 레코드 · #12 값 충돌 목록 · #13 검증 중 표시 · #14 고르기 · #15 규칙 12 선언 누락 |
+
+**`main`은 비어 있다** (`develop`보다 213 커밋 뒤). 배포한 것이 없어서다 —
+첫 배포 절차는 `docs/deployment.md` §6.
+
+### 8.2 git에 없어서 다시 만들어야 하는 것
+
+| 것 | 어디서 | 없으면 |
+|---|---|---|
+| PostgreSQL 역할·DB | 컨테이너 | 모든 DB 테스트가 건너뜀 / 앱이 「불러올 수 없습니다」 |
+| `.env` | `.env.example` 복사 | 스크립트가 `DATABASE_URL`을 못 찾음 |
+| OpenDB clone (295MB) | GitHub | 적재 불가 |
+| 적재된 카탈로그 (26,485건) | 적재 22초 | `/rules` 수치가 0, `sample`·`measure:quote`가 무의미 |
+
+### 8.3 다시 만드는 순서
+
+**그대로 붙여넣는다.** 이 컨테이너에서 쓰던 설정과 같다 (역할 이름·비밀번호는
+로컬 전용이고 비밀이 아니다 — ADR-0001, `docker-compose.yml` 주석).
+
+```bash
+# 1) PostgreSQL 16. 이미 떠 있으면 무시된다
+pg_ctlcluster 16 main start
+pg_isready
+
+# 2) 역할과 DB. 슈퍼유저로 만든다 — 테스트가 격리 DB를 만들고 지우며
+#    (`create database` / `drop … with (force)`), 마이그레이션이 pg_trgm 확장을 만든다
+su postgres -c "psql -c \"create role buildfit login superuser password 'buildfit'\""
+su postgres -c "createdb -O buildfit buildfit"
+
+# 3) 설정
+cp .env.example .env
+#   DATABASE_URL=postgres://buildfit:buildfit@localhost:5432/buildfit
+#   OPENDB_PATH=../buildcores-open-db
+
+# 4) 의존성과 스키마
+npm ci
+DATABASE_URL=postgres://buildfit:buildfit@localhost:5432/buildfit npm run migrate
+
+# 5) 원본과 적재 (레포 바깥에 clone한다)
+git clone --depth 1 https://github.com/buildcores/buildcores-open-db ../buildcores-open-db
+DATABASE_URL=postgres://buildfit:buildfit@localhost:5432/buildfit \
+  OPENDB_PATH=../buildcores-open-db npm run ingest
+```
+
+적재 끝 로그가 다음과 **비슷하면** 된다. 원본이 매일 동기화되므로 건수는
+조금씩 다를 수 있다 (넘길 때 원본은 `e90bff27`, 2026-09-21 동기화분).
+
+```
+중복 레코드 묶는 중...
+  499그룹 · 537건을 대표 아님으로 표시
+  값이 어긋나는 스펙 274건에 검증 표시
+완료 (22s)
+  parts        26485
+```
+
+### 8.4 다 됐는지 확인
+
+```bash
+export DATABASE_URL=postgres://buildfit:buildfit@localhost:5432/buildfit
+npm run typecheck && npm run lint
+npm test                 # 적재된 DB로 — 39개 파일
+npm run test:empty-db    # ★ CI와 같은 조건(빈 DB)으로 — 로컬만 통과하는 것을 잡는다
+npm run sample -w @buildfit/ingest   # 규칙별 판정 불가율. 조사 §9.3.2와 비슷해야 한다
+```
+
+**`test:empty-db`를 건너뛰지 않는다.** 로컬에는 카탈로그가 있고 CI에는 없다.
+이 차이로 CI를 두 번 깨뜨렸다 (run 57·58).
+
+### 8.5 이 환경의 함정
+
+넘기기 전 세션에서 실제로 걸린 것들이다. 하나씩 시간을 잃었다.
+
+- **PostgreSQL이 도구 호출 사이에 죽는다.** 테스트가 무더기로 실패하면 코드보다
+  먼저 `pg_isready`를 본다. `no response`면 `pg_ctlcluster 16 main start`.
+  로그에 "end-of-recovery"가 남는다 — 깨끗한 종료가 아니다
+- **`pkill -f next-server`가 자기 셸을 죽인다.** 패턴이 명령줄 자체와 맞는다.
+  `pkill -9 -f 'next-serve[r]'`로 쓴다
+- **포트 3100에 낡은 서버가 남는다.** 새로 빌드했는데 동작이 그대로면 옛 서버가
+  응답하고 있는 것이다. 위 명령으로 죽이고 포트가 비었는지 보고 띄운다
+- **`git remote`가 아직 옛 이름을 가리킨다.** GitHub 리다이렉트로 push는 된다
+  (`remote: This repository moved` 경고가 뜬다). 고치는 것은 사람 몫이다 (§7)
+- **SQL 템플릿 안에 백틱을 쓰지 않는다.** drizzle의 `` sql`…` ``은 템플릿
+  리터럴이라 SQL 주석 속 백틱이 문자열을 끊는다. 두 번 걸렸다
+- **drizzle은 select 목록 안의 컬럼을 테이블 없이 적는다.** 상관 서브쿼리를
+  select 목록에 쓰면 별칭에 걸려 조용히 `null`이 된다. `alias()` + `leftJoin`을 쓴다
+- **문서만 고친 커밋도 테스트를 돌린다.** `repo-name.test.ts`가 문서 속 레포
+  주소를 잡는다. 문서라고 건너뛰었다가 CI를 깨뜨렸다 (run 56)
+
+#### 스크래치 스크립트와 브라우저
+
+- 레포 밖에서 `tsx`로 `@buildfit/*`를 import하려면 그 폴더에 레포의
+  `node_modules`를 심볼릭 링크한다: `ln -s <레포>/node_modules <폴더>/node_modules`
+- Chromium이 깔려 있다. `playwright-core`를 스크래치 폴더에 설치하고
+  `executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'`로 띄운다.
+  `playwright install`은 하지 않는다
+- 어드민 화면을 브라우저로 볼 때: 서버를 `ADMIN_TOKEN=<16자 이상>`으로 띄우고
+  `httpCredentials: { username: 'x', password: <그 값> }`
+
+### 8.6 새 세션 첫 프롬프트
+
+```
+CLAUDE.md와 docs/handoff-guide.md §8을 읽고, §8.3대로 환경을 다시 만든 뒤
+§8.4로 확인해줘. 확인이 끝나면 결과만 짧게 보고해.
+그다음 CLAUDE.md의 「다음 개선 지점」부터 이어서 진행해.
+```
+
+### 8.7 이어서 할 만한 것
+
+막히지 않은 것만 적는다. 막힌 것은 §8.1의 열린 이슈다.
+
+- **SessionStart 훅.** §8.3을 매번 손으로 하지 않게 한다. 새 세션이 뜰 때
+  PostgreSQL·역할·마이그레이션까지 자동으로 되면, DB 테스트가 조용히 건너뛰는
+  일이 사라진다 (적재는 22초 + clone 1분이라 훅에 넣을지는 따로 정한다)
+- **`partsMatchingSpec`이 「검증 중」 값으로 부품을 묶는다.** 부품 상세의
+  「소켓이 같은 CPU」 목록이 다투어지는 소켓 값으로 부품을 넣을 수 있다.
+  목록 문구가 이미 「소켓만 대조했다」고 말해서 급하지 않다
+- **고르기의 「숨긴 건수」 비용이 제약 개수에 비례한다** (ADR-0016 재측정).
+  제약 2개에 짧은 접두사 31ms. 새 규칙에 좁히기 제약을 더할 때 같이 본다
