@@ -273,7 +273,8 @@ export async function ingest(opts: IngestOptions): Promise<void> {
     const conflicts = await flagConflictingSpecs(db);
     log(
       `  값이 어긋나는 스펙 ${conflicts.standing}건에 검증 표시` +
-        (conflicts.marked > 0 ? ` (새로 ${conflicts.marked}건)` : ''),
+        (conflicts.marked > 0 ? ` (새로 ${conflicts.marked}건)` : '') +
+        (conflicts.retracted > 0 ? ` (더는 어긋나지 않아 거둠 ${conflicts.retracted}건)` : ''),
     );
 
     // --- 요약 -------------------------------------------------------------

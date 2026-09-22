@@ -119,4 +119,4 @@ export {
 
 export { evaluate } from './engine';
 
-export { sameSocket, socketAliases } from './sockets';
+export { sameSocket, socketAliases, socketCanonicalPairs } from './sockets';
