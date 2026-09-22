@@ -27,6 +27,10 @@ import {
   getStorageSnapshot,
   resetStorageSnapshot,
   subscribeStorage,
+  DEFAULT_PREFS,
+  loadPrefs,
+  migratePrefs,
+  savePrefs,
 } from '../src/lib/storage';
 
 const CODE = 'AQMRERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg';
@@ -278,7 +282,12 @@ describe('React 스냅샷 (useSyncExternalStore)', () => {
 
   it('서버 스냅샷은 항상 같은 참조이고 비어 있다', () => {
     expect(getServerStorageSnapshot()).toBe(getServerStorageSnapshot());
-    expect(getServerStorageSnapshot()).toEqual({ available: false, builds: [], recentBuilds: [] });
+    expect(getServerStorageSnapshot()).toEqual({
+      available: false,
+      builds: [],
+      recentBuilds: [],
+      prefs: DEFAULT_PREFS,
+    });
   });
 
   it('쓰기가 일어나면 스냅샷이 갱신되고 구독자에게 알린다', () => {
@@ -366,5 +375,59 @@ describe('작업 중인 견적 (draft)', () => {
     saveDraft(CODE);
     expect(clearDraft()).toBe(true);
     expect(loadDraft()).toBeNull();
+  });
+});
+
+describe('설정 (prefs) — 전기요금 입력값', () => {
+  let data: Map<string, string>;
+  beforeEach(() => {
+    data = installStorage();
+    resetStorageSnapshot();
+  });
+
+  it('비어 있으면 기본값이다', () => {
+    expect(loadPrefs()).toEqual(DEFAULT_PREFS);
+    expect(DEFAULT_PREFS.householdKwh).toBeNull();
+  });
+
+  it('쓰고 읽는다', () => {
+    expect(savePrefs({ householdKwh: 320 })).toBe(true);
+    resetStorageSnapshot();
+    expect(loadPrefs().householdKwh).toBe(320);
+  });
+
+  it('★ 모르는 필드를 지우지 않는다 — add-only (§8A.2)', () => {
+    // 신버전이 더한 칸을 구버전 코드가 날리면 add-only가 깨진다
+    data.set(
+      STORAGE_KEYS.prefs,
+      JSON.stringify({ v: 1, householdKwh: 300, futureField: 'keep me' }),
+    );
+    savePrefs({ pcHoursPerDay: 5 });
+    const raw = JSON.parse(data.get(STORAGE_KEYS.prefs) ?? '{}');
+    expect(raw.futureField).toBe('keep me');
+    expect(raw.householdKwh).toBe(300);
+    expect(raw.pcHoursPerDay).toBe(5);
+  });
+
+  it('★ 저장된 값을 믿지 않는다 — 범위 밖은 null', () => {
+    expect(migratePrefs({ householdKwh: -5 }).householdKwh).toBeNull();
+    expect(migratePrefs({ householdKwh: 0 }).householdKwh).toBeNull();
+    expect(migratePrefs({ householdKwh: 1e9 }).householdKwh).toBeNull();
+    expect(migratePrefs({ householdKwh: '300' }).householdKwh).toBeNull();
+    // 하루는 24시간을 넘지 않는다
+    expect(migratePrefs({ pcHoursPerDay: 25 }).pcHoursPerDay).toBeNull();
+    expect(migratePrefs({ pcHoursPerDay: 4 }).pcHoursPerDay).toBe(4);
+  });
+
+  it('깨진 JSON이면 기본값 — 던지지 않는다', () => {
+    data.set(STORAGE_KEYS.prefs, '{not json');
+    expect(loadPrefs()).toEqual(DEFAULT_PREFS);
+  });
+
+  it('스냅샷에 실려 있고 쓰면 갱신된다', () => {
+    const before = getStorageSnapshot();
+    expect(before.prefs.householdKwh).toBeNull();
+    savePrefs({ householdKwh: 250 });
+    expect(getStorageSnapshot().prefs.householdKwh).toBe(250);
   });
 });

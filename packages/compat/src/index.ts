@@ -74,6 +74,17 @@ export { QUOTE_LABELS, readQuoteLine } from './quote';
 
 export { bayKind, unplacedDrives, usesM2Slot, usesSataPort } from './storage';
 
+export type { Season, Tariff, Bill, AddedCost, EnergyTier } from './electricity';
+export {
+  KEPCO_RESIDENTIAL_LOW_VOLTAGE,
+  addedElectricityCost,
+  describeTariffExcluded,
+  monthlyBill,
+  monthlyKwh,
+  seasonOf,
+  tableFor,
+} from './electricity';
+
 export type { Rule } from './rules';
 export {
   rule1,

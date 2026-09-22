@@ -160,6 +160,78 @@ export function migrateRecentPart(raw: unknown): RecentPart | null {
   };
 }
 
+/**
+ * 전기요금 입력값 등 설정 (§8A.1의 `prefs`).
+ *
+ * **add-only다** (ADR-0005). 필드를 더하는 것은 되지만 기존 필드의 뜻을 바꾸거나
+ * 없애지 않는다 — 서버는 롤백되지만 사용자 브라우저는 롤백되지 않는다.
+ *
+ * 가구 월 사용량을 매번 다시 입력하게 만들면 전기요금 기능을 아무도 안 쓴다
+ * (§8A.1).
+ */
+export interface Prefs {
+  readonly v: number;
+  /** 평소 가구 월 전기 사용량 (kWh). 모르면 `null` */
+  readonly householdKwh: number | null;
+  /** PC를 하루 몇 시간 쓰는가. 모르면 `null` */
+  readonly pcHoursPerDay: number | null;
+}
+
+export const DEFAULT_PREFS: Prefs = { v: RECORD_VERSION, householdKwh: null, pcHoursPerDay: null };
+
+/** 숫자 설정 하나를 읽는다. 범위 밖이면 `null` — 저장된 값을 믿지 않는다. */
+function prefNumber(o: Record<string, unknown>, key: string, max: number): number | null {
+  const v = o[key];
+  if (typeof v !== 'number' || !Number.isFinite(v) || v <= 0 || v > max) return null;
+  return v;
+}
+
+export function migratePrefs(raw: unknown): Prefs {
+  const o = asRecord(raw);
+  if (!o) return DEFAULT_PREFS;
+  return {
+    v: typeof o['v'] === 'number' ? o['v'] : RECORD_VERSION,
+    // 한 달 100,000kWh를 쓰는 가정은 없다. 잘못된 값이 요금을 터무니없게 만든다
+    householdKwh: prefNumber(o, 'householdKwh', 100_000),
+    pcHoursPerDay: prefNumber(o, 'pcHoursPerDay', 24),
+  };
+}
+
+export function loadPrefs(): Prefs {
+  try {
+    const s = store();
+    if (!s) return DEFAULT_PREFS;
+    const raw = s.getItem(STORAGE_KEYS.prefs);
+    return raw === null ? DEFAULT_PREFS : migratePrefs(JSON.parse(raw));
+  } catch {
+    return DEFAULT_PREFS;
+  }
+}
+
+/**
+ * 설정을 덮어쓴다. **모르는 필드를 지우지 않는다** — 신버전이 더한 칸을
+ * 구버전 코드가 날리면 add-only가 깨진다 (§8A.2).
+ */
+export function savePrefs(patch: Partial<Omit<Prefs, 'v'>>): boolean {
+  try {
+    const s = store();
+    if (!s) return false;
+    const raw = s.getItem(STORAGE_KEYS.prefs);
+    const existing = raw === null ? {} : (asRecord(JSON.parse(raw)) ?? {});
+    s.setItem(
+      STORAGE_KEYS.prefs,
+      JSON.stringify({ ...existing, v: RECORD_VERSION, ...patch }),
+    );
+    s.setItem(STORAGE_KEYS.schemaVersion, String(STORAGE_SCHEMA_VERSION));
+    // 스냅샷에 실려 있으므로 무효화한다. localStorage는 React 바깥의 스토어라
+    // effect + setState로 끌어오면 연쇄 렌더와 hydration 불일치가 생긴다.
+    invalidate();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // --- 저장한 견적 ------------------------------------------------------------
 
 export function loadBuilds(): SavedBuild[] {
@@ -290,10 +362,17 @@ export interface StorageSnapshot {
   readonly available: boolean;
   readonly builds: readonly SavedBuild[];
   readonly recentBuilds: readonly SavedBuild[];
+  /** 전기요금 입력값 등. 서버에서는 기본값이다 */
+  readonly prefs: Prefs;
 }
 
 /** 서버에는 저장소가 없다. 항상 같은 참조를 돌려줘야 한다. */
-const SERVER_SNAPSHOT: StorageSnapshot = { available: false, builds: [], recentBuilds: [] };
+const SERVER_SNAPSHOT: StorageSnapshot = {
+  available: false,
+  builds: [],
+  recentBuilds: [],
+  prefs: DEFAULT_PREFS,
+};
 
 let snapshot: StorageSnapshot | null = null;
 const listeners = new Set<() => void>();
@@ -315,6 +394,7 @@ export function getStorageSnapshot(): StorageSnapshot {
     available: isStorageAvailable(),
     builds: loadBuilds(),
     recentBuilds: loadRecentBuilds(),
+    prefs: loadPrefs(),
   };
   return snapshot;
 }
