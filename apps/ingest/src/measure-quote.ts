@@ -61,13 +61,27 @@ interface Tally {
   total: number;
 }
 
-async function measure(url: string, mergeShort: boolean): Promise<Tally> {
+interface Knobs {
+  readonly mergeShort: boolean;
+  /**
+   * 중복 레코드를 후보에서 뺀다 (이슈 #11).
+   *
+   * 뺄 때는 **정답도 대표로 옮겨 센다.** 표본이 중복 레코드일 때 대표를 찾아낸
+   * 것을 오답으로 세면, 이 필터가 손해처럼 보인다 — 실제로는 같은 제품이다.
+   */
+  readonly canonicalOnly: boolean;
+}
+
+async function measure(url: string, knobs: Knobs): Promise<Tally> {
+  const { mergeShort } = knobs;
   const sql = postgres(url, { max: 4 });
   const t: Tally = { exact: 0, among: 0, none: 0, wrongSingle: 0, wrongMany: 0, listSum: 0, total: 0 };
   try {
     for (const category of CATEGORIES) {
-      const rows = await sql<{ id: string; model_name: string; brand: string | null }[]>`
-        select id, model_name, brand from parts
+      const rows = await sql<
+        { id: string; canon: string; model_name: string; brand: string | null }[]
+      >`
+        select id, coalesce(duplicate_of, id) as canon, model_name, brand from parts
         where category = ${category} and release_year >= ${SINCE}
         -- 무작위지만 되풀이해도 같은 표본이 나와야 비교가 된다
         order by md5(id::text) limit ${PER_CATEGORY}`;
@@ -88,14 +102,17 @@ async function measure(url: string, mergeShort: boolean): Promise<Tally> {
         );
         const hits = await sql<{ id: string }[]>`
           select id from parts
-          where category = ${category} and ${conds.reduce((a, c) => sql`${a} and ${c}`)}
+          where category = ${category}
+            and ${knobs.canonicalOnly ? sql`duplicate_of is null` : sql`true`}
+            and ${conds.reduce((a, c) => sql`${a} and ${c}`)}
           limit 40`;
+        const want = knobs.canonicalOnly ? row.canon : row.id;
 
         if (hits.length === 0) t.none++;
         else if (hits.length === 1) {
-          if (hits[0]?.id === row.id) t.exact++;
+          if (hits[0]?.id === want) t.exact++;
           else t.wrongSingle++;
-        } else if (hits.some((h) => h.id === row.id)) {
+        } else if (hits.some((h) => h.id === want)) {
           t.among++;
           t.listSum += hits.length;
         } else t.wrongMany++;
@@ -120,8 +137,12 @@ function report(label: string, t: Tally): void {
 async function main(): Promise<void> {
   const url = process.env['DATABASE_URL'];
   if (url === undefined) throw new Error('DATABASE_URL이 필요합니다.');
-  report('짧은 조각 붙이지 않음', await measure(url, false));
-  report('짧은 조각 붙임 (현재 기본값)', await measure(url, true));
+  report('짧은 조각 붙이지 않음', await measure(url, { mergeShort: false, canonicalOnly: false }));
+  report('짧은 조각 붙임', await measure(url, { mergeShort: true, canonicalOnly: false }));
+  report(
+    '짧은 조각 붙임 + 중복 제외 (현재 기본값)',
+    await measure(url, { mergeShort: true, canonicalOnly: true }),
+  );
 }
 
 main().catch((err: unknown) => {

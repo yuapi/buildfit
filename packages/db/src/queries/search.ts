@@ -31,6 +31,19 @@ const MAX_TERMS = 40;
  * **뜻을 모르는 한글이 섞이면 0건을 낸다.** 그 조각을 조용히 버리면
  * "다나와 5080"이 5080 전부를 부르게 된다. 모르는 것은 모른다고 해야 한다.
  */
+/**
+ * 목록에 보일 부품인가 — 대표만 보인다.
+ *
+ * 같은 제품이 여러 레코드로 들어 있어 검색 한 페이지에 같은 것이 7번 나왔다.
+ * **id로는 여전히 열린다** — 공유 링크가 담은 id를 막으면 링크가 깨진다
+ * (ADR-0012). 목록·검색·sitemap만 좁힌다.
+ *
+ * 근거: `docs/research/duplicate-parts.md`
+ */
+export function canonicalOnly(): SQL {
+  return sql`${parts.duplicateOf} is null`;
+}
+
 export function nameWhere(parsed: SearchTerms): SQL[] {
   if (parsed.terms.length === 0) return [];
   if (isImpossible(parsed)) return [sql`false`];

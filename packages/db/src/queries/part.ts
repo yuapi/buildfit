@@ -3,9 +3,13 @@
  */
 
 import { and, eq, ne, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import type { Database } from '../client';
 import { partSpecs, parts, specReports } from '../schema';
-import { nameWhere, searchTerms } from './search';
+import { canonicalOnly, nameWhere, searchTerms } from './search';
+
+/** 중복 레코드가 가리키는 대표. 자기 참조라 별칭이 필요하다 */
+const canonical = alias(parts, 'canonical_part');
 
 export interface PartSpecRow {
   readonly key: string;
@@ -28,6 +32,13 @@ export interface PartDetail {
   readonly manufacturerUrl: string | null;
   readonly opendbId: string | null;
   readonly mpn: string | null;
+  /**
+   * 이 레코드가 중복이면 대표의 slug. 대표이거나 중복이 아니면 `null`.
+   *
+   * 지우지 않고 가리키는 이유는 `parts.id`가 공유 URL에 들어 있어서다 (ADR-0012).
+   * 주소는 살려 두고 `rel=canonical`로 대표를 지목한다.
+   */
+  readonly canonicalSlug: string | null;
   readonly specs: readonly PartSpecRow[];
 }
 
@@ -44,8 +55,12 @@ export async function partBySlug(db: Database, slug: string): Promise<PartDetail
       manufacturerUrl: parts.manufacturerUrl,
       opendbId: parts.opendbId,
       mpn: parts.mpn,
+      canonicalSlug: canonical.slug,
     })
     .from(parts)
+    // 셀렉트 목록 안의 상관 서브쿼리는 쓰지 않는다. drizzle이 그 자리의 컬럼을
+    // 테이블 없이 적어서(`"duplicate_of"`) 서브쿼리 별칭에 걸리고 항상 null이 된다.
+    .leftJoin(canonical, eq(canonical.id, parts.duplicateOf))
     .where(eq(parts.slug, slug));
   if (!part) return null;
 
@@ -101,6 +116,7 @@ export async function partsMatchingSpec(
     .where(
       and(
         eq(parts.category, input.category),
+        canonicalOnly(),
         eq(partSpecs.key, input.specKey),
         sql`${partSpecs.value} = ${JSON.stringify(input.value)}::jsonb`,
         input.excludePartId ? ne(parts.id, input.excludePartId) : undefined,
@@ -222,7 +238,7 @@ export async function partsInCategory(
   // 고르기와 같은 해석을 쓴다 (ADR-0017). 두 벌이 되면 "고를 땐 나오는데
   // 목록엔 없다"가 된다.
   const parsed = searchTerms(opts.query ?? '');
-  const where = and(eq(parts.category, category), ...nameWhere(parsed));
+  const where = and(eq(parts.category, category), canonicalOnly(), ...nameWhere(parsed));
 
   const [countRow] = await db
     .select({ total: sql<number>`count(*)::int` })
@@ -260,7 +276,8 @@ export async function slugsInCategory(
   return db
     .select({ slug: parts.slug, updatedAt: parts.updatedAt })
     .from(parts)
-    .where(eq(parts.category, category))
+    // sitemap도 대표만 넣는다. 지금은 중복 1,036개 페이지가 서로 경쟁한다
+    .where(and(eq(parts.category, category), canonicalOnly()))
     .orderBy(parts.slug)
     .limit(opts.limit ?? 5000)
     .offset(opts.offset ?? 0);
