@@ -127,7 +127,7 @@ export default async function AdminHome() {
                             key={id}
                             href={`/admin/parts/${id}?focus=${c.specKey}`}
                             className="link ml-1"
-                            aria-label={`${specValueText(v.value, v.unit)}을 든 ${i + 1}번째 레코드 보강`}
+                            aria-label={`값 ${specValueText(v.value, v.unit)} — ${i + 1}번째 레코드 보강`}
                           >
                             {v.partIds.length > 1 ? i + 1 : '보강'}
                           </Link>

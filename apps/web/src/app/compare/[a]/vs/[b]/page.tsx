@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: { params: Promise<{ a: string
     if (!left || !right) return { title: { absolute: 'buildfit' } };
     return {
       title: `${left.modelName} vs ${right.modelName}`,
-      description: `${left.modelName}와 ${right.modelName}의 스펙을 나란히 비교합니다.`,
+      description: `${left.modelName} · ${right.modelName} — 두 부품의 스펙을 나란히 비교합니다.`,
     };
   } catch {
     return { title: { absolute: 'buildfit' } };

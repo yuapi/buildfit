@@ -257,5 +257,5 @@ export function addedElectricityCost(input: {
 
 /** 계산에 넣지 않은 항목을 한 줄로. 규칙 7의 `describeExcluded`와 같은 방식이다. */
 export function describeTariffExcluded(tariff: Tariff = KEPCO_RESIDENTIAL_LOW_VOLTAGE): string {
-  return `${tariff.excluded.join(', ')}은 넣지 않았습니다. 실제 청구액은 이 값보다 높습니다.`;
+  return `${tariff.excluded.join(', ')} 항목은 넣지 않았습니다. 실제 청구액은 이 값보다 높습니다.`;
 }
