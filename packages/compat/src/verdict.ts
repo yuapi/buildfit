@@ -60,6 +60,17 @@ export interface RuleResult {
    * 건너뛰었다는 사실은 남긴다. docs/compat-rules.md §2
    */
   readonly skipped?: readonly string[];
+  /**
+   * 이 판정이 쓴 값 중 **검증 중인 것** (이슈 #13).
+   *
+   * 규칙이 채우지 않는다. 판정이 끝난 뒤 `evaluate()`가 `SPEC_REQUIREMENTS`의
+   * 규칙↔필드 대응으로 붙인다 — 규칙 14개를 건드리지 않고 한 곳에서 붙기 때문에
+   * 새 규칙이 늘어도 빠질 수 없다.
+   *
+   * **판정을 바꾸지 않는다.** 값은 있고 규칙은 답을 낼 수 있다. 다만 우리가
+   * 스스로 의심한다고 표시해 둔 값이라는 사실을 함께 보여준다.
+   */
+  readonly contested?: readonly FieldRef[];
 }
 
 /** 견적 하나에 대한 전체 판정. */

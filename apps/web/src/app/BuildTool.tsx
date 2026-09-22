@@ -1153,6 +1153,35 @@ export function VerdictPanel({
                         )}
                       </p>
                     )}
+                    {/*
+                      우리가 스스로 의심한다고 표시해 둔 값으로 확정적인 판정을
+                      내놓지 않는다 (이슈 #13). 판정은 그대로 두고 근거의 상태를
+                      덧붙인다 — 값이 없는 것과 다투어지는 것은 다르다.
+                    */}
+                    {r.contested && (
+                      <p className="mt-1 text-xs leading-relaxed text-warn">
+                        검증 중인 값으로 판정했습니다:{" "}
+                        {r.contested.map((f, i) => {
+                          const href = partHref(build, f.slug);
+                          return (
+                            <span key={`${f.part}-${f.field}`}>
+                              {i > 0 && ", "}
+                              {href ? (
+                                <Link href={href} className="link">
+                                  {f.part}의 {f.field}
+                                </Link>
+                              ) : (
+                                `${f.part}의 ${f.field}`
+                              )}
+                            </span>
+                          );
+                        })}
+                        <span className="ml-1">
+                          — 같은 제품의 다른 기록과 값이 다르거나 오류 신고가
+                          들어온 항목입니다
+                        </span>
+                      </p>
+                    )}
                     {r.notes?.map((n) => (
                       <p
                         key={n}
