@@ -66,6 +66,33 @@ describe('숫자 항목', () => {
   });
 });
 
+describe('선언된 범위 (이슈 #15 뒷정리)', () => {
+  const year = reqFor('Motherboard', 'release_year');
+
+  it('범위 밖을 막는다 — 없으면 999999999가 들어가고 규칙 12가 그대로 읽는다', () => {
+    expect(parseSpecValue(year, ['1']).ok).toBe(false);
+    expect(parseSpecValue(year, ['1979']).ok).toBe(false);
+    expect(parseSpecValue(year, ['999999999']).ok).toBe(false);
+  });
+
+  it('범위 안은 받는다', () => {
+    expect(parseSpecValue(year, ['1980'])).toEqual({ ok: true, value: 1980 });
+    expect(parseSpecValue(year, ['2024'])).toEqual({ ok: true, value: 2024 });
+  });
+
+  it('위쪽 끝이 고정 값이 아니다 — 해가 바뀌면 같이 올라간다', () => {
+    const next = new Date().getUTCFullYear() + 1;
+    expect(year.max).toBe(next);
+    expect(parseSpecValue(year, [String(next)]).ok).toBe(true);
+    expect(parseSpecValue(year, [String(next + 1)]).ok).toBe(false);
+  });
+
+  it('범위가 없는 숫자 항목은 전처럼 0보다 크기만 하면 된다', () => {
+    expect(maxGpuLength.min).toBeUndefined();
+    expect(parseSpecValue(maxGpuLength, ['99999']).ok).toBe(true);
+  });
+});
+
 describe('예/아니오 항목', () => {
   const includesCooler = SPEC_REQUIREMENTS.find((r) => r.valueType === 'boolean');
 

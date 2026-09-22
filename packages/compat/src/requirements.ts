@@ -41,6 +41,17 @@ export interface FieldRequirement {
   /** 어드민 입력 위젯을 고르는 데 쓴다. */
   readonly valueType: 'number' | 'string' | 'string[]' | 'boolean';
   /**
+   * 받아들일 범위 (`valueType: 'number'`에만).
+   *
+   * **값에 대한 주장이 아니라 입력 검사다.** 범위 밖을 막는 것과 범위 안을
+   * 맞다고 말하는 것은 다르다 — 여기 적힌 수는 판정에 쓰이지 않는다.
+   *
+   * 없으면 「0보다 큰 유한한 수」만 본다. 그것만으로는 출시 연도에
+   * `999999999`가 들어가고, 규칙 12가 「메인보드(999999999년)」라고 말한다.
+   */
+  readonly min?: number;
+  readonly max?: number;
+  /**
    * 허용값. **있으면 자유 입력을 막아야 한다.**
    * 규칙 5·6은 이 값들을 문자열 완전 일치로 비교하므로, 오타 하나가 판정을 뒤집는다.
    * 출처는 OpenDB 스키마의 enum (docs/compat-rules.md §5, §6).
@@ -66,6 +77,13 @@ export const STORAGE_FORM_FACTORS = [
   'M.2-2280', 'M.2-2230', 'M.2-2242', 'M.2-2260', 'M.2-22110',
   '2.5\"', '3.5\"', 'PCIe', 'mSATA',
 ] as const;
+
+/**
+ * 받아들일 출시 연도의 위쪽 끝.
+ *
+ * **고정 값으로 두지 않는다.** 2026을 박아 두면 2027년에 그 해 부품을 못 넣는다.
+ */
+export const MAX_RELEASE_YEAR = new Date().getUTCFullYear() + 1;
 
 // Phase 0의 8개 규칙 + Phase 1의 규칙 9·12·15~19. 규칙이 늘면 여기도 는다.
 export const SPEC_REQUIREMENTS: readonly FieldRequirement[] = [
@@ -121,8 +139,11 @@ export const SPEC_REQUIREMENTS: readonly FieldRequirement[] = [
   //
   // 메인보드 연도가 진짜 병목이다: 757/3,701 (20.5%). 원본에 다른 경로가 없다
   // (docs/research/opendb-schema-analysis.md §10).
-  { ruleId: 12, category: 'CPU', specKey: 'release_year', label: '출시 연도', severity: 'warning', valueType: 'number', storedOnPart: true },
-  { ruleId: 12, category: 'Motherboard', specKey: 'release_year', label: '출시 연도', severity: 'warning', valueType: 'number', storedOnPart: true },
+  //
+  // 연도 범위는 **입력 검사**다. 1980은 x86 PC 이전이라 오타로 본다. 위쪽은
+  // 내년까지 열어 둔다 — 발표만 된 부품이 카탈로그에 먼저 오르기도 한다.
+  { ruleId: 12, category: 'CPU', specKey: 'release_year', label: '출시 연도', severity: 'warning', valueType: 'number', storedOnPart: true, min: 1980, max: MAX_RELEASE_YEAR },
+  { ruleId: 12, category: 'Motherboard', specKey: 'release_year', label: '출시 연도', severity: 'warning', valueType: 'number', storedOnPart: true, min: 1980, max: MAX_RELEASE_YEAR },
   { ruleId: 12, category: 'Motherboard', specKey: 'bios_flashback', label: 'BIOS Flashback 지원', severity: 'warning', valueType: 'boolean' },
 
   // 15. GPU 두께(슬롯) ≤ 케이스 확장 슬롯 수 (Phase 1)

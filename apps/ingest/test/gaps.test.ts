@@ -194,6 +194,53 @@ describeIfDb('결측 현황 집계', () => {
     ).rejects.toThrow();
   });
 
+  // --- 저장의 마지막 문 --------------------------------------------------
+
+  it('★ 카테고리가 어긋나는 필드를 저장하지 않는다', async () => {
+    // 없을 때 확인해 보니 CPU에 supported_psu_form_factors가 그대로 들어갔다.
+    // 그러면 결측 집계가 그 CPU를 "케이스 필드를 가진 것"으로 센다.
+    await expect(
+      saveSpec(db, {
+        partId: 'a1111111-1111-4111-8111-111111111111', // CPU
+        key: 'supported_psu_form_factors', // PCCase 필드
+        value: ['ATX'],
+        sourceUrl: 'https://example.test/x',
+      }),
+    ).rejects.toThrow(/저장할 수 없습니다/);
+  });
+
+  it('없는 부품에는 저장하지 않는다', async () => {
+    await expect(
+      saveSpec(db, {
+        partId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+        key: 'socket',
+        value: 'AM5',
+        sourceUrl: 'https://example.test/x',
+      }),
+    ).rejects.toThrow(/없는 부품/);
+  });
+
+  it('★ 선언된 범위 밖의 출시 연도를 막는다 — int4를 넘기면 DB가 던진다', async () => {
+    const id = 'a1111111-1111-4111-8111-111111111111';
+    for (const bad of [1, 999999999, 1e12]) {
+      await expect(
+        saveSpec(db, { partId: id, key: 'release_year', value: bad, sourceUrl: 'https://example.test/y' }),
+        String(bad),
+      ).rejects.toThrow(/출시 연도는/);
+    }
+    // 범위 안은 들어간다
+    await saveSpec(db, {
+      partId: id,
+      key: 'release_year',
+      value: 2024,
+      sourceUrl: 'https://example.test/y',
+    });
+    const [row] = await db.execute<{ y: number }>(
+      sql`select release_year as y from parts where id = ${id}`,
+    );
+    expect(row?.y).toBe(2024);
+  });
+
   it('빈 DB에서도 던지지 않는다', async () => {
     await db.execute(sql`delete from parts`);
     expect(await fieldGapSummary(db)).toEqual([]);

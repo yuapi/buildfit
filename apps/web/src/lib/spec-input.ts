@@ -58,6 +58,14 @@ export function parseSpecValue(req: FieldRequirement, values: readonly unknown[]
     // 0과 음수는 이 도메인에서 값이 아니다. 원본이 미입력을 0으로 채운 레코드가
     // 실재하고 그 0이 거짓 통과를 만든다 (docs/compat-rules.md §8.4).
     if (n <= 0) return { ok: false, message: '0 이하는 값으로 받지 않습니다.' };
+    // 선언된 범위를 벗어나면 오타로 본다. **값에 대한 주장이 아니라 입력 검사다.**
+    // 이게 없으면 출시 연도에 999999999가 들어가고 규칙 12가 그대로 읽는다.
+    if (req.min !== undefined && n < req.min) {
+      return { ok: false, message: `${req.min} 이상이어야 합니다.` };
+    }
+    if (req.max !== undefined && n > req.max) {
+      return { ok: false, message: `${req.max} 이하여야 합니다.` };
+    }
     return { ok: true, value: n };
   }
 
