@@ -248,7 +248,10 @@ export async function ingest(opts: IngestOptions): Promise<void> {
     log(`  ${dup.groups}그룹 · ${dup.marked}건을 대표 아님으로 표시`);
     // 같은 제품인데 스펙이 어긋나면 하나는 틀린 값이다. 어드민이 볼 목록이 된다
     const conflicts = await flagConflictingSpecs(db);
-    log(`  값이 어긋나는 스펙 ${conflicts}건에 검증 표시`);
+    log(
+      `  값이 어긋나는 스펙 ${conflicts.standing}건에 검증 표시` +
+        (conflicts.marked > 0 ? ` (새로 ${conflicts.marked}건)` : ''),
+    );
 
     // --- 요약 -------------------------------------------------------------
     const [counts] = await db
