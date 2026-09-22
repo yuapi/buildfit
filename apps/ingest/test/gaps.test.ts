@@ -9,7 +9,7 @@
 
 import { SPEC_REQUIREMENTS } from '@buildfit/compat';
 import { createDb } from '@buildfit/db';
-import { fieldGapSummary } from '@buildfit/db/queries';
+import { fieldGapSummary, gapCounts, partsMissingField } from '@buildfit/db/queries';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createScratchDb, type Scratch } from './helpers/scratch-db';
@@ -90,6 +90,33 @@ describeIfDb('결측 현황 집계', () => {
     const rows = await fieldGapSummary(db);
     const counts = rows.map((r) => r.missingParts);
     expect([...counts].sort((a, b) => b - a)).toEqual(counts);
+  });
+
+  it('★ 출처를 열 수 있는 것을 먼저 준다 (이슈 #3)', async () => {
+    // CPU 셋 중 소켓이 빈 것은 '하나'뿐이라 목록이 짧다. 둘 더 심는다.
+    await db.execute(sql`
+      insert into parts (id, slug, category, model_name, release_year, manufacturer_url) values
+        ('b1111111-1111-4111-8111-111111111111', 'g-nosrc-new', 'CPU', '주소 없는 최신',  2026, null),
+        ('b2222222-2222-4222-8222-222222222222', 'g-src-old',   'CPU', '주소 있는 구형',  2010, 'https://example.com/a')
+    `);
+    try {
+      const rows = await partsMissingField(db, 'CPU', 'socket');
+      // 출시연도가 더 최신인데도 주소 있는 쪽이 먼저다 — 출처 찾기가 가장 비싸다
+      expect(rows[0]?.modelName).toBe('주소 있는 구형');
+      expect(rows.map((r) => r.modelName)).toContain('주소 없는 최신');
+
+      const counts = await gapCounts(db, 'CPU', 'socket');
+      expect(counts.missing).toBe(rows.length);
+      expect(counts.withSource).toBe(1);
+    } finally {
+      await db.execute(sql`delete from parts where slug in ('g-nosrc-new', 'g-src-old')`);
+    }
+  });
+
+  it('집계와 목록이 같은 것을 센다 — 조건이 두 벌이면 "0건"인데 줄이 남는다', async () => {
+    const counts = await gapCounts(db, 'CPU', 'socket');
+    const rows = await partsMissingField(db, 'CPU', 'socket', { limit: 1000 });
+    expect(counts.missing).toBe(rows.length);
   });
 
   it('빈 DB에서도 던지지 않는다', async () => {

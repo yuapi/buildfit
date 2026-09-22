@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { SPEC_REQUIREMENTS } from '@buildfit/compat';
-import { partsMissingField } from '@buildfit/db/queries';
+import { gapCounts, partsMissingField } from '@buildfit/db/queries';
 import { Container } from '@/components/SiteShell';
 import { getDb } from '@/lib/db';
 import { requireAdmin } from '@/lib/admin-auth';
@@ -28,10 +28,13 @@ export default async function GapList({
   if (!req) notFound();
 
   const pageNo = Math.max(1, Number(page ?? '1') || 1);
-  const rows = await partsMissingField(getDb(), category, specKey, {
-    limit: PAGE_SIZE,
-    offset: (pageNo - 1) * PAGE_SIZE,
-  });
+  const [rows, counts] = await Promise.all([
+    partsMissingField(getDb(), category, specKey, {
+      limit: PAGE_SIZE,
+      offset: (pageNo - 1) * PAGE_SIZE,
+    }),
+    gapCounts(getDb(), category, specKey),
+  ]);
 
   return (
     <Container className="py-10">
@@ -42,8 +45,23 @@ export default async function GapList({
         {category} · {req.label}
       </h1>
       <p className="mt-2 text-sm text-fg-muted">
-        이 값이 없어 규칙 {req.ruleId}번이 판정 불가로 처리되는 부품이다.
-        최신 부품부터 보여준다.
+        이 값이 없어 규칙 {req.ruleId}번이 판정 불가로 처리되는 부품{' '}
+        <strong className="font-medium">{counts.missing.toLocaleString()}건</strong>이다.
+      </p>
+      {/*
+        보강에서 가장 오래 걸리는 단계는 출처를 찾는 것이다. 주소가 있는 것을
+        먼저 준다 — 케이스 지원 파워 폼팩터는 결측 3,185건 중 3,155건이 출시연도를
+        모르므로, 전에 쓰던 "최신순"은 사실상 이름순이었다 (이슈 #3).
+      */}
+      <p className="mt-1 text-sm">
+        이 중 <strong className="font-medium">{counts.withSource.toLocaleString()}건</strong>은
+        제조사 스펙 주소가 있어 바로 채울 수 있다. 그것부터 보여준다.
+        {counts.missing > counts.withSource && (
+          <span className="text-fg-subtle">
+            {' '}나머지 {(counts.missing - counts.withSource).toLocaleString()}건은 출처를 직접
+            찾아야 한다.
+          </span>
+        )}
       </p>
       <p className="mt-1 text-xs leading-relaxed text-fg-subtle">
         여기서 바로 채운다. 채운 줄은 <strong className="font-medium">사라지지 않고</strong>{' '}

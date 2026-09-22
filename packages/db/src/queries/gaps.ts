@@ -6,7 +6,7 @@
  */
 
 import { SPEC_REQUIREMENTS, rulesBlockedBy, type FieldRequirement } from '@buildfit/compat';
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql, type SQL } from 'drizzle-orm';
 import type { Database } from '../client';
 import { partSpecs, parts } from '../schema';
 
@@ -104,7 +104,39 @@ export interface GapPart {
   readonly manufacturerUrl: string | null;
 }
 
-/** 특정 필드가 비어 있는 부품 목록. */
+/** 이 필드가 비어 있는 부품이 몇 건이고, 그중 출처를 바로 열 수 있는 것이 몇 건인가. */
+export interface GapCounts {
+  readonly missing: number;
+  /** 제조사 스펙 주소가 있는 것. **지금 바로 채울 수 있는 건수다** */
+  readonly withSource: number;
+}
+
+/** 특정 필드가 비어 있는 부품의 조건. 목록과 집계가 같은 것을 세야 한다. */
+function missingWhere(category: string, specKey: string): SQL {
+  return sql`${eq(parts.category, category)} and not exists (
+    select 1 from ${partSpecs} s
+    where s.part_id = ${parts.id} and s.key = ${specKey}
+  )`;
+}
+
+/**
+ * 특정 필드가 비어 있는 부품 목록.
+ *
+ * **제조사 스펙 주소가 있는 것을 먼저 준다** (이슈 #3).
+ *
+ * 전에는 출시연도 내림차순이었는데, 가장 큰 결측인 케이스
+ * `supported_psu_form_factors`에서는 그 순서가 뜻이 없다 — 값이 빈 3,185건 중
+ * **3,155건이 출시연도를 모른다.** 사실상 이름순이었고, 화면은 "최신 부품부터"라고
+ * 적고 있었다.
+ *
+ * 보강에서 가장 오래 걸리는 단계는 출처를 찾는 것이다. 주소가 있는 278건은
+ * 바로 채울 수 있고(케이스 전체의 8.7%), 없는 2,907건은 작업자가 직접 찾아야
+ * 한다. 그 278건이 이름순으로 흩어져 있으면 아무도 닿지 못한다.
+ *
+ * **중복 레코드를 빼지 않는다.** 대표가 아닌 레코드도 공유 링크가 담을 수 있고
+ * (ADR-0012) 규칙은 id로 판정한다 — 채우면 그 링크의 판정 불가가 줄어든다.
+ * 케이스에서는 15건뿐이라 순서에 영향도 없다.
+ */
 export async function partsMissingField(
   db: Database,
   category: string,
@@ -122,19 +154,32 @@ export async function partsMissingField(
       manufacturerUrl: parts.manufacturerUrl,
     })
     .from(parts)
-    .where(
-      and(
-        eq(parts.category, category),
-        sql`not exists (
-          select 1 from ${partSpecs} s
-          where s.part_id = ${parts.id} and s.key = ${specKey}
-        )`,
-      ),
+    .where(missingWhere(category, specKey))
+    // 1) 출처를 열 수 있는 것 먼저 (PG에서 false < true)
+    // 2) 그다음 최신 부품부터 — 연도를 아는 카테고리에서는 이게 유효하다
+    .orderBy(
+      sql`${parts.manufacturerUrl} is null`,
+      sql`${parts.releaseYear} desc nulls last`,
+      parts.modelName,
     )
-    // 최신 부품부터. 국내 유통 판정(#5) 전에는 이게 가장 쓸모 있는 우선순위다.
-    .orderBy(sql`${parts.releaseYear} desc nulls last`, parts.modelName)
     .limit(opts.limit ?? 50)
     .offset(opts.offset ?? 0);
+}
+
+/** 위 목록의 전체 건수와, 그중 바로 채울 수 있는 건수. */
+export async function gapCounts(
+  db: Database,
+  category: string,
+  specKey: string,
+): Promise<GapCounts> {
+  const [row] = await db
+    .select({
+      missing: sql<number>`count(*)::int`,
+      withSource: sql<number>`count(${parts.manufacturerUrl})::int`,
+    })
+    .from(parts)
+    .where(missingWhere(category, specKey));
+  return { missing: row?.missing ?? 0, withSource: row?.withSource ?? 0 };
 }
 
 export interface PartWithSpecs extends GapPart {
