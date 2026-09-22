@@ -6,7 +6,12 @@ import {
   SPEC_REQUIREMENTS,
   type PartSlot,
 } from '@buildfit/compat';
-import { fieldGapSummary, type FieldGap } from '@buildfit/db/queries';
+import {
+  disputedSummary,
+  fieldGapSummary,
+  type DisputedSummary,
+  type FieldGap,
+} from '@buildfit/db/queries';
 import { Container } from '@/components/SiteShell';
 import { categoryLabel } from '@/lib/categories';
 import { getDb } from '@/lib/db';
@@ -52,9 +57,11 @@ const SEVERITY_TEXT: Readonly<Record<'error' | 'warning' | 'info', string>> = {
 
 export default async function RulesPage() {
   let gaps: FieldGap[] = [];
+  let disputed: DisputedSummary | null = null;
   let gapsFailed = false;
   try {
-    gaps = await fieldGapSummary(getDb());
+    const db = getDb();
+    [gaps, disputed] = await Promise.all([fieldGapSummary(db), disputedSummary(db)]);
   } catch {
     // 규칙 목록은 DB 없이도 보여줄 수 있다. 숫자만 빼고 낸다 —
     // 페이지 전체를 죽이면 이 페이지의 목적(설명)이 사라진다.
@@ -81,6 +88,24 @@ export default async function RulesPage() {
         각 검사에 붙은 부품 표식은 <strong className="font-medium text-fg">그 검사가 돌기 위해
         골라야 하는 부품</strong>입니다. 하나라도 비어 있으면 그 검사는 돌지 않고,
         돌지 않았다고 표시됩니다.
+      </p>
+      {/*
+        결측만 적으면 절반만 말하는 것이다. 판정의 세 번째 상태(값은 있으나
+        다투어진다)도 규모와 함께 밝힌다 — ADR-0021. 결과 화면에 「검증 중인
+        값으로 판정했습니다」가 나오는데, 그게 무슨 뜻인지 알 곳이 없었다.
+      */}
+      <p className="mt-2 text-sm leading-relaxed text-fg-subtle">
+        값이 <strong className="font-medium text-fg">어긋나는</strong> 경우도 있습니다. 같은
+        제품이 원본에 여러 번 들어 있고 값이 다르거나, 오류 신고가 들어온 값입니다. 그때는
+        판정을 지우지 않고 <strong className="font-medium text-fg">&lsquo;검증 중인 값으로
+        판정했습니다&rsquo;</strong>라고 함께 적습니다 — 어느 쪽이 맞는지는 저희가 고르지
+        않습니다. 다수결도 최신순도 근거가 아닙니다.
+        {disputed && disputed.rows > 0 && (
+          <>
+            {' '}지금 <span className="tnum">{disputed.rows.toLocaleString()}</span>개 값,{' '}
+            <span className="tnum">{disputed.parts.toLocaleString()}</span>개 부품이 그렇습니다.
+          </>
+        )}
       </p>
 
       {gapsFailed && (

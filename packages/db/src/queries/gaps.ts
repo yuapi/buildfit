@@ -382,3 +382,31 @@ export async function conflictingSpecs(db: Database, limit = 100): Promise<SpecC
     values: r.values ?? [],
   }));
 }
+
+/** 「검증 중」인 값의 규모. 공개 「검사 규칙」 페이지가 그대로 보여준다. */
+export interface DisputedSummary {
+  /** `disputed`가 선 (부품, 키) 행 수 */
+  readonly rows: number;
+  /** 그중 하나라도 걸린 부품 수 */
+  readonly parts: number;
+}
+
+/**
+ * 「검증 중」인 값이 얼마나 되는가 — ADR-0021.
+ *
+ * `/rules`가 "무엇을 검사할 수 없는지"를 공개하는 페이지이므로, **결측만
+ * 적으면 절반만 말하는 것이다.** 판정의 세 번째 상태(값은 있으나 다투어진다)도
+ * 규모와 함께 밝힌다.
+ *
+ * 다른 숫자들과 같이 **요청마다 실제로 센다.** 문서에 적어두면 늘 낡는다.
+ */
+export async function disputedSummary(db: Database): Promise<DisputedSummary> {
+  const [row] = await db
+    .select({
+      rows: sql<number>`count(*)::int`,
+      parts: sql<number>`count(distinct ${partSpecs.partId})::int`,
+    })
+    .from(partSpecs)
+    .where(eq(partSpecs.disputed, true));
+  return { rows: row?.rows ?? 0, parts: row?.parts ?? 0 };
+}
