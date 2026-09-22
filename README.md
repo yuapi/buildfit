@@ -51,7 +51,7 @@ buildfit은 **가격 비교 커머스가 아니다.** 다나와·에누리와 �
 | | 상태 |
 |---|---|
 | 부품 카탈로그 | 26,485건 / 스펙 229,675건 / 표기 변형 63,602건 |
-| 호환성 규칙 | **14개 동작** (1~9, 12, 15~19) |
+| 호환성 규칙 | **15개 동작** (1~9, 12, 15~20) |
 | 전기요금 | ✅ 한전 누진 구간 반영 ([이슈 #2](../../issues/2)) |
 | 스토리지 | ✅ 규칙 17·18·19. **전력은 빠져 있고, 빠졌다고 적는다** ([이슈 #5](../../issues/5)) |
 | 어드민 접근 제어 | ✅ 공유 비밀 하나 ([ADR-0020](docs/decisions/0020-admin-access-control.md)) |
@@ -170,7 +170,7 @@ CI는 postgres를 새로 띄우므로 **카탈로그가 비어 있다.** 로컬�
 |---|---|
 | [`CLAUDE.md`](CLAUDE.md) | 세션 컨텍스트, 작업 규칙 |
 | [`docs/pc-builder-spec.md`](docs/pc-builder-spec.md) | 제품 정의서 — 무엇을 만드는가 |
-| [`docs/compat-rules.md`](docs/compat-rules.md) | 규칙 14개의 판정식과 판정 불가 조건 |
+| [`docs/compat-rules.md`](docs/compat-rules.md) | 규칙 15개의 판정식과 판정 불가 조건 |
 | [`docs/deployment.md`](docs/deployment.md) | 배포 준비 — 무엇이 필요하고 무엇을 확인해야 하는가 |
 | [`docs/pipeline-plan.md`](docs/pipeline-plan.md) | 자율 운영 인프라 설계 (구현 보류) |
 | [`docs/handoff-guide.md`](docs/handoff-guide.md) | 세션 이전 가이드, 이슈 순서 |

@@ -102,6 +102,7 @@ export {
   rule17,
   rule18,
   rule19,
+  rule20,
   phase0Rules,
   phase1Rules,
 } from './rules';
@@ -119,4 +120,4 @@ export {
 
 export { evaluate } from './engine';
 
-export { sameSocket, socketAliases, socketCanonicalPairs } from './sockets';
+export { coolerListCovers, sameSocket, socketAliases, socketCanonicalPairs } from './sockets';

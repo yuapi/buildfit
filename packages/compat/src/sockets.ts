@@ -61,3 +61,28 @@ export function sameSocket(a: string, b: string): boolean {
 export function socketCanonicalPairs(): readonly (readonly [string, string])[] {
   return SOCKET_GROUPS.flatMap((group) => group.map((name) => [name, group[0]!] as const));
 }
+
+/**
+ * 쿨러 목록의 표기 하나가 이 CPU 소켓을 덮는가 — 규칙 20, compat-rules §20.2.
+ *
+ * CPU↔보드 등가(`sameSocket`)에 **쿨러에만 맞는 보정 하나**를 더한다.
+ *
+ * `LGA 115`는 `LGA 115x`가 잘린 표기다 — 11개 중 10개가 1150·1151을 따로 적지
+ * 않았고, 한 제품은 이름에 「LGA 775/ 115x/ 1366」이라고 적혀 있다. `115x`는
+ * **쿨러 고정 구멍 간격이 같다**는 뜻이다.
+ *
+ * ★ **이 보정을 `SOCKET_GROUPS`에 넣지 않는다.** LGA 1150 CPU는 LGA 1151 보드에
+ * 안 들어간다. 거기 넣으면 규칙 1이 거짓 통과한다 — 테스트가 그 누출을 막는다.
+ *
+ * `LGA 1200`은 넣지 않는다. 고정 구멍이 같다고 알려져 있지만 **표기가 115x를
+ * 뜻하지 않는다.** 잘린 문자열을 푸는 것과 호환 관계를 더하는 것은 다른 일이다.
+ */
+const COOLER_FAMILY: Readonly<Record<string, readonly string[]>> = {
+  'LGA 115': ['LGA 1150', 'LGA 1151', 'LGA 1155', 'LGA 1156'],
+};
+
+export function coolerListCovers(listed: readonly string[], cpuSocket: string): boolean {
+  return listed.some(
+    (entry) => sameSocket(entry, cpuSocket) || (COOLER_FAMILY[entry]?.includes(cpuSocket) ?? false),
+  );
+}

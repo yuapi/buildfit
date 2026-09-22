@@ -85,7 +85,7 @@ export const STORAGE_FORM_FACTORS = [
  */
 export const MAX_RELEASE_YEAR = new Date().getUTCFullYear() + 1;
 
-// Phase 0의 8개 규칙 + Phase 1의 규칙 9·12·15~19. 규칙이 늘면 여기도 는다.
+// Phase 0의 8개 규칙 + Phase 1의 규칙 9·12·15~20. 규칙이 늘면 여기도 는다.
 export const SPEC_REQUIREMENTS: readonly FieldRequirement[] = [
   // 1. CPU 소켓 = 메인보드 소켓
   { ruleId: 1, category: 'CPU', specKey: 'socket', label: '소켓', severity: 'error', valueType: 'string' },
@@ -165,6 +165,10 @@ export const SPEC_REQUIREMENTS: readonly FieldRequirement[] = [
   { ruleId: 18, category: 'Motherboard', specKey: 'sata_ports_3gbs', label: 'SATA 3Gb/s 포트 수', severity: 'error', valueType: 'number', optional: true },
   { ruleId: 19, category: 'PCCase', specKey: 'internal_3_5_bays', label: '3.5\" 베이 수', severity: 'error', valueType: 'number' },
   { ruleId: 19, category: 'PCCase', specKey: 'internal_2_5_bays', label: '2.5\" 베이 수', severity: 'warning', valueType: 'number' },
+
+  // 20. 쿨러가 CPU 소켓을 지원하는가 (Phase 1, 경고 등급) — docs/compat-rules.md §20
+  { ruleId: 20, category: 'CPU', specKey: 'socket', label: '소켓', severity: 'warning', valueType: 'string' },
+  { ruleId: 20, category: 'CPUCooler', specKey: 'cpu_sockets', label: '지원 소켓', severity: 'warning', valueType: 'string[]' },
 ];
 
 /** 이 카테고리에서 반드시 필요한 (보조 아닌) 필드들. 어드민의 구멍 계산 대상. */
