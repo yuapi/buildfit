@@ -252,3 +252,83 @@ describe('제조사 URL', () => {
     expect(row?.manufacturerUrl).toBeNull();
   });
 });
+
+describe('파생 스펙 — 경로 하나로 안 되는 것 (DERIVED_SPECS)', () => {
+  const board = (m2: unknown, extra: Record<string, unknown> = {}) => ({
+    socket: 'AM5',
+    memory: { ram_type: 'DDR5', slots: 4 },
+    m2_slots: m2,
+    storage_devices: { sata_6_gb_s: 4, sata_3_gb_s: 2 },
+    metadata: { name: '테스트 보드', manufacturer: 'ASUS' },
+    ...extra,
+  });
+  const specs = (r: Record<string, unknown>) =>
+    new Map(
+      (toPartRow('Motherboard', 'bbbbbbbb-0000-0000-0000-000000000000', r)?.specs ?? []).map(
+        (s) => [s.key, s.value],
+      ),
+    );
+
+  it('M.2 슬롯은 배열 길이를 담는다', () => {
+    const s = specs(board([{ size: '2280' }, { size: '2242-2260' }, { size: '2280' }]));
+    expect(s.get('m2_slots')).toBe(3);
+  });
+
+  it('★ 빈 배열은 0으로 담는다 — M.2가 없는 보드는 실재한다', () => {
+    // DDR3의 86.3%, DDR2의 100%가 0이다. 결측으로 지우면 그 사실이 사라진다
+    expect(specs(board([])).get('m2_slots')).toBe(0);
+  });
+
+  it('배열이 아니면 담지 않는다', () => {
+    expect(specs(board(undefined)).has('m2_slots')).toBe(false);
+    expect(specs(board(null)).has('m2_slots')).toBe(false);
+    expect(specs(board('2280')).has('m2_slots')).toBe(false);
+  });
+
+  it('SATA는 속도별로 나눠 담는다 — 합산은 규칙 엔진이 한다', () => {
+    const s = specs(board([]));
+    expect(s.get('sata_ports')).toBe(4);
+    expect(s.get('sata_ports_3gbs')).toBe(2);
+  });
+
+  it('SATA 0포트도 담는다 — 그런 보드가 실재한다', () => {
+    const s = specs(board([], { storage_devices: { sata_6_gb_s: 0, sata_3_gb_s: 0 } }));
+    expect(s.get('sata_ports')).toBe(0);
+    expect(s.get('sata_ports_3gbs')).toBe(0);
+  });
+});
+
+describe('Storage 적재', () => {
+  const drive = (over: Record<string, unknown> = {}) => ({
+    capacity: 2000,
+    storage_type: 'SSD',
+    form_factor: 'M.2-2280',
+    interface: 'M.2 PCIe 4.0 x4',
+    nvme: true,
+    metadata: { name: '990 PRO 2TB', manufacturer: 'Samsung' },
+    ...over,
+  });
+  const specs = (r: Record<string, unknown>) =>
+    new Map(
+      (toPartRow('Storage', 'cccccccc-0000-0000-0000-000000000000', r)?.specs ?? []).map(
+        (s) => [s.key, s.value],
+      ),
+    );
+
+  it('판정에 쓰는 필드를 담는다', () => {
+    const s = specs(drive());
+    expect(s.get('capacity_gb')).toBe(2000);
+    expect(s.get('form_factor')).toBe('M.2-2280');
+    expect(s.get('storage_type')).toBe('SSD');
+    expect(s.get('nvme')).toBe(true);
+    expect(s.get('interface')).toBe('M.2 PCIe 4.0 x4');
+  });
+
+  it('nvme=false는 값이다 — 결측이 아니다', () => {
+    expect(specs(drive({ nvme: false, interface: 'SATA 6.0 Gb/s' })).get('nvme')).toBe(false);
+  });
+
+  it('용량 0GB는 버린다 — 그런 드라이브는 없다', () => {
+    expect(specs(drive({ capacity: 0 })).has('capacity_gb')).toBe(false);
+  });
+});
