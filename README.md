@@ -73,6 +73,7 @@ buildfit은 **가격 비교 커머스가 아니다.** 다나와·에누리와 �
 | `/build/<코드>` | 공유 링크. 견적 내용이 주소에 전부 담긴다 ([ADR-0012](docs/decisions/0012-share-url-format.md)) |
 | `/part`, `/part/<카테고리>`, `/part/<카테고리>/<slug>` | 부품 목록·상세. 빈 값 제보 |
 | `/compare/<a>/vs/<b>` | 같은 축을 공유하는 부품끼리만 비교 |
+| `/calc/power` | 전기요금 계산기. 소비전력만 알 때 — 누진 구간 반영 |
 | `/rules` | 무엇을 검사하고 **무엇을 모르는지** |
 | `/admin` | 빈 필드 보강·값 충돌 목록. 공유 비밀 하나로 막는다 ([ADR-0020](docs/decisions/0020-admin-access-control.md)) |
 
