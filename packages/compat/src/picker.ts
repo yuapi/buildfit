@@ -32,10 +32,21 @@ export type Constraint =
   | { readonly kind: 'oneOf'; readonly key: string; readonly values: readonly string[]; readonly ruleId: number; readonly because: string }
   /** 배열 스펙이 `value`를 포함하지 않으면 제외 */
   | { readonly kind: 'contains'; readonly key: string; readonly value: string; readonly ruleId: number; readonly because: string }
-  /** 숫자 스펙이 `value`보다 크면 제외 */
-  | { readonly kind: 'atMost'; readonly key: string; readonly value: number; readonly ruleId: number; readonly because: string }
+  /**
+   * 숫자 스펙이 `value`보다 크면 제외.
+   *
+   * `ignoreAbove`가 있으면 그보다 큰 값은 **어긋남으로 치지 않는다.** 그 크기가
+   * 그 필드에 있을 수 없는 값이라 단위를 잘못 적은 것이기 때문이다 — 규칙이
+   * 판정 불가로 두는 값을(§15.2) 거르기가 숨겨 버리면, 사용자는 그 부품을
+   * 찾을 방법이 없어진다. 좁히기는 판정이 아니다 (ADR-0016).
+   */
+  | { readonly kind: 'atMost'; readonly key: string; readonly value: number; readonly ruleId: number; readonly because: string; readonly ignoreAbove?: number }
   /** 숫자 스펙이 `value`보다 작으면 제외 */
   | { readonly kind: 'atLeast'; readonly key: string; readonly value: number; readonly ruleId: number; readonly because: string };
+
+/** 슬롯 두께로 받아들일 수 있는 범위. docs/compat-rules.md §15.2 */
+const MIN_SANE_SLOT_WIDTH = 1;
+const MAX_SANE_SLOT_WIDTH = 5;
 
 function filled<T>(v: T | null | undefined): v is T {
   if (v === null || v === undefined) return false;
@@ -103,6 +114,38 @@ export function pickerConstraints(build: Build, slot: PartSlot): Constraint[] {
       value: gpu.lengthMm,
       ruleId: 4,
       because: `${gpu.name} 길이 ${gpu.lengthMm}mm`,
+    });
+  }
+
+  // --- 규칙 15: GPU 두께 ---
+  // 두께가 슬롯 수로 보이지 않는 값은 거르기에 쓰지 않는다 (§15.2). 거르기는 판정이
+  // 아니라 좁히기라서, 이상치로 좁히면 멀쩡한 후보가 조용히 사라진다 (ADR-0016).
+  if (slot === 'gpu' && pcCase && filled(pcCase.expansionSlots) && pcCase.expansionSlots! > 0) {
+    out.push({
+      kind: 'atMost',
+      key: 'total_slot_width',
+      value: pcCase.expansionSlots,
+      // 슬롯 자리에 mm를 적은 레코드가 4건 있다 (§15.2). 규칙이 판정 불가로 두는
+      // 값이니 거르기도 숨기지 않는다.
+      ignoreAbove: MAX_SANE_SLOT_WIDTH,
+      ruleId: 15,
+      because: `${pcCase.name}의 확장 슬롯 ${pcCase.expansionSlots}칸`,
+    });
+  }
+  if (
+    slot === 'pcCase' &&
+    gpu &&
+    gpu.chipOnly !== true &&
+    filled(gpu.totalSlotWidth) &&
+    gpu.totalSlotWidth! >= MIN_SANE_SLOT_WIDTH &&
+    gpu.totalSlotWidth! <= MAX_SANE_SLOT_WIDTH
+  ) {
+    out.push({
+      kind: 'atLeast',
+      key: 'expansion_slots',
+      value: Math.ceil(gpu.totalSlotWidth!),
+      ruleId: 15,
+      because: `${gpu.name}이 차지하는 ${Math.ceil(gpu.totalSlotWidth!)}칸`,
     });
   }
 

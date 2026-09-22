@@ -77,7 +77,11 @@ function conflicts(c: Constraint): SQL {
         and jsonb_array_length(${partSpecs.value}) > 0
         and not (${partSpecs.value} ? ${c.value})`;
     case 'atMost':
-      return sql`${key} and ${isNum} and ${num} > ${c.value}`;
+      // ignoreAbove보다 큰 값은 단위를 잘못 적은 것이라 어긋남으로 치지 않는다.
+      // 규칙이 판정 불가로 두는 값을 거르기가 숨기면 그 부품을 찾을 길이 없다.
+      return c.ignoreAbove === undefined
+        ? sql`${key} and ${isNum} and ${num} > ${c.value}`
+        : sql`${key} and ${isNum} and ${num} > ${c.value} and ${num} <= ${c.ignoreAbove}`;
     case 'atLeast':
       return sql`${key} and ${isNum} and ${num} < ${c.value}`;
   }

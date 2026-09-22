@@ -46,7 +46,15 @@ function sanitize(raw: readonly Constraint[]): Constraint[] {
         : [];
       if (values.length > 0) out.push({ ...c, values });
     } else if (c.kind === 'atMost' || c.kind === 'atLeast') {
-      if (Number.isFinite(c.value)) out.push(c);
+      if (!Number.isFinite(c.value)) continue;
+      // 상한이 왔는데 숫자가 아니면 상한만 버린다. 제약 자체는 살려 둔다 —
+      // 좁히기가 덜 되는 것이 검색이 죽는 것보다 낫다.
+      const above: unknown = c.kind === 'atMost' ? c.ignoreAbove : undefined;
+      out.push(
+        Number.isFinite(above)
+          ? { ...c, ignoreAbove: above as number }
+          : { kind: c.kind, key: c.key, value: c.value, ruleId: c.ruleId, because: c.because },
+      );
     }
   }
   return out;
