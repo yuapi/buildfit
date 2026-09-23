@@ -756,7 +756,13 @@ export const rule21: Rule = ({ cpu, gpu }) => {
     ]);
   }
   return igpu
-    ? pass(21, `그래픽카드 없이도 CPU 내장그래픽(${cpu.integratedGraphics})으로 화면이 나옵니다.`)
+    ? pass(
+        21,
+        // 「화면이 나옵니다」라고 단정하지 않는다 — 보드에 영상 출력 단자가 있어야 한다.
+        // X570 등 단자가 없는 보드가 실재하고, 보드의 후면 단자 목록은 21%만 온전하다 (§21.4)
+        `CPU에 내장그래픽(${cpu.integratedGraphics})이 있어 그래픽카드 없이도 화면을 낼 수 있습니다. ` +
+          '메인보드에 영상 출력 단자(HDMI·DP)가 있어야 합니다.',
+      )
     : fail(
         21,
         'warning',

@@ -21,6 +21,9 @@ describe('규칙 21 (이슈 #23)', () => {
     const r = rule21(noGpu('AMD Radeon Graphics'));
     expect(r?.verdict).toBe('pass');
     expect(r?.message).toContain('AMD Radeon Graphics');
+    // 보드 단자를 모르므로 「화면이 나옵니다」로 단정하지 않는다 (§21.4)
+    expect(r?.message).not.toContain('화면이 나옵니다');
+    expect(r?.message).toContain('영상 출력 단자');
   });
 
   it('★ 그래픽카드도 내장그래픽도 없으면 경고한다 — 화면이 안 나온다', () => {
