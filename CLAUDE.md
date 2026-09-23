@@ -75,7 +75,8 @@ git branch -d feature/1-opendb-schema-research
 - 어드민(빈 필드 보강) ✅ (`/admin`)
 - 국내 유통 매칭 ⛔ **네이버 쇼핑 API가 2026-07-31에 종료됐다** (이슈 #1). 남은 검색 API도
   2026-09-07 약관이 저장·캐싱·AI 입력을 금지한다. **다른 소스를 정해야 한다** —
-  `docs/research/naver-shopping-api-status.md`
+  `docs/research/naver-shopping-api-status.md`. 대체 후보도 전부 막혔다 — 11번가는 판매자 회원만,
+  쿠팡은 시간당 10회, 다나와는 소멸 (`docs/research/domestic-availability-sources.md`)
 
 **Phase 0b — 완료**
 - 호환성 규칙 8개 동작 ✅ (`packages/compat`)
