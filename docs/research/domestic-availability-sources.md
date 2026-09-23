@@ -62,6 +62,9 @@
 
 어느 쪽이든 명세 §5.7.1을 먼저 고치고 승인을 받는다 (작업 규칙 2).
 
+가격비교 사이트가 데이터를 얻는 방식(쇼핑몰이 보내는 EP)과 그에 맞춘 경로는
+`price-comparison-data-flow.md`에 있다.
+
 ## 출처
 
 - [11번가 OPEN API 개발가이드 — 상품검색](https://openapi.11st.co.kr/openapi/OpenApiGuide.tmall?categoryNo=54&apiSpecType=1)
