@@ -169,6 +169,8 @@ export const SPEC_REQUIREMENTS: readonly FieldRequirement[] = [
   // 20. 쿨러가 CPU 소켓을 지원하는가 (Phase 1, 경고 등급) — docs/compat-rules.md §20
   { ruleId: 20, category: 'CPU', specKey: 'socket', label: '소켓', severity: 'warning', valueType: 'string' },
   { ruleId: 20, category: 'CPUCooler', specKey: 'cpu_sockets', label: '지원 소켓', severity: 'warning', valueType: 'string[]' },
+  // 그래픽카드는 선언하지 않는다 — 안 고른 것이 이 규칙의 입력이다 (§21)
+  { ruleId: 21, category: 'CPU', specKey: 'integrated_graphics', label: '내장 그래픽', severity: 'warning', valueType: 'string' },
 ];
 
 /** 이 카테고리에서 반드시 필요한 (보조 아닌) 필드들. 어드민의 구멍 계산 대상. */

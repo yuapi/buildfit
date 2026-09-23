@@ -55,6 +55,8 @@ export const RULE_PARTS: Readonly<Record<number, readonly PartSlot[]>> = {
   18: ['storage', 'motherboard'],
   19: ['storage', 'pcCase'],
   20: ['cpu', 'cooler'],
+  // 그래픽카드는 없어도 된다. **안 고른 것이 이 규칙의 입력이다** (§21)
+  21: ['cpu'],
 };
 
 /**
@@ -80,6 +82,7 @@ export const RULE_SUMMARY: Readonly<Record<number, string>> = {
   18: 'SATA 드라이브가 보드 포트 수 안인가',
   19: '3.5\"·2.5\" 드라이브가 케이스 베이 수 안인가',
   20: '쿨러가 CPU 소켓을 지원하는가',
+  21: '그래픽카드 없이도 화면이 나오는가 (내장그래픽)',
 };
 
 function isPicked(build: Build, slot: PartSlot): boolean {

@@ -43,6 +43,13 @@ export interface Cpu extends PartRef {
   readonly releaseYear: number | null;
   /** 메모리 컨트롤러가 다루는 최대 총 용량 (GB). 규칙 16 (§16) */
   readonly memoryMaxGb: number | null;
+  /**
+   * 내장그래픽 모델 이름. 규칙 21 (§21).
+   *
+   * **「없음」 표기가 두 가지다** — `"None"`과 `"0"`. 판단은 `hasIntegratedGraphics`
+   * 하나로 한다. `null`은 결측이다.
+   */
+  readonly integratedGraphics: string | null;
 }
 
 export interface Motherboard extends PartRef {
