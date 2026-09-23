@@ -99,6 +99,8 @@ export interface RamKit extends PartRef {
   /** 이 키트의 **총** 용량 (GB). 모듈 하나가 아니라 합계다. 규칙 16 (§16) */
   readonly capacityGb: number | null;
   readonly heightMm: number | null;
+  /** `288-pin DIMM`·`262-pin SO-DIMM` 등. 규칙 23 (§23). `null`은 결측이다 */
+  readonly formFactor: string | null;
 }
 
 /** GPU 보조전원 커넥터. GPU는 12VHPWR과 12V-2x6을 나눠 센다. */

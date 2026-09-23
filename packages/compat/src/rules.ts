@@ -795,6 +795,51 @@ export const rule22: Rule = ({ cpu, cooler }) => {
       );
 };
 
+/** 노트북용 메모리인가. 원본 표기는 `262-pin SO-DIMM`처럼 핀 수가 앞에 붙는다 (§23.1) */
+export function isSoDimm(formFactor: string): boolean {
+  return /so-?dimm/i.test(formFactor);
+}
+
+/**
+ * 규칙 23 — 노트북용(SO-DIMM) 메모리를 데스크톱 보드에 골랐는가. docs/compat-rules.md §23, 이슈 #25.
+ *
+ * 규칙 2는 DDR 규격만 본다. SO-DIMM DDR5 키트를 DDR5 보드에 담아도 통과였다.
+ *
+ * **경고다.** 보드에 슬롯 형태 필드가 없다 — 「데스크톱 보드 대부분은 DIMM」까지만
+ * 말할 수 있다. **Thin Mini-ITX는 판정하지 않는다** — 규격상 SO-DIMM을 쓰기도 한다 (§23.2).
+ */
+export const rule23: Rule = ({ ram, motherboard }) => {
+  if (ram.length === 0 || !motherboard) return null;
+  const gaps = ram.filter((k) => !isFilled(k.formFactor)).map((k) => ref(k, '메모리 폼팩터'));
+  if (gaps.length > 0) {
+    return missing(23, '메모리 폼팩터 정보가 없어 노트북용 메모리인지 판정하지 못했습니다.', gaps);
+  }
+  const soDimm = ram.filter((k) => isSoDimm(k.formFactor!));
+  // DIMM이면 보드를 볼 필요가 없다
+  if (soDimm.length === 0) return pass(23, '데스크톱용(DIMM) 메모리입니다.');
+  // SO-DIMM일 때만 보드 폼팩터가 필요하다 — Thin Mini-ITX를 가려내야 한다 (§23.2)
+  if (!isFilled(motherboard.formFactor)) {
+    return missing(23, '메인보드 폼팩터 정보가 없어 노트북용 메모리가 들어가는지 판정하지 못했습니다.', [
+      ref(motherboard, '폼팩터'),
+    ]);
+  }
+  if (/thin/i.test(motherboard.formFactor!)) {
+    return missing(
+      23,
+      'Thin Mini-ITX 보드는 노트북용(SO-DIMM) 슬롯을 쓰기도 해 판정하지 못했습니다. 보드의 메모리 슬롯 형태를 확인해 주세요.',
+      [ref(motherboard, '메모리 슬롯 형태')],
+    );
+  }
+  const names = soDimm.map((k) => k.name).join(', ');
+  return fail(
+    23,
+    'warning',
+    // 이름 뒤에 조사를 붙이지 않는다 — 받침 여부를 모른다 (korean-particle.test.ts)
+    `노트북용(SO-DIMM) 메모리가 있습니다: ${names}. 데스크톱 메인보드는 대부분 DIMM 슬롯이라 ` +
+      '들어가지 않습니다. 보드의 메모리 슬롯 형태를 확인해 주세요.',
+  );
+};
+
 export const phase0Rules: readonly Rule[] = [rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8];
 
 /** Phase 1에서 추가된 규칙까지. 명세 §4.2 */
@@ -841,4 +886,5 @@ export const phase1Rules: readonly Rule[] = [
   rule20,
   rule21,
   rule22,
+  rule23,
 ];
