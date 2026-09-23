@@ -198,6 +198,10 @@ export async function ingest(opts: IngestOptions): Promise<void> {
             sourceUrl: sql`excluded.source_url`,
             updatedAt: sql`now()`,
           },
+          // ★ 사람이 출처와 함께 고친 행은 덮지 않는다 (이슈 #19). 어긋난 값 고치기
+          // (이슈 #12)는 전부 OpenDB에 값이 있는 필드라, 덮으면 다음 적재에 틀린 값이
+          // 조용히 돌아온다. 출처 없는 행은 사람 것일 수 없다 — saveSpec이 출처를 요구한다
+          setWhere: sql`${partSpecs.sourceUrl} is null or ${partSpecs.sourceUrl} like 'https://github.com/buildcores/%'`,
         });
     }
 
