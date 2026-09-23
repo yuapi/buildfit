@@ -59,6 +59,7 @@ export const RULE_PARTS: Readonly<Record<number, readonly PartSlot[]>> = {
   21: ['cpu'],
   // 쿨러는 없어도 된다. **안 고른 것이 이 규칙의 입력이다** (§22)
   22: ['cpu'],
+  23: ['ram', 'motherboard'],
 };
 
 /**
@@ -86,6 +87,7 @@ export const RULE_SUMMARY: Readonly<Record<number, string>> = {
   20: '쿨러가 CPU 소켓을 지원하는가',
   21: '그래픽카드 없이도 화면이 나오는가 (내장그래픽)',
   22: 'CPU 쿨러가 있는가 (기본 쿨러)',
+  23: '노트북용(SO-DIMM) 메모리가 아닌가',
 };
 
 function isPicked(build: Build, slot: PartSlot): boolean {

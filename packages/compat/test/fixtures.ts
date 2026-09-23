@@ -39,6 +39,7 @@ export const ramKit: RamKit = {
   moduleCount: 2,
   capacityGb: 32,
   heightMm: 44,
+  formFactor: '288-pin DIMM',
 };
 
 export const gpu: Gpu = {

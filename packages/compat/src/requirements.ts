@@ -173,6 +173,10 @@ export const SPEC_REQUIREMENTS: readonly FieldRequirement[] = [
   { ruleId: 21, category: 'CPU', specKey: 'integrated_graphics', label: '내장 그래픽', severity: 'warning', valueType: 'string' },
   // 쿨러는 선언하지 않는다 — 안 고른 것이 이 규칙의 입력이다 (§22)
   { ruleId: 22, category: 'CPU', specKey: 'includes_cooler', label: '기본 쿨러 포함', severity: 'warning', valueType: 'boolean' },
+  { ruleId: 23, category: 'RAM', specKey: 'form_factor', label: '메모리 폼팩터', severity: 'warning', valueType: 'string' },
+  // 보드 폼팩터는 SO-DIMM일 때 Thin Mini-ITX를 가려내는 데만 쓴다 (§23.2). 보조 입력이다 —
+  // DIMM 키트는 보드 폼팩터 없이도 판정된다
+  { ruleId: 23, category: 'Motherboard', specKey: 'form_factor', label: '폼팩터', severity: 'warning', valueType: 'string', optional: true },
 ];
 
 /** 이 카테고리에서 반드시 필요한 (보조 아닌) 필드들. 어드민의 구멍 계산 대상. */

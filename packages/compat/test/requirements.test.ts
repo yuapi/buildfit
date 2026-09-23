@@ -88,6 +88,7 @@ const BLANK: Record<string, () => Build> = {
     f.withBuild({ gpu: null, cpu: { ...f.cpu, integratedGraphics: null } }),
   // 쿨러를 고르면 기본 쿨러를 보지 않는다. 안 고른 견적에서 비워야 한다 (§22)
   'CPU.includes_cooler': () => f.withBuild({ cooler: null, cpu: { ...f.cpu, includesCooler: null } }),
+  'RAM.form_factor': () => f.withBuild({ ram: [{ ...f.ramKit, formFactor: null }] }),
 };
 
 describe('요구사항 선언 ↔ 규칙 구현 정합성', () => {

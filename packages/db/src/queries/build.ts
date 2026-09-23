@@ -173,6 +173,7 @@ function toRamKit(p: RawPart): RamKit {
     moduleCount: num(p.specs, 'module_count'),
     capacityGb: num(p.specs, 'capacity_gb'),
     heightMm: num(p.specs, 'height_mm'),
+    formFactor: str(p.specs, 'form_factor'),
   };
 }
 
