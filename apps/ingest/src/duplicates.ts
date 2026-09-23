@@ -130,6 +130,10 @@ export async function flagConflictingSpecs(db: Database): Promise<ConflictResult
     set disputed = true
     from grp g, conflicting c
     where s.part_id = g.id and g.canon = c.canon and s.key = c.key and s.disputed = false
+      -- 사람이 출처와 함께 확인한 행은 세우지 않는다 (이슈 #19). 어긋남이 남아도
+      -- 의심할 쪽은 확인되지 않은 OpenDB 값이다. 세우면 「채우면 표시가 풀린다」가
+      -- 다음 적재에 거짓이 된다
+      and (s.source_url is null or s.source_url like 'https://github.com/buildcores/%')
   `);
 
   /**
@@ -155,7 +159,11 @@ export async function flagConflictingSpecs(db: Database): Promise<ConflictResult
     from grp g
     where s.part_id = g.id
       and s.disputed = true
-      and not exists (select 1 from conflicting c where c.canon = g.canon and c.key = s.key)
+      and (
+        not exists (select 1 from conflicting c where c.canon = g.canon and c.key = s.key)
+        -- 사람이 확인한 행은 이 검사가 세우지 않는다. 이전 적재가 세워 둔 것이면 거둔다
+        or (s.source_url is not null and s.source_url not like 'https://github.com/buildcores/%')
+      )
       and not exists (
         select 1 from spec_reports r
         where r.part_id = s.part_id and r.spec_key = s.key and r.status = 'open'
