@@ -1,7 +1,7 @@
 'use server';
 
 import type { Build, Constraint } from '@buildfit/compat';
-import { loadBuild } from '@buildfit/db/build';
+import { loadBuild, type BuildSelection } from '@buildfit/db/build';
 import { searchCandidates, type PartOption } from '@buildfit/db/picker';
 import { matchQuote, type QuoteLineResult } from '@buildfit/db/quote';
 import { SLOT_META, type SlotName } from '@/lib/categories';
@@ -108,14 +108,9 @@ export async function searchParts(
  * 클라이언트가 이 객체를 들고 **직접 규칙 엔진을 돌린다** (ADR-0010).
  * 부품을 빼거나 바꿀 때 서버 왕복 없이 즉시 다시 판정된다.
  */
-export async function fetchBuildParts(selection: {
-  cpu?: string | undefined;
-  motherboard?: string | undefined;
-  gpu?: string | undefined;
-  pcCase?: string | undefined;
-  psu?: string | undefined;
-  ram?: readonly string[] | undefined;
-}): Promise<QueryResult<Build>> {
+// 선택 모양은 DB 계층의 것을 그대로 쓴다. 따로 적었더니 쿨러·스토리지가 빠진 채로
+// 남아 있었다 — 호출부가 변수를 넘겨 타입 검사를 비켜 갔을 뿐 실제로는 넘어오고 있었다
+export async function fetchBuildParts(selection: BuildSelection): Promise<QueryResult<Build>> {
   try {
     return { ok: true, data: await loadBuild(getDb(), selection) };
   } catch {
