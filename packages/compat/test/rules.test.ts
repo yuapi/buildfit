@@ -684,10 +684,15 @@ describe('16. 총 메모리 용량 ≤ 보드·CPU 최대 (Phase 1)', () => {
 describe('17. M.2 드라이브를 보드가 받는가 (Phase 1)', () => {
   const m2 = (n: number) =>
     Array.from({ length: n }, (_, i) => ({ ...f.drive, id: `m2-${i}` }));
-  const build = (drives: number, rows: number | null, memoryType = 'DDR5') =>
+  const build = (
+    drives: number,
+    rows: number | null,
+    memoryType = 'DDR5',
+    m2Accepts: readonly string[] | null = null,
+  ) =>
     f.withBuild({
       storage: m2(drives),
-      motherboard: { ...f.motherboard, m2Slots: rows, memoryType },
+      motherboard: { ...f.motherboard, m2Slots: rows, memoryType, m2Accepts },
     });
 
   it('★ M.2 슬롯이 없는 보드는 error — 이것만 셀 수 있다 (§17.4)', () => {
@@ -702,11 +707,66 @@ describe('17. M.2 드라이브를 보드가 받는가 (Phase 1)', () => {
   it('★ 슬롯이 있으면 개수를 세지 않는다 — 배열 길이가 슬롯 수가 아니다 (§17.4)', () => {
     // ASUS PRIME B650M-A는 슬롯 2개인데 4행, Gigabyte Z790 AORUS ELITE AX는
     // 슬롯 4개인데 3행이다. 같은 계열이 다른 행 수로 존재하는 것이 138건이다
-    for (const [drives, rows] of [[1, 3], [3, 2], [5, 4]] as const) {
-      const r = rule17(build(drives, rows));
+    // 받는 조합을 알아도 드라이브가 둘 이상이면 센 것이 된다 — 두 행이 한 슬롯일 수 있다
+    const accepts = ['2280/PCIe'];
+    for (const [drives, rows, acc] of [[1, 3, null], [2, 4, accepts], [3, 2, accepts], [5, 4, accepts]] as const) {
+      const r = rule17(build(drives, rows, 'DDR5', acc));
       expect(r?.verdict, `드라이브 ${drives} / 행 ${rows}`).toBe('unknown');
       expect(r?.reason?.kind).toBe('inconsistent');
     }
+  });
+
+  describe('§17.5 드라이브가 하나면 행의 내용으로 판정한다 (이슈 #27)', () => {
+    it('★ 받는 행이 있으면 pass — 몇 개인지 몰라도 하나는 들어간다', () => {
+      const r = rule17(build(1, 4, 'DDR5', ['2242/PCIe', '2280/PCIe']));
+      expect(r?.verdict).toBe('pass');
+      expect(r?.message).toContain('2280');
+      expect(r?.message).toContain('PCIe');
+    });
+
+    it('★ 받는 행이 없어도 error가 아니다 — 덜 적은 레코드가 있다 (§17.4)', () => {
+      // SATA M.2 드라이브: 보드 행 대부분이 SATA 지원을 적지 않았다
+      const sataM2 = { ...f.drive, interface: 'M.2 SATA' };
+      const b = f.withBuild({
+        storage: [sataM2],
+        motherboard: { ...f.motherboard, m2Slots: 2, m2Accepts: ['2280/PCIe'] },
+      });
+      expect(rule17(b)?.verdict).toBe('unknown');
+      // 길이가 안 맞아도 마찬가지다
+      const short = { ...f.drive, formFactor: 'M.2-2230' };
+      expect(
+        rule17(f.withBuild({ storage: [short], motherboard: { ...f.motherboard, m2Accepts: ['2280/PCIe'] } }))?.verdict,
+      ).toBe('unknown');
+    });
+
+    it('SATA 방식을 적은 행은 SATA M.2를 받는다', () => {
+      const sataM2 = { ...f.drive, interface: 'M.2 SATA' };
+      const b = f.withBuild({
+        storage: [sataM2],
+        motherboard: { ...f.motherboard, m2Accepts: ['2280/PCIe', '2280/SATA'] },
+      });
+      expect(rule17(b)?.verdict).toBe('pass');
+    });
+
+    it('드라이브의 방식을 모르면 판정하지 않는다', () => {
+      const b = f.withBuild({
+        storage: [{ ...f.drive, interface: null }],
+        motherboard: { ...f.motherboard, m2Accepts: ['2280/PCIe', '2280/SATA'] },
+      });
+      expect(rule17(b)?.verdict).toBe('unknown');
+    });
+
+    it('M.2가 아닌 드라이브는 세지 않는다 — M.2 하나 + SATA 하나도 드라이브 1개다', () => {
+      const b = f.withBuild({
+        storage: [f.drive, f.sataDrive],
+        motherboard: { ...f.motherboard, m2Accepts: ['2280/PCIe'] },
+      });
+      expect(rule17(b)?.verdict).toBe('pass');
+    });
+
+    it('슬롯이 없는 보드는 받는 조합과 무관하게 error다', () => {
+      expect(rule17(build(1, 0, 'DDR4', ['2280/PCIe']))?.verdict).toBe('fail');
+    });
   });
 
   it('M.2 드라이브가 없으면 pass — 볼 것이 없다', () => {
@@ -858,12 +918,13 @@ describe('19. 3.5"·2.5" 드라이브 수 ≤ 케이스 베이 수 (Phase 1)', (
 });
 
 describe('엔진', () => {
-  it('정상 견적은 18개 규칙이 통과하고 1개가 판정 불가다', () => {
+  it('정상 견적은 19개 규칙이 전부 통과한다', () => {
     const v = evaluate(f.goodBuild);
-    // 규칙 17은 슬롯 수를 셀 수 없어 판정 불가다 (§17.4). 정상 동작이다
-    expect(v.counts.pass).toBe(18);
+    // 규칙 17은 전에 슬롯 수를 셀 수 없어 판정 불가였다. M.2 드라이브가 하나라
+    // 받는 행으로 판정한다 (§17.5, 이슈 #27)
+    expect(v.counts.pass).toBe(19);
     expect(v.counts.fail).toBe(0);
-    expect(v.counts.unknown).toBe(1);
+    expect(v.counts.unknown).toBe(0);
   });
 
   it('고르지 않은 부품의 규칙은 결과에서 빠진다', () => {

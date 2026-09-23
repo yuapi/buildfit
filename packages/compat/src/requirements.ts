@@ -160,6 +160,9 @@ export const SPEC_REQUIREMENTS: readonly FieldRequirement[] = [
   // 17·18·19. 스토리지 (Phase 1)
   { ruleId: 17, category: 'Storage', specKey: 'form_factor', label: '규격', severity: 'error', valueType: 'string', options: STORAGE_FORM_FACTORS },
   { ruleId: 17, category: 'Motherboard', specKey: 'm2_slots', label: 'M.2 슬롯 수', severity: 'error', valueType: 'number' },
+  // 드라이브가 하나일 때만 본다. 없으면 지금처럼 판정 불가다 (docs/compat-rules.md §17.5)
+  { ruleId: 17, category: 'Storage', specKey: 'interface', label: '인터페이스', severity: 'error', valueType: 'string', optional: true },
+  { ruleId: 17, category: 'Motherboard', specKey: 'm2_accepts', label: '받는 M.2 조합', severity: 'error', valueType: 'string[]', optional: true },
   { ruleId: 18, category: 'Storage', specKey: 'interface', label: '인터페이스', severity: 'error', valueType: 'string' },
   { ruleId: 18, category: 'Motherboard', specKey: 'sata_ports', label: 'SATA 6Gb/s 포트 수', severity: 'error', valueType: 'number' },
   { ruleId: 18, category: 'Motherboard', specKey: 'sata_ports_3gbs', label: 'SATA 3Gb/s 포트 수', severity: 'error', valueType: 'number', optional: true },

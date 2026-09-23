@@ -8,7 +8,7 @@
 
 import { describeCaseReference } from './case-reference';
 import type { Build, Gpu, StorageDrive } from './parts';
-import { bayKind, unplacedDrives, usesM2Slot, usesSataPort } from './storage';
+import { bayKind, m2Requirement, unplacedDrives, usesM2Slot, usesSataPort } from './storage';
 import {
   type FieldRef,
   type RuleResult,
@@ -570,6 +570,23 @@ export const rule17: Rule = ({ motherboard, storage }) => {
     return withNotes(
       fail(17, 'error', `${motherboard.name}에는 M.2 슬롯이 없는데 M.2 드라이브 ${need}개를 담았습니다.`),
     );
+  }
+
+  /**
+   * ★ 드라이브가 **하나**면 행의 내용으로 판정한다 (§17.5, 이슈 #27).
+   *
+   * 행의 개수는 못 믿어도 적힌 행 하나하나는 실제 슬롯이다. 받는 행이 있으면 몇 개인지
+   * 몰라도 하나는 들어간다. **받는 행이 없어도 오류가 아니다** — 덜 적은 레코드가 있다.
+   */
+  if (need === 1) {
+    const drive = storage.find(usesM2Slot)!;
+    const want = m2Requirement(drive);
+    if (want && motherboard.m2Accepts?.includes(want)) {
+      const [len, protocol] = want.split('/');
+      return withNotes(
+        pass(17, `M.2 슬롯에 이 드라이브가 들어갑니다 (${len} 길이 · ${protocol} 방식). 속도는 보지 않습니다.`),
+      );
+    }
   }
 
   /**
