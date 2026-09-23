@@ -307,6 +307,63 @@ describe('파생 스펙 — 경로 하나로 안 되는 것 (DERIVED_SPECS)', ()
     expect(specs(board('2280')).has('m2_slots')).toBe(false);
   });
 
+  describe('m2_accepts — 받는 조합 (compat-rules §17.5, 이슈 #27)', () => {
+    it('길이와 방식을 짝지어 정렬된 집합으로 담는다', () => {
+      const s = specs(board([
+        { size: '2280', key: 'M', interface: 'PCIe 4.0 x4' },
+        { size: '2242/2260/2280', key: 'M', interface: 'PCIe 3.0 x4 / SATA' },
+      ]));
+      expect(s.get('m2_accepts')).toEqual([
+        '2242/PCIe', '2242/SATA', '2260/PCIe', '2260/SATA', '2280/PCIe', '2280/SATA',
+      ]);
+    });
+
+    it('범위는 사이의 표준 길이를 모두 담는다', () => {
+      const s = specs(board([{ size: '2242-2260', key: 'M', interface: 'PCIe 4.0 x4' }]));
+      expect(s.get('m2_accepts')).toEqual(['2242/PCIe', '2260/PCIe']);
+      const t = specs(board([{ size: '2280-22110', key: 'M', interface: 'Gen4 x4' }]));
+      expect(t.get('m2_accepts')).toEqual(['22110/PCIe', '2280/PCIe']);
+    });
+
+    it('★ 한 슬롯을 크기마다 쪼갠 기록과 합친 기록이 같은 값이다 — 중복 불일치로 잡히지 않는다', () => {
+      // ASUS PRIME B650M-A는 4행, 같은 보드의 WIFI II는 2행이다 (§17.4)
+      const split = specs(board([
+        { size: '2242-2260', key: 'M', interface: 'PCIe 4.0 x4' },
+        { size: '2280', key: 'M', interface: 'PCIe 4.0 x4' },
+        { size: '2242-2260', key: 'M', interface: 'PCIe 4.0 x4' },
+        { size: '2280', key: 'M', interface: 'PCIe 4.0 x4' },
+      ]));
+      const merged = specs(board([
+        { size: '2242/2260/2280', key: 'M', interface: 'PCIe 4.0 x4' },
+        { size: '2242/2260/2280', key: 'M', interface: 'PCIe 4.0 x4' },
+      ]));
+      expect(split.get('m2_accepts')).toEqual(merged.get('m2_accepts'));
+    });
+
+    it('M키가 아니거나 모르는 행은 받지 않는다고 본다', () => {
+      const s = specs(board([
+        { size: '2280', key: 'B', interface: 'SATA' },
+        { size: '2280', interface: 'PCIe 4.0 x4' },
+        { size: '2230', key: 'E', interface: 'PCIe' },
+      ]));
+      expect(s.has('m2_accepts')).toBe(false);
+    });
+
+    it('폭 25mm 행과 읽을 수 없는 크기는 버린다', () => {
+      const s = specs(board([
+        { size: '2580-25110', key: 'M', interface: 'PCIe 4.0 x4' },
+        { size: '110mm', key: 'M', interface: 'PCIe 4.0 x4' },
+        { size: '2280', key: 'M', interface: 'PCIe 4.0 x4' },
+      ]));
+      expect(s.get('m2_accepts')).toEqual(['2280/PCIe']);
+    });
+
+    it('받는 조합이 없으면 담지 않는다 — 규칙 17이 판정 불가로 둔다', () => {
+      expect(specs(board([])).has('m2_accepts')).toBe(false);
+      expect(specs(board(undefined)).has('m2_accepts')).toBe(false);
+    });
+  });
+
   it('SATA는 속도별로 나눠 담는다 — 합산은 규칙 엔진이 한다', () => {
     const s = specs(board([]));
     expect(s.get('sata_ports')).toBe(4);

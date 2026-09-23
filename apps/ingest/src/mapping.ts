@@ -146,19 +146,75 @@ export const DERIVED_SPECS: Readonly<
      * 들어가는 것은 1개다 (docs/research/m2-slot-count.md §3).
      */
     m2_slots: (r) => storageM2Rows(r)?.length,
+    /**
+     * 드라이브를 받는 조합 `길이/방식`의 정렬된 집합 — 규칙 17이 드라이브 1개를 판정한다
+     * (docs/compat-rules.md §17.5).
+     *
+     * **행을 그대로 담지 않는다.** 같은 제품이 4행·2행 기록으로 있어서(§17.4) 행을 담으면
+     * 중복 불일치로 잡힌다. 집합이면 쪼갠 행과 합친 행이 같은 값이 된다.
+     */
+    m2_accepts: (r) => m2Accepts(storageM2Rows(r)),
   },
 };
 
+/** 드라이브 길이 표준값. 폭 22mm만 — 드라이브가 전부 22mm다 */
+const M2_LENGTHS = [2230, 2242, 2260, 2280, 22110] as const;
+
+/**
+ * `2280` · `2242/2260/2280` · `2242-2260`(범위) · `22110/2280`을 길이 집합으로.
+ * 폭 25mm(`2580-25110`)처럼 22로 시작하지 않는 것은 버린다.
+ */
+function m2Lengths(size: unknown): number[] {
+  const out = new Set<number>();
+  for (const tok of String(size ?? '').split(/[/,]/)) {
+    const t = tok.trim();
+    const range = /^(22\d{2,3})\s*-\s*(22\d{2,3})$/.exec(t);
+    if (range) {
+      const [lo, hi] = [Number(range[1]), Number(range[2])];
+      for (const l of M2_LENGTHS) if (l >= lo && l <= hi) out.add(l);
+    } else if (/^22\d{2,3}$/.test(t) && (M2_LENGTHS as readonly number[]).includes(Number(t))) {
+      out.add(Number(t));
+    }
+  }
+  return [...out];
+}
+
+/** 행의 인터페이스가 받는 방식. `PCIe 4.0 x4 / SATA`면 둘 다 */
+function m2Protocols(iface: unknown): ('PCIe' | 'SATA')[] {
+  const s = String(iface ?? '').toUpperCase();
+  const out: ('PCIe' | 'SATA')[] = [];
+  if (s.includes('PCIE') || s.includes('PCI-E') || /GEN\s*\d/.test(s)) out.push('PCIe');
+  if (s.includes('SATA')) out.push('SATA');
+  return out;
+}
+
+function m2Accepts(rows: readonly M2Row[] | undefined): string[] | undefined {
+  if (!rows) return undefined;
+  const out = new Set<string>();
+  for (const row of rows) {
+    // M키만 받는다. B키만 있는 행(2건)·키가 없는 행(12건)은 무엇이 들어가는지 모른다
+    if (String(row.key ?? '').toUpperCase() !== 'M') continue;
+    for (const len of m2Lengths(row.size)) {
+      for (const p of m2Protocols(row.interface)) out.add(`${len}/${p}`);
+    }
+  }
+  return [...out].sort();
+}
+
 /** E키(와이파이)를 뺀 M.2 행. 저장장치가 들어가는 자리만 남는다. */
-function storageM2Rows(
-  record: Record<string, unknown>,
-): { size: unknown }[] | undefined {
+interface M2Row {
+  readonly size: unknown;
+  readonly key: unknown;
+  readonly interface: unknown;
+}
+
+function storageM2Rows(record: Record<string, unknown>): M2Row[] | undefined {
   const raw = record['m2_slots'];
   if (!Array.isArray(raw)) return undefined;
   return raw
     .filter((m): m is Record<string, unknown> => m !== null && typeof m === 'object')
     .filter((m) => String(m['key'] ?? '').toUpperCase() !== 'E')
-    .map((m) => ({ size: m['size'] }));
+    .map((m) => ({ size: m['size'], key: m['key'], interface: m['interface'] }));
 }
 
 /**
