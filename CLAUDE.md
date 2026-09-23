@@ -73,7 +73,9 @@ git branch -d feature/1-opendb-schema-research
 **Phase 0a — 유통 매칭만 남음 (막힘)**
 - OpenDB 적재 ✅ 부품 26,485건 (`apps/ingest`)
 - 어드민(빈 필드 보강) ✅ (`/admin`)
-- 국내 유통 매칭 ⛔ **네이버 쇼핑 API 키 대기** (이슈 #1, handoff-guide §7)
+- 국내 유통 매칭 ⛔ **네이버 쇼핑 API가 2026-07-31에 종료됐다** (이슈 #1). 남은 검색 API도
+  2026-09-07 약관이 저장·캐싱·AI 입력을 금지한다. **다른 소스를 정해야 한다** —
+  `docs/research/naver-shopping-api-status.md`
 
 **Phase 0b — 완료**
 - 호환성 규칙 8개 동작 ✅ (`packages/compat`)
