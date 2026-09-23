@@ -1,5 +1,10 @@
 import Link from 'next/link';
-import { conflictingSpecs, fieldGapSummary, implausibleReleaseYears } from '@buildfit/db/queries';
+import {
+  conflictingSpecs,
+  fieldGapSummary,
+  implausibleReleaseYears,
+  inconsistentRamKits,
+} from '@buildfit/db/queries';
 import { openSpecReports } from '@buildfit/db/part';
 import { specLabel, specValueText } from '@/lib/spec-labels';
 import { Container } from '@/components/SiteShell';
@@ -15,11 +20,12 @@ export default async function AdminHome() {
   await requireAdmin();
 
   const db = getDb();
-  const [gaps, reports, conflicts, earlyYears] = await Promise.all([
+  const [gaps, reports, conflicts, earlyYears, badKits] = await Promise.all([
     fieldGapSummary(db),
     openSpecReports(db, 20),
     conflictingSpecs(db, 100),
     implausibleReleaseYears(db),
+    inconsistentRamKits(db),
   ]);
   const open = gaps.filter((g) => g.missingParts > 0);
   const totalMissing = open.reduce((n, g) => n + g.missingParts, 0);
@@ -171,6 +177,42 @@ export default async function AdminHome() {
                 <p className="mt-0.5 text-xs text-fg-muted tnum">
                   {y.socket} · 원본 {y.year}년 · 이 소켓의 다음 연도는 {y.nextYear}년 (연도가 있는{' '}
                   {y.socketCount}건 중 앞선 {y.leadCount}건)
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/*
+        모듈 수 × 모듈 용량 ≠ 총 용량 (이슈 #20). 경계값 없는 신호다 — 산술이 맞거나
+        안 맞거나. 규칙 3(오류 등급)과 16이 이 값을 읽는다.
+      */}
+      {badKits.length > 0 && (
+        <section className="mt-8">
+          <h2 className="font-medium">
+            스스로 모순인 메모리{' '}
+            <span className="text-sm font-normal text-fg-subtle">{badKits.length}건</span>
+          </h2>
+          <p className="mt-1 text-xs leading-relaxed text-fg-subtle">
+            모듈 수 × 모듈 용량이 총 용량과 다르거나 이름의 구성과 다르다. 어딘가 틀렸다.
+            <strong className="font-medium"> 어느 값인지는 고르지 않는다</strong> — 출처를 보고
+            틀린 값을 고치면 표시가 풀린다.
+          </p>
+          <ul className="mt-3 space-y-2">
+            {badKits.map((k) => (
+              <li key={k.partId} className="card border-warn-border p-3 text-sm">
+                <div className="flex flex-wrap items-baseline gap-x-2">
+                  <Link href={`/admin/parts/${k.partId}?focus=capacity_gb`} className="link">
+                    {k.modelName}
+                  </Link>
+                  <span className="text-xs text-fg-subtle">RAM · 규칙 #3, #16</span>
+                </div>
+                <p className="mt-0.5 text-xs text-fg-muted tnum">
+                  값: {k.moduleCount ?? '?'} × {k.moduleCapacityGb ?? '?'}GB = 총 {k.capacityGb ?? '?'}GB
+                  {k.nameCount !== null && k.nameModuleGb !== null && (
+                    <> · 이름: {k.nameCount} × {k.nameModuleGb}GB</>
+                  )}
                 </p>
               </li>
             ))}

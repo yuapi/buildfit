@@ -97,7 +97,7 @@ export default async function RulesPage() {
       <p className="mt-2 text-sm leading-relaxed text-fg-subtle">
         값이 <strong className="font-medium text-fg">어긋나는</strong> 경우도 있습니다. 같은
         제품이 원본에 여러 번 들어 있고 값이 다르거나, 출시 연도가 그 소켓이 나오기 전으로
-        적혀 있거나, 오류 신고가 들어온 값입니다. 그때는
+        적혀 있거나, 메모리의 모듈 수·용량이 서로 맞지 않거나, 오류 신고가 들어온 값입니다. 그때는
         판정을 지우지 않고 <strong className="font-medium text-fg">&lsquo;검증 중인 값으로
         판정했습니다&rsquo;</strong>라고 함께 적습니다 — 어느 쪽이 맞는지는 저희가 고르지
         않습니다. 다수결도 최신순도 근거가 아닙니다.

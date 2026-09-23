@@ -19,7 +19,7 @@
 
 import { sql } from 'drizzle-orm';
 import type { Database } from '@buildfit/db';
-import { implausibleYearSelect } from '@buildfit/db/queries';
+import { RAM_LAYOUT_KEYS, implausibleYearSelect, inconsistentRamSelect } from '@buildfit/db/queries';
 
 export interface ImplausibleYearResult {
   /** 지금 `disputed`가 선 연도 행 수 */
@@ -42,4 +42,39 @@ export async function flagImplausibleYears(db: Database): Promise<ImplausibleYea
       where part_specs.source_url like 'https://github.com/buildcores/%'
   `);
   return { flagged: Number(result.count ?? 0) };
+}
+
+/**
+ * 스스로 모순인 메모리 레코드의 세 값에 `disputed`를 세운다 — 이슈 #20.
+ *
+ * 모듈 수 × 모듈 용량 = 총 용량이 아니거나 이름의 `(2x16GB)`와 다르면 어딘가 틀렸다.
+ * **어느 값인지 고르지 않는다** — 셋에 모두 세운다. 사람이 확인한 행은 건드리지 않는다.
+ *
+ * 이 행들은 OpenDB가 매번 쓰는 행이라 지워지지 않는다. 업스트림이 고치면 중복 불일치
+ * 검사의 거두기가 걷는다 (그 거두기는 지금 모순인 것만 뺀다).
+ *
+ * **`flagConflictingSpecs` 다음에 부른다.** 순서까지 맞춰 두면 한쪽 조건을 잃어도 같다.
+ */
+export async function flagInconsistentRam(db: Database): Promise<{ readonly flagged: number }> {
+  const keys = sql.join(
+    RAM_LAYOUT_KEYS.map((k) => sql`${k}`),
+    sql`, `,
+  );
+  await db.execute(sql`
+    with bad as (${inconsistentRamSelect()})
+    update part_specs s
+    set disputed = true
+    from bad b
+    where s.part_id = b.part_id
+      and s.key in (${keys})
+      and s.disputed = false
+      and (s.source_url is null or s.source_url like 'https://github.com/buildcores/%')
+  `);
+  // 서 있는 수를 센다. 두 번째 적재부터 위 update는 0행이라 로그가 거짓말을 한다
+  const [row] = await db.execute<{ n: number }>(sql`
+    with bad as (${inconsistentRamSelect()})
+    select count(*)::int as n from part_specs s join bad b on b.part_id = s.part_id
+    where s.key in (${keys}) and s.disputed
+  `);
+  return { flagged: Number(row?.n ?? 0) };
 }

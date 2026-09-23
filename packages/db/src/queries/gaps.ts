@@ -715,3 +715,114 @@ export async function implausibleReleaseYears(db: Database): Promise<Implausible
     socketCount: r.socket_count,
   }));
 }
+
+/**
+ * 메모리 키트의 세 값. **모듈 수 × 모듈 용량 = 총 용량**이다 (이슈 #20).
+ */
+export const RAM_LAYOUT_KEYS = ['module_count', 'module_capacity_gb', 'capacity_gb'] as const;
+
+/**
+ * 스스로 모순인 메모리 레코드를 고르는 SELECT — 이슈 #20.
+ *
+ * 세 값의 산술이 맞지 않거나, 이름의 `(2x16GB)`가 모듈 수·모듈 용량과 다르면 어딘가
+ * 틀렸다. **경계값이 없다** — 맞거나 안 맞거나다. 어느 값이 틀렸는지는 고르지 않는다.
+ *
+ * 이름은 `(NxMGB)` 꼴만 읽는다. `(24x2)`처럼 단위가 없으면 순서를 알 수 없어서
+ * 읽지 않는다 (KINGBANK가 용량을 앞에 쓴다). 그때는 산술만 본다.
+ *
+ * 세 값이 모두 사람이 확인한 것이면 고르지 않는다 — 이름은 고칠 수 없으니, 사람이
+ * 이름과 다른 값을 출처와 함께 넣었다면 이름이 틀린 것이다.
+ */
+export function inconsistentRamSelect(): SQL {
+  const keys = sql.join(
+    RAM_LAYOUT_KEYS.map((k) => sql`${k}`),
+    sql`, `,
+  );
+  const num = (key: string) =>
+    sql`max(case when s.key = ${key} and jsonb_typeof(s.value) = 'number' then (s.value #>> '{}')::numeric end)`;
+  return sql`
+    with r as (
+      select p.id, p.model_name, p.brand,
+             ${num('module_count')} as module_count,
+             ${num('module_capacity_gb')} as module_capacity_gb,
+             ${num('capacity_gb')} as capacity_gb,
+             bool_and(s.source_url is not null and s.source_url not like 'https://github.com/buildcores/%') as all_human,
+             substring(lower(p.model_name) from '\\((\\d+)\\s*x\\s*\\d+(?:\\.\\d+)?\\s*gb\\)')::numeric as name_count,
+             substring(lower(p.model_name) from '\\(\\d+\\s*x\\s*(\\d+(?:\\.\\d+)?)\\s*gb\\)')::numeric as name_module_gb
+      from ${parts} p
+      join ${partSpecs} s on s.part_id = p.id and s.key in (${keys})
+      where p.category = 'RAM'
+      group by p.id, p.model_name, p.brand
+    )
+    select id as part_id, model_name, brand, module_count, module_capacity_gb, capacity_gb,
+           name_count, name_module_gb
+    from r
+    where not all_human and (
+      module_count * module_capacity_gb <> capacity_gb
+      or name_count <> module_count
+      or name_module_gb <> module_capacity_gb
+    )
+  `;
+}
+
+export interface InconsistentRam {
+  readonly partId: string;
+  readonly modelName: string;
+  readonly brand: string | null;
+  readonly moduleCount: number | null;
+  readonly moduleCapacityGb: number | null;
+  readonly capacityGb: number | null;
+  /** 이름의 `(NxMGB)`에서 읽은 값. 이름에 없으면 null */
+  readonly nameCount: number | null;
+  readonly nameModuleGb: number | null;
+}
+
+/** 어드민이 볼 목록 — 이슈 #20. 이름과 세 값을 나란히 보인다. */
+export async function inconsistentRamKits(db: Database): Promise<InconsistentRam[]> {
+  const rows = await db.execute<{
+    part_id: string;
+    model_name: string;
+    brand: string | null;
+    module_count: string | null;
+    module_capacity_gb: string | null;
+    capacity_gb: string | null;
+    name_count: string | null;
+    name_module_gb: string | null;
+  }>(sql`
+    select part_id::text, model_name, brand, module_count, module_capacity_gb, capacity_gb,
+           name_count, name_module_gb
+    from (${inconsistentRamSelect()}) x
+    order by model_name
+  `);
+  // numeric은 문자열로 온다
+  const n = (v: string | null) => (v === null ? null : Number(v));
+  return rows.map((r) => ({
+    partId: r.part_id,
+    modelName: r.model_name,
+    brand: r.brand,
+    moduleCount: n(r.module_count),
+    moduleCapacityGb: n(r.module_capacity_gb),
+    capacityGb: n(r.capacity_gb),
+    nameCount: n(r.name_count),
+    nameModuleGb: n(r.name_module_gb),
+  }));
+}
+
+/**
+ * 적재의 자기 검사가 `disputed`를 세우는 (부품, 키) 전부 — #18 · #20.
+ *
+ * 중복 불일치 검사의 거두기가 이것을 뺀다. 검사가 늘면 **여기 하나에 더한다** —
+ * 거두기 쪽에 따로 적으면 하나를 빠뜨리는 날 순서에 따라 표시가 사라진다.
+ */
+export function selfCheckFlagsSelect(): SQL {
+  const ramKeys = sql.join(
+    RAM_LAYOUT_KEYS.map((k) => sql`(${k}::text)`),
+    sql`, `,
+  );
+  return sql`
+    select y.part_id, 'release_year'::text as key from (${implausibleYearSelect()}) y
+    union all
+    select x.part_id, k.key from (${inconsistentRamSelect()}) x
+    cross join (values ${ramKeys}) as k(key)
+  `;
+}
