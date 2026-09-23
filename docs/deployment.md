@@ -81,7 +81,7 @@ DB가 끊긴 채로 계속 서비스된다. 이 주소는 인증이 없으므로
 # 1. 스키마
 DATABASE_URL=... npm run migrate
 
-# 2. 적재 (첫 배포, 그리고 주 1회 — 명세 §5.7.1)
+# 2. 적재 (첫 배포, 그리고 주 1회 — 명세 §5.6)
 DATABASE_URL=... OPENDB_PATH=... npm run ingest
 
 # 3. 빌드. ★ 도메인을 여기서 준다

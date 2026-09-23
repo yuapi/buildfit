@@ -1,7 +1,7 @@
 /**
  * PostgreSQL 스키마 — Phase 0a.
  *
- * 설계 근거: `pc-builder-spec.md` §5.8, ADR-0003(parts/skus 분리), ADR-0011(Drizzle)
+ * 설계 근거: `pc-builder-spec.md` §5.8, ADR-0011(Drizzle). `skus`·`importers`는 폐기 (ADR-0022)
  *
  * **스키마 변경은 expand-contract를 따른다** (`autonomous-pipeline-plan.md` §7.1).
  * 컬럼 추가는 add-only라 T0, DROP·ALTER COLUMN·NOT NULL 추가는 T2다.
@@ -90,10 +90,6 @@ export const parts = pgTable(
      */
     duplicateOf: uuid('duplicate_of'),
 
-    /** 국내 유통 여부. 유효 SKU >= 1 (§5.7.1 7단계) */
-    krAvailable: boolean('kr_available'),
-    krCheckedAt: timestamp('kr_checked_at', { withTimezone: true }),
-
     /**
      * 검색용 평탄화 이름 — ADR-0017. **생성 컬럼이다. 쓰지 않는다.**
      *
@@ -162,7 +158,7 @@ export const partSpecs = pgTable(
   ],
 );
 
-/** 표기 변형. §7 가격 정규화의 입력이자 검색 유입용 URL의 근거 (§5.2) */
+/** 표기 변형. 검색 유입용 URL의 근거 (§5.2) */
 export const partAliases = pgTable(
   'part_aliases',
   {
@@ -171,7 +167,7 @@ export const partAliases = pgTable(
       .notNull()
       .references(() => parts.id, { onDelete: 'cascade' }),
     rawName: text('raw_name').notNull(),
-    /** 0~1. 임계 이하면 자동 매핑하지 않고 검토 큐로 (§7.3) */
+    /** 0~1. 가격 정규화(§7)가 쓰려던 칸이다 — 폐기됐고(ADR-0022) 적재는 채우지 않는다 */
     confidence: numeric('confidence', { precision: 4, scale: 3 }),
     source: text('source'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -179,59 +175,6 @@ export const partAliases = pgTable(
   (t) => [
     uniqueIndex('part_aliases_part_raw_uq').on(t.partId, t.rawName),
     index('part_aliases_raw_name_idx').on(t.rawName),
-  ],
-);
-
-/**
- * 국내 수입사(총판).
- *
- * 시드는 `docs/research/kr-distributor-dictionary.md`. 미검증 항목은 `confidence`로
- * 구분해 적재한다.
- */
-export const importers = pgTable(
-  'importers',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    name: text('name').notNull(),
-    /** 상품명 접미사 매칭에 쓰는 표기 변형 전부 */
-    aliasesJson: jsonb('aliases_json').notNull().default(sql`'[]'::jsonb`),
-    supportUrl: text('support_url'),
-    note: text('note'),
-    /** seed | verified. 검증 전 항목을 매칭 로직에서 구분하기 위한 것 */
-    confidence: text('confidence').notNull().default('seed'),
-    sourceUrl: text('source_url'),
-    verifiedAt: timestamp('verified_at', { withTimezone: true }),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => [uniqueIndex('importers_name_uq').on(t.name)],
-);
-
-/**
- * 국내 유통 단위. 화면 표시와 구매 판단은 여기서 한다 (ADR-0003).
- *
- * `importerId`가 NULL이어도 된다. 총판을 식별하지 못해도 SKU는 생성한다 (§3.2).
- */
-export const skus = pgTable(
-  'skus',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    partId: uuid('part_id')
-      .notNull()
-      .references(() => parts.id, { onDelete: 'cascade' }),
-    importerId: uuid('importer_id').references(() => importers.id),
-    /** 결과 화면에 쓰는 국내 상품명 */
-    displayNameKo: text('display_name_ko').notNull(),
-    gtin: text('gtin'),
-    mallProductId: text('mall_product_id'),
-    firstSeenAt: timestamp('first_seen_at', { withTimezone: true }).notNull().defaultNow(),
-    lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull().defaultNow(),
-    /** 연속 N회 조회에서 사라지면 단종 후보. 즉시 내리지 않는다 (§5.7.1) */
-    active: boolean('active').notNull().default(true),
-  },
-  (t) => [
-    index('skus_part_id_idx').on(t.partId),
-    index('skus_importer_id_idx').on(t.importerId),
-    uniqueIndex('skus_mall_product_uq').on(t.mallProductId),
   ],
 );
 

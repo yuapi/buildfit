@@ -70,13 +70,17 @@ git branch -d feature/1-opendb-schema-research
 
 ## 현재 단계
 
-**Phase 0a — 유통 매칭만 남음 (막힘)**
+**Phase 0a — 완료**
 - OpenDB 적재 ✅ 부품 26,485건 (`apps/ingest`)
 - 어드민(빈 필드 보강) ✅ (`/admin`)
-- 국내 유통 매칭 ⛔ **네이버 쇼핑 API가 2026-07-31에 종료됐다** (이슈 #1). 남은 검색 API도
-  2026-09-07 약관이 저장·캐싱·AI 입력을 금지한다. **다른 소스를 정해야 한다** —
-  `docs/research/naver-shopping-api-status.md`. 대체 후보도 전부 막혔다 — 11번가는 판매자 회원만,
-  쿠팡은 시간당 10회, 다나와는 소멸 (`docs/research/domestic-availability-sources.md`)
+- 국내 유통 매칭 ☒ **폐기** (ADR-0022, 이슈 #1). 네이버 쇼핑 API가 2026-07-31에 종료됐고
+  대체 소스가 전부 막혔다 — 11번가는 판매자 회원만, 쿠팡은 시간당 10회, 다나와는 소멸.
+  가격비교 사이트도 공개 API가 아니라 **쇼핑몰의 입점 계약(EP 피드)** 으로 받는다
+  (`docs/research/price-comparison-data-flow.md`)
+  - **가격과, 가격이 있어야 성립하는 기능도 함께 폐기했다** — Phase 2(가격·정규화)·4·5,
+    총소유비용, 차액 사용처 제안. **Phase 번호는 다시 매기지 않는다**
+  - **긁어 오지 않는다.** 크롤링은 데이터베이스제작자 권리·부정경쟁방지법 위험을 들인다
+  - 되살리려면 새 ADR로 한다. 소스의 약관(저장·캐싱)을 **설계 전에** 읽는다
 
 **Phase 0b — 완료**
 - 호환성 규칙 8개 동작 ✅ (`packages/compat`)
@@ -186,10 +190,9 @@ form_factor로 추론해 통과시키지 않는다 — Mini ITX Tower는 82%가 
 | 프론트·백엔드 | **Next.js (TypeScript)** — App Router, SSR/ISR |
 | DB | **PostgreSQL** — `part_specs`는 JSONB |
 | 규칙 엔진 | 프레임워크 비의존 **순수 TS 모듈** |
-| 정규화 워커 (Phase 2) | Python 별도 서비스. DB로만 연결 |
+| ~~정규화 워커 (Phase 2)~~ | 폐기 (ADR-0022). 스택은 TypeScript 하나다 |
 | 캐시·큐 | 두지 않는다 |
 
 - **규칙 엔진을 Next.js에 의존시키지 않는다.** DB 접근도 프레임워크 API도 쓰지 않는
   순수 함수로 두고, 클라이언트와 서버가 같은 코드를 쓴다. 판정 로직이 두 벌이 되면
   "편집 중엔 통과인데 공유 링크에선 오류"가 난다
-- Phase 2 Python 워커와의 경계는 **DB로만** 한정한다. HTTP로 엮지 않는다
