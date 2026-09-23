@@ -7,7 +7,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { pickerConstraints } from '../src/picker';
-import { emptyBuild } from '../src/parts';
+import { emptyBuild, type Build } from '../src/parts';
+import type { PartSlot } from '../src/applicability';
 import { STORAGE_FORM_FACTORS } from '../src/requirements';
 import * as f from './fixtures';
 
@@ -192,5 +193,55 @@ describe('스토리지 좁히기 (규칙 17·19)', () => {
     const values = c?.kind === 'oneOf' ? c.values : [];
     const declared = STORAGE_FORM_FACTORS.filter((v) => !v.startsWith('M.2'));
     expect([...values].sort()).toEqual([...declared].sort());
+  });
+});
+
+describe('★ 고른 부품의 「검증 중」 값으로는 좁히지 않는다 (이슈 #22)', () => {
+  // [고르는 칸, 제약 키, 값이 검증 중인 부품 칸, 그 부품의 스펙 키, 견적 패치]
+  type Row = readonly [PartSlot, string, 'cpu' | 'motherboard' | 'gpu' | 'pcCase' | 'psu' | 'storage', string, Partial<Build>];
+  const m2less = { motherboard: { ...f.motherboard, m2Slots: 0, memoryType: 'DDR4' }, storage: [] };
+  const ROWS: readonly Row[] = [
+    ['cpu', 'socket', 'motherboard', 'socket', { cpu: null }],
+    ['motherboard', 'socket', 'cpu', 'socket', { motherboard: null }],
+    ['ram', 'ram_type', 'motherboard', 'memory_type', { ram: [] }],
+    ['gpu', 'length_mm', 'pcCase', 'max_gpu_length_mm', { gpu: null }],
+    ['pcCase', 'max_gpu_length_mm', 'gpu', 'length_mm', { pcCase: null }],
+    ['gpu', 'total_slot_width', 'pcCase', 'expansion_slots', { gpu: null }],
+    ['pcCase', 'expansion_slots', 'gpu', 'total_slot_width', { pcCase: null }],
+    ['storage', 'form_factor', 'motherboard', 'm2_slots', m2less],
+    ['pcCase', 'supported_mobo_form_factors', 'motherboard', 'form_factor', { pcCase: null }],
+    ['motherboard', 'form_factor', 'pcCase', 'supported_mobo_form_factors', { motherboard: null }],
+    ['psu', 'form_factor', 'pcCase', 'supported_psu_form_factors', { psu: null }],
+    ['pcCase', 'supported_psu_form_factors', 'psu', 'form_factor', { pcCase: null }],
+    ['pcCase', 'internal_3_5_bays', 'storage', 'form_factor', { pcCase: null, storage: [f.sataDrive] }],
+  ];
+
+  function contest(b: Build, part: Row[2], key: string): Build {
+    if (part === 'storage') return { ...b, storage: b.storage.map((d) => ({ ...d, contestedSpecs: [key] })) };
+    const p = b[part];
+    return p ? { ...b, [part]: { ...p, contestedSpecs: [key] } } : b;
+  }
+
+  it.each(ROWS)('%s 후보의 %s 제약 — %s.%s가 검증 중이면 만들지 않는다', (slot, key, part, spec, patch) => {
+    const base = f.withBuild(patch);
+    expect(pickerConstraints(base, slot).some((c) => c.key === key), '표가 낡았다 — 기준 견적에서 제약이 안 나온다').toBe(true);
+    expect(pickerConstraints(contest(base, part, spec), slot).some((c) => c.key === key)).toBe(false);
+  });
+
+  it('다른 키가 검증 중인 것은 상관없다 — 과하게 멈추지 않는다', () => {
+    const b = contest(f.withBuild({ cpu: null }), 'motherboard', 'bios_flashback');
+    expect(pickerConstraints(b, 'cpu').some((c) => c.key === 'socket')).toBe(true);
+  });
+
+  it('★ 표가 모든 제약을 덮는다 — 새 제약이 검증 중 확인 없이 들어오면 잡는다', () => {
+    const covered = new Set(ROWS.map(([slot, key]) => `${slot}.${key}`));
+    for (const [, , , , patch] of ROWS) {
+      const b = f.withBuild(patch);
+      for (const slot of ['cpu', 'motherboard', 'ram', 'gpu', 'pcCase', 'psu', 'cooler', 'storage'] as const) {
+        for (const c of pickerConstraints(b, slot)) {
+          expect(covered, `${slot}.${c.key} 제약이 이 표에 없다`).toContain(`${slot}.${c.key}`);
+        }
+      }
+    }
   });
 });

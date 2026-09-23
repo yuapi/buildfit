@@ -66,6 +66,21 @@ function filled<T>(v: T | null | undefined): v is T {
 }
 
 /**
+ * 고른 부품의 이 값으로 좁혀도 되는가 — 이슈 #22.
+ *
+ * 비어 있으면 안 된다(없는 근거). **검증 중이어도 안 된다.** 후보 쪽은 이미
+ * 검증 중인 값으로 숨기지 않는데(#14), 제약의 출처인 고른 부품 쪽이 빠져 있었다.
+ * 틀린 쪽 값이면 맞는 후보가 조용히 사라진다. 판정은 그대로다 (ADR-0021).
+ */
+function known<T>(
+  part: { readonly contestedSpecs?: readonly string[] | undefined },
+  specKey: string,
+  v: T | null | undefined,
+): v is T {
+  return filled(v) && part.contestedSpecs?.includes(specKey) !== true;
+}
+
+/**
  * 이미 고른 부품에서 유도되는 후보 제약.
  *
  * 고르지 않았거나 값이 비어 있으면 제약을 만들지 않는다 — 없는 근거로
@@ -93,17 +108,17 @@ export function pickerConstraints(build: Build, slot: PartSlot): Constraint[] {
   // 규칙 1과 **같은 등가 표**를 쓴다 (이슈 #16). 표기만 다른 같은 소켓(TR4/sTR4)을
   // 여기서 문자열로 비교하면, X399 보드를 고른 순간 맞는 Threadripper가 전부
   // 숨는다 — 판정은 통과시키는데 고를 수가 없게 된다.
-  if (slot === 'cpu' && motherboard && filled(motherboard.socket)) {
+  if (slot === 'cpu' && motherboard && known(motherboard, 'socket', motherboard.socket)) {
     out.push(
       socketConstraint(motherboard.socket, `${motherboard.name}의 소켓 ${motherboard.socket}`),
     );
   }
-  if (slot === 'motherboard' && cpu && filled(cpu.socket)) {
+  if (slot === 'motherboard' && cpu && known(cpu, 'socket', cpu.socket)) {
     out.push(socketConstraint(cpu.socket, `${cpu.name}의 소켓 ${cpu.socket}`));
   }
 
   // --- 규칙 2: 메모리 규격 ---
-  if (slot === 'ram' && motherboard && filled(motherboard.memoryType)) {
+  if (slot === 'ram' && motherboard && known(motherboard, 'memory_type', motherboard.memoryType)) {
     out.push({
       kind: 'equals',
       key: 'ram_type',
@@ -114,7 +129,7 @@ export function pickerConstraints(build: Build, slot: PartSlot): Constraint[] {
   }
 
   // --- 규칙 4: GPU 길이 ---
-  if (slot === 'gpu' && pcCase && filled(pcCase.maxGpuLengthMm)) {
+  if (slot === 'gpu' && pcCase && known(pcCase, 'max_gpu_length_mm', pcCase.maxGpuLengthMm)) {
     out.push({
       kind: 'atMost',
       key: 'length_mm',
@@ -124,7 +139,7 @@ export function pickerConstraints(build: Build, slot: PartSlot): Constraint[] {
     });
   }
   // 칩만 고른 경우 길이를 단정하지 않는다 (규칙 4의 chipOnly와 같은 이유)
-  if (slot === 'pcCase' && gpu && gpu.chipOnly !== true && filled(gpu.lengthMm)) {
+  if (slot === 'pcCase' && gpu && gpu.chipOnly !== true && known(gpu, 'length_mm', gpu.lengthMm)) {
     out.push({
       kind: 'atLeast',
       key: 'max_gpu_length_mm',
@@ -137,7 +152,7 @@ export function pickerConstraints(build: Build, slot: PartSlot): Constraint[] {
   // --- 규칙 15: GPU 두께 ---
   // 두께가 슬롯 수로 보이지 않는 값은 거르기에 쓰지 않는다 (§15.2). 거르기는 판정이
   // 아니라 좁히기라서, 이상치로 좁히면 멀쩡한 후보가 조용히 사라진다 (ADR-0016).
-  if (slot === 'gpu' && pcCase && filled(pcCase.expansionSlots) && pcCase.expansionSlots! > 0) {
+  if (slot === 'gpu' && pcCase && known(pcCase, 'expansion_slots', pcCase.expansionSlots) && pcCase.expansionSlots! > 0) {
     out.push({
       kind: 'atMost',
       key: 'total_slot_width',
@@ -153,7 +168,7 @@ export function pickerConstraints(build: Build, slot: PartSlot): Constraint[] {
     slot === 'pcCase' &&
     gpu &&
     gpu.chipOnly !== true &&
-    filled(gpu.totalSlotWidth) &&
+    known(gpu, 'total_slot_width', gpu.totalSlotWidth) &&
     gpu.totalSlotWidth! >= MIN_SANE_SLOT_WIDTH &&
     gpu.totalSlotWidth! <= MAX_SANE_SLOT_WIDTH
   ) {
@@ -170,7 +185,10 @@ export function pickerConstraints(build: Build, slot: PartSlot): Constraint[] {
   // 이미 고른 드라이브가 자리를 다 먹었으면 같은 자리를 쓰는 후보를 뺀다.
   // 규칙 18(SATA)은 포트 수가 두 키에 나뉘어 있어 제약 하나로 못 옮긴다.
   const m2Picked = storage.filter(usesM2Slot).length;
-  const picked35 = storage.filter((d) => bayKind(d) === '3.5').length;
+  // 폼팩터가 검증 중인 드라이브는 세지 않는다 (#22)
+  const picked35 = storage.filter(
+    (d) => bayKind(d) === '3.5' && d.contestedSpecs?.includes('form_factor') !== true,
+  ).length;
   /**
    * **개수로 좁히지 않는다** (§17.4). 원본의 M.2 배열 길이가 슬롯 수가 아니다 —
    * 위아래 어느 쪽으로도 틀리므로 「몇 개 남았다」를 셀 수 없다.
@@ -182,6 +200,7 @@ export function pickerConstraints(build: Build, slot: PartSlot): Constraint[] {
     slot === 'storage' &&
     motherboard &&
     motherboard.m2Slots === 0 &&
+    known(motherboard, 'm2_slots', motherboard.m2Slots) &&
     // DDR5 보드의 0은 미입력이다 (§17.2). 그것으로 목록을 줄이지 않는다.
     motherboard.memoryType !== 'DDR5'
   ) {
@@ -204,7 +223,7 @@ export function pickerConstraints(build: Build, slot: PartSlot): Constraint[] {
   }
 
   // --- 규칙 5: 메인보드 폼팩터 ---
-  if (slot === 'pcCase' && motherboard && filled(motherboard.formFactor)) {
+  if (slot === 'pcCase' && motherboard && known(motherboard, 'form_factor', motherboard.formFactor)) {
     out.push({
       kind: 'contains',
       key: 'supported_mobo_form_factors',
@@ -213,7 +232,7 @@ export function pickerConstraints(build: Build, slot: PartSlot): Constraint[] {
       because: `${motherboard.name}의 폼팩터 ${motherboard.formFactor}`,
     });
   }
-  if (slot === 'motherboard' && pcCase && filled(pcCase.supportedMoboFormFactors)) {
+  if (slot === 'motherboard' && pcCase && known(pcCase, 'supported_mobo_form_factors', pcCase.supportedMoboFormFactors)) {
     out.push({
       kind: 'oneOf',
       key: 'form_factor',
@@ -224,7 +243,7 @@ export function pickerConstraints(build: Build, slot: PartSlot): Constraint[] {
   }
 
   // --- 규칙 6: PSU 폼팩터 ---
-  if (slot === 'psu' && pcCase && filled(pcCase.supportedPsuFormFactors)) {
+  if (slot === 'psu' && pcCase && known(pcCase, 'supported_psu_form_factors', pcCase.supportedPsuFormFactors)) {
     out.push({
       kind: 'oneOf',
       key: 'form_factor',
@@ -233,7 +252,7 @@ export function pickerConstraints(build: Build, slot: PartSlot): Constraint[] {
       because: `${pcCase.name}의 지원 파워 규격`,
     });
   }
-  if (slot === 'pcCase' && psu && filled(psu.formFactor)) {
+  if (slot === 'pcCase' && psu && known(psu, 'form_factor', psu.formFactor)) {
     out.push({
       kind: 'contains',
       key: 'supported_psu_form_factors',
