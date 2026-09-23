@@ -50,6 +50,8 @@ export interface Cpu extends PartRef {
    * 하나로 한다. `null`은 결측이다.
    */
   readonly integratedGraphics: string | null;
+  /** 기본 쿨러가 들어 있는가. 규칙 22 (§22). `null`은 결측이다 */
+  readonly includesCooler: boolean | null;
 }
 
 export interface Motherboard extends PartRef {

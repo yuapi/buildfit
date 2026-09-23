@@ -764,6 +764,31 @@ export const rule21: Rule = ({ cpu, gpu }) => {
       );
 };
 
+/**
+ * 규칙 22 — CPU 쿨러가 있는가. docs/compat-rules.md §22, 이슈 #24.
+ *
+ * 규칙 21처럼 **고르지 않은 부품을 본다.** 쿨러를 골랐으면 통과, 안 골랐으면 CPU의
+ * 기본 쿨러를 본다. **경고다** — 아직 안 고른 것일 수 있다.
+ *
+ * 기본 쿨러가 그 CPU에 충분한지는 말하지 않는다. 근거가 없다.
+ */
+export const rule22: Rule = ({ cpu, cooler }) => {
+  if (!cpu) return null;
+  if (cooler) return pass(22, 'CPU 쿨러를 골랐습니다.');
+  if (!isFilled(cpu.includesCooler)) {
+    return missing(22, '기본 쿨러 포함 여부를 알 수 없어 쿨러가 필요한지 판정하지 못했습니다.', [
+      ref(cpu, '기본 쿨러 포함'),
+    ]);
+  }
+  return cpu.includesCooler
+    ? pass(22, '쿨러를 고르지 않았지만 CPU에 기본 쿨러가 들어 있습니다.')
+    : fail(
+        22,
+        'warning',
+        `${cpu.name}에는 기본 쿨러가 들어 있지 않습니다. CPU 쿨러를 함께 골라 주세요.`,
+      );
+};
+
 export const phase0Rules: readonly Rule[] = [rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8];
 
 /** Phase 1에서 추가된 규칙까지. 명세 §4.2 */
@@ -809,4 +834,5 @@ export const phase1Rules: readonly Rule[] = [
   rule19,
   rule20,
   rule21,
+  rule22,
 ];

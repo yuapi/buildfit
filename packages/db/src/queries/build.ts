@@ -146,6 +146,7 @@ function toCpu(p: RawPart): Cpu {
     memoryMaxGb: num(p.specs, 'memory_max_gb'),
     releaseYear: p.releaseYear,
     integratedGraphics: str(p.specs, 'integrated_graphics'),
+    includesCooler: bool(p.specs, 'includes_cooler'),
   };
 }
 

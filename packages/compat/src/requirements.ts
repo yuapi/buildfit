@@ -171,6 +171,8 @@ export const SPEC_REQUIREMENTS: readonly FieldRequirement[] = [
   { ruleId: 20, category: 'CPUCooler', specKey: 'cpu_sockets', label: '지원 소켓', severity: 'warning', valueType: 'string[]' },
   // 그래픽카드는 선언하지 않는다 — 안 고른 것이 이 규칙의 입력이다 (§21)
   { ruleId: 21, category: 'CPU', specKey: 'integrated_graphics', label: '내장 그래픽', severity: 'warning', valueType: 'string' },
+  // 쿨러는 선언하지 않는다 — 안 고른 것이 이 규칙의 입력이다 (§22)
+  { ruleId: 22, category: 'CPU', specKey: 'includes_cooler', label: '기본 쿨러 포함', severity: 'warning', valueType: 'boolean' },
 ];
 
 /** 이 카테고리에서 반드시 필요한 (보조 아닌) 필드들. 어드민의 구멍 계산 대상. */
