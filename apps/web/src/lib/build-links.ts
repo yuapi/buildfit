@@ -8,12 +8,15 @@
 
 import { encodeBuildCode } from './build-code';
 import { SLOT_META } from './categories';
+import { isMultiSlot } from './multi-slot';
 
 /** 이 부품 하나만 담은 견적 주소. 견적에 넣을 수 없는 카테고리면 `null` */
 export function startBuildHref(category: string, id: string): string | null {
   const slot = SLOT_META.find((m) => m.category === category)?.slot;
   if (!slot) return null;
-  const sel = slot === 'ram' ? { ram: [id] } : { [slot]: id };
+  // 목록 슬롯을 여기서 나열하지 않는다. `ram`만 적어 두었다가 스토리지가 목록
+  // 슬롯으로 들어온 뒤 스토리지 부품 페이지가 전부 500이 됐다 (이슈 #26)
+  const sel = isMultiSlot(slot) ? { [slot]: [id] } : { [slot]: id };
   return `/build/${encodeBuildCode(sel)}`;
 }
 
