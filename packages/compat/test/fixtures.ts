@@ -14,6 +14,7 @@ export const cpu: Cpu = {
   memoryMaxGb: 256,
   releaseYear: 2024,
   integratedGraphics: 'AMD Radeon Graphics',
+  includesCooler: false,
 };
 
 export const motherboard: Motherboard = {
