@@ -15,6 +15,7 @@ import { sql } from 'drizzle-orm';
 import { CATEGORIES } from './mapping';
 import { toPartRow, toSlug, type PartRow } from './transform';
 import { flagConflictingSpecs, markDuplicates } from './duplicates';
+import { flagImplausibleYears } from './plausibility';
 
 const CHUNK = 500;
 
@@ -276,6 +277,9 @@ export async function ingest(opts: IngestOptions): Promise<void> {
         (conflicts.marked > 0 ? ` (새로 ${conflicts.marked}건)` : '') +
         (conflicts.retracted > 0 ? ` (더는 어긋나지 않아 거둠 ${conflicts.retracted}건)` : ''),
     );
+    // 소켓이 나오기 전 연도를 단 레코드. 규칙 12가 그 값으로 판정한다 (이슈 #18)
+    const years = await flagImplausibleYears(db);
+    log(`  소켓보다 앞선 출시 연도 ${years.flagged}건에 검증 표시`);
 
     // --- 요약 -------------------------------------------------------------
     const [counts] = await db

@@ -13,7 +13,7 @@
 
 import { sql } from 'drizzle-orm';
 import type { Database } from '@buildfit/db';
-import { comparableSpecValue } from '@buildfit/db/queries';
+import { comparableSpecValue, implausibleYearSelect } from '@buildfit/db/queries';
 
 export interface DuplicateResult {
   /** 대표가 아닌 것으로 표시된 레코드 수 */
@@ -136,13 +136,14 @@ export async function flagConflictingSpecs(db: Database): Promise<ConflictResult
    * ★ 이 검사가 세운 것 중 더는 어긋나지 않는 것을 거둔다.
    *
    * 전에는 세우기만 했다 — 사람이 신고해 세운 것과 구분할 방법이 없어서였다.
-   * 그런데 **구분할 수단이 있었다.** `disputed`를 세우는 곳은 둘뿐이다:
+   * 그런데 **구분할 수단이 있었다.** `disputed`를 세우는 곳은 셋뿐이다:
    *
    * 1. 사용자 신고(`createSpecReport`) — 항상 `spec_reports`에 **열린 신고**가 같이 생긴다
    * 2. 이 검사
+   * 3. 소켓보다 앞선 출시 연도(`flagImplausibleYears`, 이슈 #18) — 아래에서 뺀다
    *
-   * 그러니 **열린 신고가 없는 `disputed`는 이 검사가 세운 것이다.** 그중 지금은
-   * 어긋나지 않는 것만 거둔다. 열린 신고가 있으면 절대 건드리지 않는다.
+   * 그러니 **열린 신고가 없고 3번도 아닌 `disputed`는 이 검사가 세운 것이다.** 그중
+   * 지금은 어긋나지 않는 것만 거둔다. 열린 신고가 있으면 절대 건드리지 않는다.
    *
    * 거두지 않으면 표기가 정리되거나(TR4/sTR4, 이슈 #16) 업스트림이 값을 고쳐도
    * 「검증 중」이 영원히 남고, 판정마다 「검증 중인 값으로 판정했습니다」가 붙는다.
@@ -158,6 +159,10 @@ export async function flagConflictingSpecs(db: Database): Promise<ConflictResult
       and not exists (
         select 1 from spec_reports r
         where r.part_id = s.part_id and r.spec_key = s.key and r.status = 'open'
+      )
+      and not (
+        s.key = 'release_year'
+        and s.part_id in (select part_id from (${implausibleYearSelect()}) y)
       )
   `);
 

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { conflictingSpecs, fieldGapSummary } from '@buildfit/db/queries';
+import { conflictingSpecs, fieldGapSummary, implausibleReleaseYears } from '@buildfit/db/queries';
 import { openSpecReports } from '@buildfit/db/part';
 import { specLabel, specValueText } from '@/lib/spec-labels';
 import { Container } from '@/components/SiteShell';
@@ -15,10 +15,11 @@ export default async function AdminHome() {
   await requireAdmin();
 
   const db = getDb();
-  const [gaps, reports, conflicts] = await Promise.all([
+  const [gaps, reports, conflicts, earlyYears] = await Promise.all([
     fieldGapSummary(db),
     openSpecReports(db, 20),
     conflictingSpecs(db, 100),
+    implausibleReleaseYears(db),
   ]);
   const open = gaps.filter((g) => g.missingParts > 0);
   const totalMissing = open.reduce((n, g) => n + g.missingParts, 0);
@@ -136,6 +137,41 @@ export default async function AdminHome() {
                     </li>
                   ))}
                 </ul>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/*
+        소켓이 나오기 전 연도를 단 레코드 (이슈 #18). 위 목록과 같은 종류의 신호다 —
+        정답을 몰라도 데이터 안에서 나온다. 규칙 12가 이 값으로 헛경고를 내거나
+        경고를 놓친다.
+      */}
+      {earlyYears.length > 0 && (
+        <section className="mt-8">
+          <h2 className="font-medium">
+            소켓보다 앞선 출시 연도{' '}
+            <span className="text-sm font-normal text-fg-subtle">{earlyYears.length}건</span>
+          </h2>
+          <p className="mt-1 text-xs leading-relaxed text-fg-subtle">
+            같은 소켓의 다른 부품들보다 빈 해를 사이에 두고 홀로 앞서 있다. 부품은 소켓보다
+            먼저 나올 수 없다. <strong className="font-medium">맞는 연도는 적지 않는다</strong> —
+            모른다. 출처를 보고 채우면 「검증 중」 표시가 풀린다.
+          </p>
+          <ul className="mt-3 space-y-2">
+            {earlyYears.map((y) => (
+              <li key={y.partId} className="card border-warn-border p-3 text-sm">
+                <div className="flex flex-wrap items-baseline gap-x-2">
+                  <Link href={`/admin/parts/${y.partId}?focus=release_year`} className="link">
+                    {y.modelName}
+                  </Link>
+                  <span className="text-xs text-fg-subtle">{y.category} · 규칙 #12</span>
+                </div>
+                <p className="mt-0.5 text-xs text-fg-muted tnum">
+                  {y.socket} · 원본 {y.year}년 · 이 소켓의 다음 연도는 {y.nextYear}년 (연도가 있는{' '}
+                  {y.socketCount}건 중 앞선 {y.leadCount}건)
+                </p>
               </li>
             ))}
           </ul>
