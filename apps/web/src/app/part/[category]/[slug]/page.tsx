@@ -129,7 +129,16 @@ export default async function PartPage({
         <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{part.modelName}</h1>
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           <span className="chip">{part.brand ?? '제조사 미상'}</span>
-          {part.releaseYear && <span className="chip tnum">{part.releaseYear}년</span>}
+          {part.releaseYear && (
+            <span className="chip tnum">
+              {part.releaseYear}년
+              {/* 소켓보다 앞선 연도는 검증 중이다 (이슈 #18). 머리 칩에서 확정처럼 보이면
+                  아래 스펙 표의 표시를 보기 전에 믿는다 */}
+              {part.specs.some((s) => s.key === 'release_year' && s.disputed) && (
+                <span className="ml-1 text-fg-subtle">· 검증 중</span>
+              )}
+            </span>
+          )}
           {part.discontinued && <span className="chip">단종</span>}
         </div>
         {buildHref && (
