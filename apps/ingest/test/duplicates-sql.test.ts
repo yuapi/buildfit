@@ -13,7 +13,7 @@
 import { createDb } from '@buildfit/db';
 import { loadBuild } from '@buildfit/db/build';
 import { partBySlug, partsInCategory, slugsInCategory } from '@buildfit/db/part';
-import { conflictingSpecs } from '@buildfit/db/queries';
+import { conflictingSpecs, saveSpec } from '@buildfit/db/queries';
 import { searchCandidates } from '@buildfit/db/picker';
 import { matchQuote } from '@buildfit/db/quote';
 import { sql } from 'drizzle-orm';
@@ -239,6 +239,31 @@ describeIfDb('중복 레코드 묶기 (이슈 #11)', () => {
         sql`select disputed from part_specs where part_id = ${A} and key = 'capacity_gb'`,
       );
       expect(rows[0]?.disputed).toBe(true);
+    });
+
+    it('★ 사람이 출처와 함께 확인한 값은 다시 세우지 않는다 (이슈 #19)', async () => {
+      // 어드민이 제조사 페이지를 보고 C의 16을 확인했다. 쌍둥이 A·B는 여전히 32다.
+      // 어긋남은 남지만 **의심할 쪽은 확인되지 않은 OpenDB 값**이다
+      await saveSpec(db, { partId: C, key: 'capacity_gb', value: 16, sourceUrl: 'https://example.com/c' });
+      await flagConflictingSpecs(db);
+      const rows = await db.execute<{ id: string; disputed: boolean }>(sql`
+        select part_id::text as id, disputed from part_specs
+        where part_id in (${A}, ${B}, ${C}) and key = 'capacity_gb' order by part_id`);
+      expect(Object.fromEntries(rows.map((r) => [r.id, r.disputed]))).toEqual({
+        [A]: true,
+        [B]: true,
+        [C]: false,
+      });
+    });
+
+    it('사람이 확인한 행에 이전 적재가 세워 둔 표시는 거둔다', async () => {
+      // 이슈 #19 이전에는 확인한 행도 다시 세웠다. 그 흔적이 남아 있다고 친다
+      await db.execute(sql`update part_specs set disputed = true where part_id = ${C} and key = 'capacity_gb'`);
+      await flagConflictingSpecs(db);
+      const [row] = await db.execute<{ disputed: boolean }>(
+        sql`select disputed from part_specs where part_id = ${C} and key = 'capacity_gb'`,
+      );
+      expect(row?.disputed).toBe(false);
     });
   });
 
