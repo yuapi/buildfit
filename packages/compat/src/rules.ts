@@ -728,6 +728,42 @@ export const rule12: Rule = ({ cpu, motherboard }) => {
       );
 };
 
+/**
+ * 내장그래픽이 있는가. **「없음」 표기가 둘이다** — `"None"`(418건)과 `"0"`(Ryzen 5
+ * 7500F 정품 1건. 클럭·셰이더가 전부 0이고 트레이 쌍둥이는 `"None"`). 비어 있으면
+ * 모른다(`null`). docs/compat-rules.md §21.2
+ */
+export function hasIntegratedGraphics(model: string | null): boolean | null {
+  if (model === null || model.trim() === '') return null;
+  const m = model.trim().toLowerCase();
+  return !(m === 'none' || m === '0');
+}
+
+/**
+ * 규칙 21 — 화면이 나오는가. docs/compat-rules.md §21, 이슈 #23.
+ *
+ * **고르지 않은 부품을 보는 첫 규칙이다.** 그래픽카드를 골랐으면 통과, 안 골랐으면
+ * CPU의 내장그래픽을 본다. **경고다** — 아직 안 고른 것일 수 있어서 「함께 고르라」고
+ * 말한다. 오류로 단정하면 고르는 도중 내내 오류가 뜬다.
+ */
+export const rule21: Rule = ({ cpu, gpu }) => {
+  if (!cpu) return null;
+  if (gpu) return pass(21, '그래픽카드가 있어 화면이 나옵니다.');
+  const igpu = hasIntegratedGraphics(cpu.integratedGraphics);
+  if (igpu === null) {
+    return missing(21, '내장 그래픽 정보가 없어 그래픽카드 없이 화면이 나오는지 판정하지 못했습니다.', [
+      ref(cpu, '내장 그래픽'),
+    ]);
+  }
+  return igpu
+    ? pass(21, `그래픽카드 없이도 CPU 내장그래픽(${cpu.integratedGraphics})으로 화면이 나옵니다.`)
+    : fail(
+        21,
+        'warning',
+        `${cpu.name}에는 내장그래픽이 없어 그래픽카드 없이는 화면이 나오지 않습니다. 그래픽카드를 함께 골라 주세요.`,
+      );
+};
+
 export const phase0Rules: readonly Rule[] = [rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8];
 
 /** Phase 1에서 추가된 규칙까지. 명세 §4.2 */
@@ -772,4 +808,5 @@ export const phase1Rules: readonly Rule[] = [
   rule18,
   rule19,
   rule20,
+  rule21,
 ];

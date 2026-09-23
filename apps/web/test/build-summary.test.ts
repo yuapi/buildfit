@@ -85,8 +85,9 @@ describe('요약 한 줄', () => {
   });
 
   it('★ 판정이 없으면 판정을 말하지 않는다', () => {
-    // 부품 하나로는 규칙이 하나도 돌지 않는다. 「통과 0」은 거짓 인상을 준다.
-    const b = { ...emptyBuild, cpu };
+    // 메모리 하나로는 규칙이 하나도 돌지 않는다. 「통과 0」은 거짓 인상을 준다.
+    // (CPU 하나는 이제 규칙 21이 돈다 — 그래픽카드 없이 화면이 나오는가, §21)
+    const b = { ...emptyBuild, ram: [ramKit] };
     const s = buildSummary(b, evaluate(b));
     expect(s).not.toContain('통과');
     expect(s).toContain('부품 1개');

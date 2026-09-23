@@ -145,6 +145,7 @@ function toCpu(p: RawPart): Cpu {
     memoryTypes: strArray(p.specs, 'memory_types'),
     memoryMaxGb: num(p.specs, 'memory_max_gb'),
     releaseYear: p.releaseYear,
+    integratedGraphics: str(p.specs, 'integrated_graphics'),
   };
 }
 

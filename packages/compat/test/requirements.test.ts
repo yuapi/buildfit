@@ -83,6 +83,9 @@ const BLANK: Record<string, () => Build> = {
   'CPUCooler.cpu_sockets': () =>
     f.withBuild({ cooler: { ...f.cooler, supportedSockets: null } }),
   'PCCase.expansion_slots': () => f.withBuild({ pcCase: { ...f.pcCase, expansionSlots: null } }),
+  // 그래픽카드를 고르면 내장그래픽을 보지 않는다. 안 고른 견적에서 비워야 한다 (§21)
+  'CPU.integrated_graphics': () =>
+    f.withBuild({ gpu: null, cpu: { ...f.cpu, integratedGraphics: null } }),
 };
 
 describe('요구사항 선언 ↔ 규칙 구현 정합성', () => {

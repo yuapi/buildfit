@@ -13,6 +13,7 @@ export const cpu: Cpu = {
   memoryTypes: ['DDR5'],
   memoryMaxGb: 256,
   releaseYear: 2024,
+  integratedGraphics: 'AMD Radeon Graphics',
 };
 
 export const motherboard: Motherboard = {
