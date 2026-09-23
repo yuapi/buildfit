@@ -13,6 +13,19 @@ export function usesM2Slot(drive: StorageDrive): boolean {
 }
 
 /**
+ * M.2 드라이브가 요구하는 조합 `길이/방식` — 보드의 `m2Accepts`와 같은 모양이다 (§17.5).
+ *
+ * `M.2-2280` + `M.2 PCIe 4.0 x4` → `2280/PCIe`. 길이나 방식을 모르면 `null`이다 —
+ * 그러면 규칙 17은 판정하지 않는다.
+ */
+export function m2Requirement(drive: StorageDrive): string | null {
+  const len = /^m\.2-(\d{4,5})$/i.exec((drive.formFactor ?? '').trim())?.[1];
+  const iface = (drive.interface ?? '').toUpperCase();
+  const protocol = iface.includes('SATA') ? 'SATA' : iface.includes('PCIE') ? 'PCIe' : null;
+  return len && protocol ? `${len}/${protocol}` : null;
+}
+
+/**
  * SATA 포트를 쓰는가.
  *
  * **`M.2 SATA`는 세지 않는다.** 그 드라이브가 SATA 포트를 가져가는지는 칩셋의

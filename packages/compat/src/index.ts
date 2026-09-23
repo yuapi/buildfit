@@ -72,7 +72,7 @@ export { KO_ALIASES, OMITTED_ALIASES, squash, searchTerms, isImpossible } from '
 export type { QuoteLabel, QuoteLine, QuoteOptions } from './quote';
 export { QUOTE_LABELS, readQuoteLine } from './quote';
 
-export { bayKind, unplacedDrives, usesM2Slot, usesSataPort } from './storage';
+export { bayKind, m2Requirement, unplacedDrives, usesM2Slot, usesSataPort } from './storage';
 
 export type { Season, Tariff, Bill, AddedCost, EnergyTier } from './electricity';
 export {

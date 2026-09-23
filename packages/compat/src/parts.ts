@@ -69,6 +69,13 @@ export interface Motherboard extends PartRef {
    * 그렇다. DDR5의 0만 미입력으로 본다 (§17.2).
    */
   readonly m2Slots: number | null;
+  /**
+   * 받는 드라이브 조합 `길이/방식` (`2280/PCIe`, `2280/SATA`). 적재가 M키 행에서 만든다.
+   *
+   * 행의 **개수**는 못 믿어도 **내용**은 실제 슬롯을 말한다. 그래서 드라이브가 하나면
+   * 이 집합으로 판정한다 (§17.5). 없거나 비었으면 판정 불가다 — 오류가 아니다.
+   */
+  readonly m2Accepts: readonly string[] | null;
   /** SATA 6Gb/s 포트 수. 규칙 18 (§18) */
   readonly sataPorts: number | null;
   /** SATA 3Gb/s 포트 수. 6Gb/s와 합산한다 — 둘 다 드라이브가 꽂히는 자리다 */

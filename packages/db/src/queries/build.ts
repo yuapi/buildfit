@@ -159,6 +159,7 @@ function toMotherboard(p: RawPart): Motherboard {
     memorySlots: num(p.specs, 'memory_slots'),
     memoryMaxGb: num(p.specs, 'memory_max_gb'),
     m2Slots: num(p.specs, 'm2_slots'),
+    m2Accepts: strArray(p.specs, 'm2_accepts'),
     sataPorts: num(p.specs, 'sata_ports'),
     sataPorts3Gbs: num(p.specs, 'sata_ports_3gbs'),
     releaseYear: p.releaseYear,
