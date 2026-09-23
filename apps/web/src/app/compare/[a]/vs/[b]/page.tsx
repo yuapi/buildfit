@@ -116,9 +116,13 @@ export default async function ComparePage({
                   {/* 한쪽에만 있는 항목은 "없음"이 아니라 "정보 없음"이다.
                       값이 0이라는 뜻으로 읽히면 안 된다. */}
                   {row.lText ?? <span className="text-fg-subtle">정보 없음</span>}
+                  {/* 부품 페이지와 같은 표시다. 비교는 값을 나란히 믿게 만드는 화면이라
+                      다투어지는 값을 여기서 숨기면 가장 크게 오해한다 (ADR-0021) */}
+                  {row.l?.disputed === true && <span className="chip ml-2">검증 중</span>}
                 </td>
                 <td className={`px-4 py-2.5 align-top break-words ${row.differs ? 'font-medium text-fg' : ''}`}>
                   {row.rText ?? <span className="text-fg-subtle">정보 없음</span>}
+                  {row.r?.disputed === true && <span className="chip ml-2">검증 중</span>}
                 </td>
               </tr>
             ))}
