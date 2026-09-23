@@ -30,6 +30,7 @@ export const motherboard: Motherboard = {
   sataPorts: 6,
   sataPorts3Gbs: 0,
   releaseYear: 2024,
+  socketFirstYear: 2022,
   biosFlashback: true,
 };
 

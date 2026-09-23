@@ -713,6 +713,23 @@ function unplacedNote(storage: readonly StorageDrive[]): string[] | undefined {
 export const rule12: Rule = ({ cpu, motherboard }) => {
   if (!cpu || !motherboard) return null;
 
+  /**
+   * 보드 연도가 없어도 소켓의 첫 CPU 연도가 하한이다 (§12.5, 이슈 #28).
+   * 보드는 자기 소켓의 첫 CPU보다 먼저 나올 수 없다 — CPU가 그 해 이전이면
+   * 보드는 같거나 더 나중이다. 아래 첫 판정과 같은 결론이다.
+   */
+  if (
+    !isFilled(motherboard.releaseYear) &&
+    isFilled(cpu.releaseYear) &&
+    isFilled(motherboard.socketFirstYear) &&
+    cpu.releaseYear! <= motherboard.socketFirstYear!
+  ) {
+    return pass(
+      12,
+      `보드 출시 연도는 없지만 이 보드 소켓의 첫 CPU가 ${motherboard.socketFirstYear}년에 나왔습니다. CPU(${cpu.releaseYear}년)가 그보다 늦지 않아 보드가 같거나 더 나중입니다.`,
+    );
+  }
+
   const gaps: FieldRef[] = [];
   if (!isFilled(cpu.releaseYear)) gaps.push(ref(cpu, '출시 연도'));
   if (!isFilled(motherboard.releaseYear)) gaps.push(ref(motherboard, '출시 연도'));
