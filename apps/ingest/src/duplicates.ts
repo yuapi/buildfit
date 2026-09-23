@@ -13,7 +13,7 @@
 
 import { sql } from 'drizzle-orm';
 import type { Database } from '@buildfit/db';
-import { comparableSpecValue, implausibleYearSelect } from '@buildfit/db/queries';
+import { comparableSpecValue, selfCheckFlagsSelect } from '@buildfit/db/queries';
 
 export interface DuplicateResult {
   /** 대표가 아닌 것으로 표시된 레코드 수 */
@@ -144,7 +144,8 @@ export async function flagConflictingSpecs(db: Database): Promise<ConflictResult
    *
    * 1. 사용자 신고(`createSpecReport`) — 항상 `spec_reports`에 **열린 신고**가 같이 생긴다
    * 2. 이 검사
-   * 3. 소켓보다 앞선 출시 연도(`flagImplausibleYears`, 이슈 #18) — 아래에서 뺀다
+   * 3. 적재의 자기 검사 — 소켓보다 앞선 출시 연도(#18), 스스로 모순인 메모리(#20).
+   *    `selfCheckFlagsSelect` 하나에 모아 두고 아래에서 뺀다
    *
    * 그러니 **열린 신고가 없고 3번도 아닌 `disputed`는 이 검사가 세운 것이다.** 그중
    * 지금은 어긋나지 않는 것만 거둔다. 열린 신고가 있으면 절대 건드리지 않는다.
@@ -168,10 +169,7 @@ export async function flagConflictingSpecs(db: Database): Promise<ConflictResult
         select 1 from spec_reports r
         where r.part_id = s.part_id and r.spec_key = s.key and r.status = 'open'
       )
-      and not (
-        s.key = 'release_year'
-        and s.part_id in (select part_id from (${implausibleYearSelect()}) y)
-      )
+      and (s.part_id, s.key) not in (select part_id, key from (${selfCheckFlagsSelect()}) f)
   `);
 
   // 서 있는 총수를 따로 센다. 두 번째 적재부터 위 update는 0행이고, 로그에

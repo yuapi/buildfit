@@ -15,7 +15,7 @@ import { sql } from 'drizzle-orm';
 import { CATEGORIES } from './mapping';
 import { toPartRow, toSlug, type PartRow } from './transform';
 import { flagConflictingSpecs, markDuplicates } from './duplicates';
-import { flagImplausibleYears } from './plausibility';
+import { flagImplausibleYears, flagInconsistentRam } from './plausibility';
 
 const CHUNK = 500;
 
@@ -284,6 +284,9 @@ export async function ingest(opts: IngestOptions): Promise<void> {
     // 소켓이 나오기 전 연도를 단 레코드. 규칙 12가 그 값으로 판정한다 (이슈 #18)
     const years = await flagImplausibleYears(db);
     log(`  소켓보다 앞선 출시 연도 ${years.flagged}건에 검증 표시`);
+    // 모듈 수 × 모듈 용량 ≠ 총 용량인 메모리. 규칙 3·16이 그 값을 읽는다 (이슈 #20)
+    const ram = await flagInconsistentRam(db);
+    log(`  스스로 모순인 메모리 값 ${ram.flagged}건에 검증 표시`);
 
     // --- 요약 -------------------------------------------------------------
     const [counts] = await db
