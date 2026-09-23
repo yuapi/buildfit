@@ -5,12 +5,12 @@
  *   DATABASE_URL=postgres://... OPENDB_PATH=/path/to/buildcores-open-db npm run ingest
  *
  * 멱등하다. `opendb_id`를 키로 upsert하므로 여러 번 돌려도 같은 결과가 된다.
- * OpenDB 갱신은 `git pull` 후 재실행이다 (§5.7.1 주 1회).
+ * OpenDB 갱신은 `git pull` 후 재실행이다 (§5.6 주 1회).
  */
 
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { createDb, importers, partAliases, parts, partSpecs } from '@buildfit/db';
+import { createDb, partAliases, parts, partSpecs } from '@buildfit/db';
 import { sql } from 'drizzle-orm';
 import { CATEGORIES } from './mapping';
 import { toPartRow, toSlug, type PartRow } from './transform';
@@ -294,7 +294,6 @@ export async function ingest(opts: IngestOptions): Promise<void> {
         parts: sql<number>`(select count(*)::int from ${parts})`,
         specs: sql<number>`(select count(*)::int from ${partSpecs})`,
         aliases: sql<number>`(select count(*)::int from ${partAliases})`,
-        importers: sql<number>`(select count(*)::int from ${importers})`,
       })
       .from(sql`(select 1) as _`);
 
@@ -303,7 +302,6 @@ export async function ingest(opts: IngestOptions): Promise<void> {
     log(`  parts        ${counts?.parts ?? 0}`);
     log(`  part_specs   ${counts?.specs ?? 0}`);
     log(`  part_aliases ${counts?.aliases ?? 0}`);
-    log(`  importers    ${counts?.importers ?? 0}`);
   } finally {
     await client.end();
   }

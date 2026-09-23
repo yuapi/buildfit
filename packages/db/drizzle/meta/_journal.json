@@ -36,6 +36,13 @@
       "when": 1790074381096,
       "tag": "0004_duplicate_of",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790155447737,
+      "tag": "0005_drop_availability",
+      "breakpoints": true
     }
   ]
 }
