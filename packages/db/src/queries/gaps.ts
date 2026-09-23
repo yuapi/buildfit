@@ -570,3 +570,148 @@ export async function disputedSummary(db: Database): Promise<DisputedSummary> {
     .where(eq(partSpecs.disputed, true));
   return { rows: row?.rows ?? 0, parts: row?.parts ?? 0 };
 }
+
+/**
+ * 출시 연도가 소켓보다 앞서는 레코드의 기준 — 이슈 #18.
+ *
+ * 세 값은 실측으로 정했다. 걸리는 앞쪽 무리는 소켓 전체의 0.6~1.6%이고, 가장
+ * 가까운 정상 사례(LGA 1151의 2015년, Skylake)가 15.2%다. **경계를 1.6% 초과
+ * 15.2% 이하 어디에 그어도 결과가 같다.** 여유가 넓지 않으므로 업스트림이
+ * 바뀌면 다시 잰다. 근거: `docs/research/release-year-plausibility.md`
+ */
+export const YEAR_PLAUSIBILITY = {
+  /** 그 연도 다음으로 나오는 연도까지의 간격. 2 = 빈 해가 하나 이상 */
+  minGapYears: 2,
+  /** 그 연도 **이하**가 소켓 전체에서 차지하는 비율의 상한 */
+  maxLeadShare: 0.05,
+  /**
+   * 소켓에 연도가 있는 대표 레코드가 이만큼은 있어야 분포를 믿는다.
+   * 5%에서는 따로 작동하지 않는다(20건 미만이면 1건도 5% 이상). 비율을 올릴 때의 안전장치
+   */
+  minDatedOnSocket: 20,
+} as const;
+
+/**
+ * 소켓 표기를 등가 묶음의 대표로 접는다. `TR4`/`sTR4`가 한 분포가 되어야 한다.
+ * 등가 표는 `@buildfit/compat`의 것을 받는다 — `comparableSpecValue`와 같은 이유.
+ */
+function canonicalSocket(alias: string): SQL {
+  const t = sql.raw(alias);
+  const pairs = socketCanonicalPairs();
+  if (pairs.length === 0) return sql`${t}.value #>> '{}'`;
+  const rows = sql.join(
+    pairs.map(([name, canon]) => sql`(${name}, ${canon})`),
+    sql`, `,
+  );
+  return sql`coalesce(
+    (select a.canon from (values ${rows}) as a(name, canon) where a.name = ${t}.value #>> '{}'),
+    ${t}.value #>> '{}'
+  )`;
+}
+
+/**
+ * 출시 연도가 **소켓보다 먼저**인 레코드를 고르는 SELECT — 이슈 #18.
+ *
+ * 같은 소켓의 부품은 그 소켓보다 먼저 나올 수 없다. 그런데 소켓이 언제 나왔는지는
+ * 모른다(제조사 도메인이 막혀 있다). 그래서 **데이터 안의 분포**로 본다 — 앞쪽에
+ * 빈 해를 사이에 두고 홀로 떨어진 무리는 틀린 값이다. AM5에 2020년 레코드 3건이
+ * 있고 2021년은 0건, 2022년부터 몰려 있다. Ryzen 5 7500F가 그 3건 중 하나다.
+ *
+ * 소켓마다 연도가 있는 CPU·보드 **대표** 레코드로 분포를 만들고, 조건을 만족하는
+ * 가장 늦은 연도까지 그 앞을 전부 고른다. 가장 늦은 것까지 고르는 이유: 2019·2020이
+ * 붙어 있고 2022부터 몰려 있으면 2020만 조건(다음 연도까지 2년)을 만족하는데,
+ * 2019가 더 이르다.
+ *
+ * **고르는 것은 중복 레코드까지다.** 예전 공유 링크가 중복 id를 담고 있을 수 있다.
+ * **사람이 출처와 함께 넣은 연도는 고르지 않는다** — 분포에는 센다.
+ *
+ * 쓰는 곳은 둘이고 같은 식이어야 한다: 적재의 `flagImplausibleYears`와 어드민 목록.
+ */
+export function implausibleYearSelect(): SQL {
+  const { minGapYears, maxLeadShare, minDatedOnSocket } = YEAR_PLAUSIBILITY;
+  return sql`
+    with dated as (
+      select p.id, p.category, p.model_name, p.brand, p.duplicate_of,
+             p.release_year as year, ${canonicalSocket('s')} as socket
+      from ${parts} p
+      join ${partSpecs} s on s.part_id = p.id and s.key = 'socket'
+      where p.category in ('CPU', 'Motherboard') and p.release_year is not null
+    ), yrs as (
+      select socket, year, count(*) as n
+      from dated where duplicate_of is null
+      group by socket, year
+    ), stat as (
+      select socket, year,
+             lead(year) over w as next_year,
+             sum(n) over w as lead_n,
+             sum(n) over (partition by socket) as total
+      from yrs
+      window w as (partition by socket order by year)
+    ), cutoff as (
+      select distinct on (socket) socket, year, next_year, lead_n, total
+      from stat
+      where next_year - year >= ${minGapYears}
+        and total >= ${minDatedOnSocket}
+        and lead_n < total * ${maxLeadShare}::numeric
+      order by socket, year desc
+    )
+    select d.id as part_id, d.category, d.model_name, d.brand, d.year, d.socket,
+           c.next_year, c.lead_n::int as lead_count, c.total::int as socket_count
+    from dated d
+    join cutoff c on c.socket = d.socket and d.year <= c.year
+    where not exists (
+      select 1 from ${partSpecs} h
+      where h.part_id = d.id and h.key = 'release_year'
+        and h.source_url not like 'https://github.com/buildcores/%'
+    )
+  `;
+}
+
+export interface ImplausibleYear {
+  readonly partId: string;
+  readonly category: string;
+  readonly modelName: string;
+  readonly brand: string | null;
+  readonly year: number;
+  readonly socket: string;
+  /** 같은 소켓에서 이 무리 다음으로 나오는 연도 */
+  readonly nextYear: number;
+  /** 이 무리(연도가 기준 이하인 대표 레코드) 수 */
+  readonly leadCount: number;
+  /** 소켓에 연도가 있는 대표 레코드 수 */
+  readonly socketCount: number;
+}
+
+/**
+ * 어드민이 볼 목록 — 이슈 #18. **정답 연도는 적지 않는다.** 모르기 때문이다.
+ * 다음 연도는 「적어도 이보다 이르지는 않을 것」이 아니라 분포의 모양을 보이는 값이다.
+ */
+export async function implausibleReleaseYears(db: Database): Promise<ImplausibleYear[]> {
+  const rows = await db.execute<{
+    part_id: string;
+    category: string;
+    model_name: string;
+    brand: string | null;
+    year: number;
+    socket: string;
+    next_year: number;
+    lead_count: number;
+    socket_count: number;
+  }>(sql`
+    select part_id::text, category, model_name, brand, year, socket, next_year,
+           lead_count, socket_count
+    from (${implausibleYearSelect()}) x
+    order by socket, year, model_name
+  `);
+  return rows.map((r) => ({
+    partId: r.part_id,
+    category: r.category,
+    modelName: r.model_name,
+    brand: r.brand,
+    year: r.year,
+    socket: r.socket,
+    nextYear: r.next_year,
+    leadCount: r.lead_count,
+    socketCount: r.socket_count,
+  }));
+}
