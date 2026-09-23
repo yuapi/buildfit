@@ -103,7 +103,7 @@ export interface ConflictResult {
    * 사람이 신고해 세운 것은 거두지 않는다 (아래 `retractStale` 주석).
    */
   readonly retracted: number;
-  /** 지금 서 있는 행 수. 두 번째 적재부터 `marked`는 0이 된다 */
+  /** 지금 서 있는 **이 검사의** 행 수. 두 번째 적재부터 `marked`는 0이 된다 */
   readonly standing: number;
 }
 
@@ -173,10 +173,18 @@ export async function flagConflictingSpecs(db: Database): Promise<ConflictResult
   `);
 
   // 서 있는 총수를 따로 센다. 두 번째 적재부터 위 update는 0행이고, 로그에
-  // 0만 찍히면 "어긋난 값이 없다"로 읽힌다 — 실제로는 274행이 서 있다.
-  const [total] = await db.execute<{ n: number }>(
-    sql`select count(*)::int as n from part_specs where disputed`,
-  );
+  // 0만 찍히면 "어긋난 값이 없다"로 읽힌다 — 실제로는 272행이 서 있다.
+  //
+  // ★ **이 검사의 것만 센다.** 전체 disputed를 세면 자기 검사(#18·#20)와 신고까지
+  // 섞여 「값이 어긋나는 스펙 295건」이 된다 — 전 적재의 메모리 표시가 남아 있어서다
+  const [total] = await db.execute<{ n: number }>(sql`
+    with ${conflicting}
+    select count(*)::int as n
+    from part_specs s
+    join grp g on g.id = s.part_id
+    join conflicting c on c.canon = g.canon and c.key = s.key
+    where s.disputed
+  `);
 
   return {
     marked: Number(result.count ?? 0),

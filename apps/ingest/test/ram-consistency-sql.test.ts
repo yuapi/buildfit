@@ -123,6 +123,8 @@ describeIfDb('스스로 모순인 메모리 (이슈 #20)', () => {
     const r = await flagConflictingSpecs(db);
     expect(r.retracted).toBe(0);
     expect(await flagged(ARITH)).toEqual(ALL);
+    // 로그의 「값이 어긋나는 스펙 N건」은 중복 불일치만 센다. 여기엔 중복이 없다
+    expect(r.standing, '자기 검사의 표시까지 세면 로그가 부풀어 보인다').toBe(0);
   });
 
   it('판정은 그대로 두고 「검증 중」만 붙인다', async () => {
