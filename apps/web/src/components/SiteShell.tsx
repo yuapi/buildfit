@@ -23,26 +23,38 @@ export function SiteHeader() {
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-1 px-4 sm:gap-2">
         <Link
           href="/"
-          className="mr-2 flex shrink-0 items-center gap-2 text-[0.95rem] font-semibold tracking-tight sm:mr-4"
+          className="mr-1 flex shrink-0 items-center gap-2 text-[0.95rem] font-semibold tracking-tight sm:mr-4"
           aria-label="buildfit 홈"
         >
           <span className="text-brand">
             <LogoMark />
           </span>
-          buildfit
+          {/*
+            좁은 화면에서는 글자를 숨긴다 (이슈 #21). 로고+워드마크+메뉴 넷+테마 버튼이
+            390px을 넘어 메뉴가 두 줄로 접혔다 — 「부품」이 「부/품」으로 갈렸다.
+            링크 이름은 aria-label이 준다.
+          */}
+          <span className="hidden sm:inline">buildfit</span>
         </Link>
-        <nav aria-label="주요" className="flex items-center gap-0.5">
+        {/*
+          ★ 메뉴는 접지 않는다. 한국어는 글자 사이에서 줄이 바뀐다. 모자라면 가로로
+          밀린다 — 접히는 것보다 낫다. min-w-0이 있어야 flex 안에서 줄어든다
+        */}
+        <nav
+          aria-label="주요"
+          className="flex min-w-0 items-center gap-0.5 overflow-x-auto [scrollbar-width:none]"
+        >
           {NAV.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className="rounded-(--radius-control) px-2.5 py-1.5 text-sm text-chrome-muted transition-colors hover:bg-white/10 hover:text-chrome-fg sm:px-3"
+              className="shrink-0 whitespace-nowrap rounded-(--radius-control) px-1.5 py-1.5 text-sm text-chrome-muted transition-colors hover:bg-white/10 hover:text-chrome-fg sm:px-3"
             >
               {item.label}
             </Link>
           ))}
         </nav>
-        <div className="ml-auto">
+        <div className="ml-auto shrink-0">
           <ThemeToggle />
         </div>
       </div>
