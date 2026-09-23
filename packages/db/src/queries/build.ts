@@ -20,7 +20,8 @@ import type {
   RamKit,
   StorageDrive,
 } from '@buildfit/compat';
-import { inArray } from 'drizzle-orm';
+import { socketAliases } from '@buildfit/compat';
+import { inArray, sql } from 'drizzle-orm';
 import type { Database } from '../client';
 import { partSpecs, parts } from '../schema';
 
@@ -150,7 +151,7 @@ function toCpu(p: RawPart): Cpu {
   };
 }
 
-function toMotherboard(p: RawPart): Motherboard {
+function toMotherboard(p: RawPart, socketFirstYear: number | null): Motherboard {
   return {
     ...ref(p),
     socket: str(p.specs, 'socket'),
@@ -163,6 +164,7 @@ function toMotherboard(p: RawPart): Motherboard {
     sataPorts: num(p.specs, 'sata_ports'),
     sataPorts3Gbs: num(p.specs, 'sata_ports_3gbs'),
     releaseYear: p.releaseYear,
+    socketFirstYear,
     biosFlashback: bool(p.specs, 'bios_flashback'),
   };
 }
@@ -239,6 +241,38 @@ function toCpuCooler(p: RawPart): CpuCooler {
   };
 }
 
+/**
+ * 이 소켓의 첫 CPU 출시 연도 — 보드 연도의 하한 (규칙 12, compat-rules §12.5).
+ *
+ * 보드는 자기 소켓의 첫 CPU보다 먼저 나올 수 없다. **같은 소켓의 다른 표기**
+ * (`TR4`/`sTR4`)를 함께 본다 — 규칙 1과 같은 표다.
+ *
+ * - 대표 레코드만 본다 (이슈 #11). 중복은 같은 제품이라 결과가 같지만 한 번 더 막는다
+ * - **「검증 중」 연도를 뺀다** (이슈 #18). Ryzen 5 7500F(AM5, 2020년)를 넣으면 AM5의
+ *   하한이 2020이 되어 아무것도 풀리지 않는다
+ */
+async function socketFirstYear(db: Database, socket: string | null): Promise<number | null> {
+  if (!socket) return null;
+  const names = sql.join(
+    socketAliases(socket).map((n) => sql`${n}`),
+    sql`, `,
+  );
+  const [row] = await db.execute<{ y: number | null }>(sql`
+    select min(p.release_year)::int as y
+    from parts p
+    join part_specs s on s.part_id = p.id and s.key = 'socket'
+    where p.category = 'CPU'
+      and p.duplicate_of is null
+      and p.release_year is not null
+      and s.value #>> '{}' in (${names})
+      and not exists (
+        select 1 from part_specs d
+        where d.part_id = p.id and d.key = 'release_year' and d.disputed
+      )
+  `);
+  return row?.y ?? null;
+}
+
 /** 고르지 않은 부품은 생략하거나 `undefined`로 둔다. */
 export interface BuildSelection {
   readonly cpu?: string | undefined;
@@ -291,7 +325,7 @@ export async function loadBuild(db: Database, sel: BuildSelection): Promise<Buil
 
   return {
     cpu: cpu ? toCpu(cpu) : null,
-    motherboard: mb ? toMotherboard(mb) : null,
+    motherboard: mb ? toMotherboard(mb, await socketFirstYear(db, str(mb.specs, 'socket'))) : null,
     ram: ram.map(toRamKit),
     gpu: gpu ? toGpu(gpu) : null,
     pcCase: pcCase ? toPcCase(pcCase) : null,

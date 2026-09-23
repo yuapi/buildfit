@@ -145,6 +145,8 @@ export const SPEC_REQUIREMENTS: readonly FieldRequirement[] = [
   { ruleId: 12, category: 'CPU', specKey: 'release_year', label: '출시 연도', severity: 'warning', valueType: 'number', storedOnPart: true, min: 1980, max: MAX_RELEASE_YEAR },
   { ruleId: 12, category: 'Motherboard', specKey: 'release_year', label: '출시 연도', severity: 'warning', valueType: 'number', storedOnPart: true, min: 1980, max: MAX_RELEASE_YEAR },
   { ruleId: 12, category: 'Motherboard', specKey: 'bios_flashback', label: 'BIOS Flashback 지원', severity: 'warning', valueType: 'boolean' },
+  // 보드 연도가 없을 때 하한을 찾는 데 쓴다 (docs/compat-rules.md §12.5)
+  { ruleId: 12, category: 'Motherboard', specKey: 'socket', label: '소켓', severity: 'warning', valueType: 'string', optional: true },
 
   // 15. GPU 두께(슬롯) ≤ 케이스 확장 슬롯 수 (Phase 1)
   // GPU의 case_expansion_slot_width를 쓰지 않는다 — 값이 틀렸다 (docs/compat-rules.md §15.1).

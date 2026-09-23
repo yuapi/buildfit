@@ -488,9 +488,44 @@ describe('12. BIOS 업데이트 필요 여부 (Phase 1)', () => {
   });
 
   it('보드 연도가 없으면 판정 불가 — 전수의 79.6%가 여기 해당한다', () => {
+    // CPU(2024)가 소켓 첫해(2022)보다 늦다 — 하한으로는 풀리지 않는다
     const r = rule12(mb({ releaseYear: null }));
     expect(r?.verdict).toBe('unknown');
     expect(r?.reason?.kind).toBe('missing');
+  });
+
+  describe('§12.5 소켓의 첫 CPU 연도가 보드 연도의 하한이다 (이슈 #28)', () => {
+    const firstGen = (patch: Partial<typeof f.motherboard>) =>
+      f.withBuild({
+        cpu: { ...f.cpu, releaseYear: 2022 },
+        motherboard: { ...f.motherboard, releaseYear: null, ...patch },
+      });
+
+    it('★ 보드 연도가 없어도 CPU가 소켓 첫해면 pass — 보드가 먼저일 수 없다', () => {
+      const r = rule12(firstGen({ socketFirstYear: 2022 }));
+      expect(r?.verdict).toBe('pass');
+      expect(r?.message).toContain('2022년');
+    });
+
+    it('CPU가 소켓 첫해보다 늦으면 여전히 판정 불가 — 후속 세대는 보드 연도가 필요하다', () => {
+      const r = rule12(firstGen({ socketFirstYear: 2021 }));
+      expect(r?.verdict).toBe('unknown');
+      expect(r?.reason?.fields.map((x) => x.field)).toContain('출시 연도');
+    });
+
+    it('하한을 모르면 지금처럼 판정 불가', () => {
+      expect(rule12(firstGen({ socketFirstYear: null }))?.verdict).toBe('unknown');
+    });
+
+    it('Flashback을 몰라도 판정한다 — 업데이트가 필요 없는 쪽이다', () => {
+      expect(rule12(firstGen({ socketFirstYear: 2022, biosFlashback: null }))?.verdict).toBe('pass');
+    });
+
+    it('★ 보드 연도가 있으면 하한을 보지 않는다 — 더 정확한 값이 있다', () => {
+      // 보드 2021 < CPU 2022: 하한(2022)이 CPU와 같아도 경고·정보가 그대로 나온다
+      const r = rule12(firstGen({ releaseYear: 2021, socketFirstYear: 2022 }));
+      expect(r?.verdict).toBe('fail');
+    });
   });
 
   it('CPU 연도가 없어도 판정 불가', () => {

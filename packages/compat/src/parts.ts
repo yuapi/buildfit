@@ -90,6 +90,14 @@ export interface Motherboard extends PartRef {
   /** 출시 연도. 규칙 12. **20.4%만 채워져 있다** — 대부분 판정 불가가 된다 */
   readonly releaseYear: number | null;
   /**
+   * 이 보드 소켓의 **첫 CPU 출시 연도** — 보드 연도의 하한이다 (규칙 12, §12.5).
+   *
+   * 보드는 자기 소켓의 첫 CPU보다 먼저 나올 수 없다. 보드 연도가 없어도 CPU가 이
+   * 해 이전이면 「보드가 같거나 더 나중」이다. `loadBuild`가 카탈로그에서 계산한다
+   * (같은 소켓 등가 · 대표 레코드 · 「검증 중」 연도 제외). 모르면 `null`.
+   */
+  readonly socketFirstYear: number | null;
+  /**
    * BIOS Flashback 지원. CPU 없이 BIOS를 올릴 수 있는가.
    *
    * 이 한 필드가 규칙 12의 심각도를 가른다. 없으면 CPU가 있어야 업데이트가
