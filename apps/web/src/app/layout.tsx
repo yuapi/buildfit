@@ -38,7 +38,14 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
       </head>
       <body className="flex min-h-full flex-col">
         <SiteHeader />
-        <div className="flex-1">{children}</div>
+        {/*
+          본문 랜드마크는 여기 하나다. 없으면 화면 낭독기가 「본문으로」 건너뛸 곳이 없고,
+          페이지 안의 <header>가 사이트 머리글(banner)과 겹쳐 두 개로 읽힌다 (axe).
+          페이지는 <main>을 따로 두지 않는다 — 겹치면 본문이 둘이 된다
+        */}
+        <main id="main" tabIndex={-1} className="flex-1 outline-none">
+          {children}
+        </main>
         <SiteFooter />
       </body>
     </html>
