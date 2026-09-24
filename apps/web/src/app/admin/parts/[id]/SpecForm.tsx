@@ -66,7 +66,7 @@ export function SpecForm({
       <input type="hidden" name="specKey" value={req.specKey} />
 
       <div className="flex items-baseline justify-between gap-2">
-        <label className="font-medium">
+        <label className="font-medium" htmlFor={`spec-${req.specKey}`}>
           {req.label}
           {!filled && <span className="ml-2 text-xs font-normal text-warn">비어 있음</span>}
         </label>
@@ -79,6 +79,7 @@ export function SpecForm({
         {/* 입력칸 모양은 공개 제보 폼과 **한 벌을 쓴다** (SpecValueField 주석) */}
         <SpecValueField
           req={req}
+          id={`spec-${req.specKey}`}
           text={text}
           picked={picked}
           onText={setText}
@@ -87,7 +88,7 @@ export function SpecForm({
       </div>
 
       <div className="mt-3" key={`source-${attempt}`}>
-        <label className="text-sm text-fg-muted">
+        <label className="text-sm text-fg-muted" htmlFor={`source-${req.specKey}`}>
           출처 URL <span className="text-danger">*</span>
         </label>
         {manufacturerUrl && (
@@ -101,6 +102,7 @@ export function SpecForm({
           </a>
         )}
         <input
+          id={`source-${req.specKey}`}
           type="url"
           name="sourceUrl"
           required

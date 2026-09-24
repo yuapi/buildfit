@@ -71,10 +71,11 @@ export function ReportForm({
         로그인은 필요 없습니다.
       </p>
 
-      <label className="mt-3 block text-xs text-fg-muted">
+      <label className="mt-3 block text-xs text-fg-muted" htmlFor="report-spec-key">
         어느 항목인가요
       </label>
       <select
+        id="report-spec-key"
         name="specKey"
         required
         value={specKey}
@@ -117,6 +118,7 @@ export function ReportForm({
           // 규칙 5·6은 문자열 완전 일치라 오타 하나가 판정을 뒤집는다.
           <SpecValueField
             req={req}
+            id="reported-value"
             name="reportedValue"
             text={text}
             picked={picked}
@@ -140,10 +142,11 @@ export function ReportForm({
         </p>
       )}
 
-      <label className="mt-3 block text-xs text-fg-muted">
+      <label className="mt-3 block text-xs text-fg-muted" htmlFor="report-note">
         설명이나 출처 (선택)
       </label>
       <textarea
+        id="report-note"
         name="note"
         rows={2}
         maxLength={500}

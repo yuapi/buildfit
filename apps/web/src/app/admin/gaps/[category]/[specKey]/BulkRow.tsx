@@ -86,6 +86,7 @@ export function BulkRow({
         {/* 입력칸 모양은 상세 화면·공개 제보 폼과 한 벌을 쓴다 (SpecValueField 주석) */}
         <SpecValueField
           req={req}
+          label={`${part.modelName}의 ${req.label}`}
           text={text}
           picked={picked}
           onText={setText}

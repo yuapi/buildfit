@@ -11,8 +11,10 @@
  */
 
 import { SPEC_REQUIREMENTS, type FieldRequirement } from '@buildfit/compat';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { specFieldKind } from '../src/components/SpecValueField';
+import { SpecValueField, specFieldKind } from '../src/components/SpecValueField';
 
 const find = (category: string, specKey: string): FieldRequirement => {
   const req = SPEC_REQUIREMENTS.find((r) => r.category === category && r.specKey === specKey);
@@ -77,5 +79,42 @@ describe('두 화면이 같은 칸을 쓴다', () => {
     ]) {
       expect(readFileSync(file, 'utf8'), file).toContain('SpecValueField');
     }
+  });
+});
+
+describe('칸에 이름이 있다 — 접근성 점검(axe label · select-name)', () => {
+  // 세 화면이 전부 이름표를 그려 놓고 칸에 잇지 않았다. 화면 낭독기는 「편집 가능,
+  // 빈칸」만 읽었다. 칸 모양마다 한 번씩 그려서 이름이 붙는지 본다.
+  const render = (req: FieldRequirement, props: { id?: string; label?: string } = {}) =>
+    renderToStaticMarkup(
+      createElement(SpecValueField, {
+        req,
+        text: '',
+        picked: [],
+        onText: () => {},
+        onPicked: () => {},
+        ...props,
+      }),
+    );
+  const sample = (kind: string) => {
+    const req = SPEC_REQUIREMENTS.find((r) => specFieldKind(r) === kind);
+    if (!req) throw new Error(`${kind} 칸을 쓰는 선언이 없다`);
+    return req;
+  };
+
+  it.each(['boolean', 'select', 'number', 'text'])('%s 칸은 보이는 이름표가 없으면 aria-label을 단다', (kind) => {
+    const req = sample(kind);
+    expect(render(req)).toContain(`aria-label="${req.label}"`);
+  });
+
+  it.each(['boolean', 'select', 'number', 'text'])('%s 칸은 id를 받으면 그 id로 이름표와 이어진다', (kind) => {
+    const html = render(sample(kind), { id: 'spec-x' });
+    expect(html).toContain('id="spec-x"');
+    expect(html).not.toContain('aria-label=');
+  });
+
+  it('여러 개 고르는 칸은 legend가 이름이다', () => {
+    const req = sample('multi');
+    expect(render(req, { label: '보드 A의 지원 소켓' })).toContain('<legend class="sr-only">보드 A의 지원 소켓');
   });
 });
