@@ -204,6 +204,7 @@ function toPcCase(p: RawPart): PcCase {
     supportedPsuFormFactors: strArray(p.specs, 'supported_psu_form_factors'),
     maxGpuLengthMm: num(p.specs, 'max_gpu_length_mm'),
     maxCpuCoolerHeightMm: num(p.specs, 'max_cpu_cooler_height_mm'),
+    maxPsuLengthMm: num(p.specs, 'max_psu_length_mm'),
     expansionSlots: num(p.specs, 'expansion_slots'),
     internal35Bays: num(p.specs, 'internal_3_5_bays'),
     internal25Bays: num(p.specs, 'internal_2_5_bays'),
@@ -225,6 +226,7 @@ function toPsu(p: RawPart): Psu {
     ...ref(p),
     wattage: num(p.specs, 'wattage_w'),
     formFactor: str(p.specs, 'form_factor'),
+    lengthMm: num(p.specs, 'length_mm'),
     connectors: {
       pcie6plus2: num(p.specs, 'pcie_6_plus_2_pin'),
       pcie12vhpwr: num(p.specs, 'pcie_12vhpwr'),

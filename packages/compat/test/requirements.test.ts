@@ -30,6 +30,8 @@ const BLANK: Record<string, () => Build> = {
   'CPU.tdp_w': () => f.withBuild({ cpu: { ...f.cpu, tdp: null, ppt: null } }),
   'GPU.tdp_w': () => f.withBuild({ gpu: { ...f.gpu, tdp: null } }),
   'PSU.wattage_w': () => f.withBuild({ psu: { ...f.psu, wattage: null } }),
+  'PSU.length_mm': () => f.withBuild({ psu: { ...f.psu, lengthMm: null } }),
+  'PCCase.max_psu_length_mm': () => f.withBuild({ pcCase: { ...f.pcCase, maxPsuLengthMm: null } }),
   'GPU.pcie_6_pin': () =>
     f.withBuild({ gpu: { ...f.gpu, connectors: { ...f.gpu.connectors, pcie6: null } } }),
   'GPU.pcie_8_pin': () =>

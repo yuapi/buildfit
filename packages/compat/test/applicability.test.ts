@@ -77,7 +77,7 @@ describe('notApplicable', () => {
 
   it('무엇이 막고 있는지 부품 단위로 말한다', () => {
     const na = notApplicable(f.withBuild({ pcCase: null }));
-    expect(na.map((x) => x.ruleId)).toEqual([4, 5, 6, 9, 15, 19]);
+    expect(na.map((x) => x.ruleId)).toEqual([4, 5, 6, 9, 15, 19, 24]);
     expect(na.every((x) => x.needs.includes('pcCase'))).toBe(true);
   });
 

@@ -187,6 +187,9 @@ export const SPEC_REQUIREMENTS: readonly FieldRequirement[] = [
   // 보드 폼팩터는 SO-DIMM일 때 Thin Mini-ITX를 가려내는 데만 쓴다 (§23.2). 보조 입력이다 —
   // DIMM 키트는 보드 폼팩터 없이도 판정된다
   { ruleId: 23, category: 'Motherboard', specKey: 'form_factor', label: '폼팩터', severity: 'warning', valueType: 'string', optional: true },
+  // 24. PSU 길이 ≤ 케이스 한계 (Phase 1, 경고) — docs/compat-rules.md §24
+  { ruleId: 24, category: 'PSU', specKey: 'length_mm', label: '길이', severity: 'warning', valueType: 'number' },
+  { ruleId: 24, category: 'PCCase', specKey: 'max_psu_length_mm', label: 'PSU 최대 길이', severity: 'warning', valueType: 'number' },
 ];
 
 /** 이 카테고리에서 반드시 필요한 (보조 아닌) 필드들. 어드민의 구멍 계산 대상. */

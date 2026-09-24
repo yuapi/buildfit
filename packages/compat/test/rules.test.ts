@@ -1002,11 +1002,11 @@ describe('19. 3.5"·2.5" 드라이브 수 ≤ 케이스 베이 수 (Phase 1)', (
 });
 
 describe('엔진', () => {
-  it('정상 견적은 19개 규칙이 전부 통과한다', () => {
+  it('정상 견적은 20개 규칙이 전부 통과한다', () => {
     const v = evaluate(f.goodBuild);
     // 규칙 17은 전에 슬롯 수를 셀 수 없어 판정 불가였다. M.2 드라이브가 하나라
     // 받는 행으로 판정한다 (§17.5, 이슈 #27)
-    expect(v.counts.pass).toBe(19);
+    expect(v.counts.pass).toBe(20);
     expect(v.counts.fail).toBe(0);
     expect(v.counts.unknown).toBe(0);
   });
