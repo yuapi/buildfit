@@ -15,7 +15,8 @@
     "test": "npm run test --workspaces --if-present",
     "migrate": "npm run migrate --workspace @buildfit/db",
     "ingest": "npm run ingest --workspace @buildfit/ingest",
-    "test:empty-db": "bash scripts/test-empty-db.sh"
+    "test:empty-db": "bash scripts/test-empty-db.sh",
+    "ingest:benchmarks": "npm run ingest:benchmarks --workspace @buildfit/ingest --"
   },
   "engines": {
     "node": ">=20.9"
