@@ -170,6 +170,21 @@ describe('스토리지 좁히기 (규칙 17·19)', () => {
     expect(pickerConstraints(b, 'storage').find((x) => x.key === 'form_factor')).toBeUndefined();
   });
 
+  it('★ PCIe 목록까지 빈 보드의 M.2 0개로도 줄이지 않는다 (§17.6)', () => {
+    // ASRock X570 Taichi가 이렇게 들어 있다. 줄이면 NVMe 드라이브가 목록에서 사라진다
+    const b = f.withBuild({
+      storage: [],
+      motherboard: { ...f.motherboard, m2Slots: 0, pcieSlots: 0, memoryType: 'DDR4' },
+    });
+    expect(pickerConstraints(b, 'storage').find((x) => x.key === 'form_factor')).toBeUndefined();
+    // PCIe 수를 모르면 지금처럼 0을 믿는다
+    const unknownPcie = f.withBuild({
+      storage: [],
+      motherboard: { ...f.motherboard, m2Slots: 0, pcieSlots: null, memoryType: 'DDR4' },
+    });
+    expect(pickerConstraints(unknownPcie, 'storage').find((x) => x.key === 'form_factor')).toBeDefined();
+  });
+
   it('고른 3.5" 드라이브가 케이스 후보를 좁힌다', () => {
     const b = f.withBuild({ storage: [f.drive, f.sataDrive] });
     expect(

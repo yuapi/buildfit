@@ -202,7 +202,9 @@ export function pickerConstraints(build: Build, slot: PartSlot): Constraint[] {
     motherboard.m2Slots === 0 &&
     known(motherboard, 'm2_slots', motherboard.m2Slots) &&
     // DDR5 보드의 0은 미입력이다 (§17.2). 그것으로 목록을 줄이지 않는다.
-    motherboard.memoryType !== 'DDR5'
+    motherboard.memoryType !== 'DDR5' &&
+    // PCIe 목록까지 빈 레코드의 0도 마찬가지다 (§17.6)
+    motherboard.pcieSlots !== 0
   ) {
     out.push({
       kind: 'oneOf',

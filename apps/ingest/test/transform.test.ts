@@ -364,6 +364,30 @@ describe('파생 스펙 — 경로 하나로 안 되는 것 (DERIVED_SPECS)', ()
     });
   });
 
+  describe('pcie_slots — M.2 0개를 믿어도 되는지 가른다 (compat-rules §17.6, 이슈 #33)', () => {
+    it('행마다 quantity를 더한다', () => {
+      const s = specs(board([], { pcie_slots: [{ gen: '4.0', quantity: 3, lanes: 16 }, { gen: '4.0', quantity: 2, lanes: 1 }] }));
+      expect(s.get('pcie_slots')).toBe(5);
+    });
+
+    it('★ 빈 배열은 0으로 담는다 — M.2 0과 함께 「안 적은 레코드」 신호다', () => {
+      // ASRock X570 Taichi: m2_slots [] · pcie_slots [] · 메모리 최대 0
+      const s = specs(board([], { pcie_slots: [] }));
+      expect(s.get('pcie_slots')).toBe(0);
+      expect(s.get('m2_slots')).toBe(0);
+    });
+
+    it('배열이 아니면 담지 않는다 — 규칙 17이 지금처럼 0을 믿는다', () => {
+      expect(specs(board([])).has('pcie_slots')).toBe(false);
+      expect(specs(board([], { pcie_slots: null })).has('pcie_slots')).toBe(false);
+    });
+
+    it('quantity가 숫자가 아닌 행은 더하지 않는다', () => {
+      const s = specs(board([], { pcie_slots: [{ quantity: null }, { quantity: '2' }, { quantity: 1 }] }));
+      expect(s.get('pcie_slots')).toBe(1);
+    });
+  });
+
   it('SATA는 속도별로 나눠 담는다 — 합산은 규칙 엔진이 한다', () => {
     const s = specs(board([]));
     expect(s.get('sata_ports')).toBe(4);

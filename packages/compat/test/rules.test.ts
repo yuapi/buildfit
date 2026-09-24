@@ -788,6 +788,24 @@ describe('17. M.2 드라이브를 보드가 받는가 (Phase 1)', () => {
     expect(rule17(build(2, 0, 'DDR4'))?.verdict).toBe('fail');
   });
 
+  it('★ PCIe 목록까지 비었으면 0을 믿지 않는다 — 안 적은 레코드다 (§17.6)', () => {
+    // M.2가 있는 보드 2,964건 중 PCIe 목록이 빈 것은 2건뿐이다. X570 Taichi가 0·0으로 들어 있다
+    const b = f.withBuild({
+      storage: m2(1),
+      motherboard: { ...f.motherboard, m2Slots: 0, pcieSlots: 0, memoryType: 'DDR4' },
+    });
+    const r = rule17(b);
+    expect(r?.verdict).toBe('unknown');
+    expect(r?.reason?.kind).toBe('inconsistent');
+    expect(r?.reason?.fields.map((x) => x.field)).toEqual(['M.2 슬롯 수', 'PCIe 슬롯 수']);
+    // PCIe 수를 모르면(재적재 전) 지금처럼 0을 믿는다
+    const legacy = f.withBuild({
+      storage: m2(1),
+      motherboard: { ...f.motherboard, m2Slots: 0, pcieSlots: null, memoryType: 'DDR4' },
+    });
+    expect(rule17(legacy)?.verdict).toBe('fail');
+  });
+
   it('★ 슬롯이 있으면 개수를 세지 않는다 — 배열 길이가 슬롯 수가 아니다 (§17.4)', () => {
     // ASUS PRIME B650M-A는 슬롯 2개인데 4행, Gigabyte Z790 AORUS ELITE AX는
     // 슬롯 4개인데 3행이다. 같은 계열이 다른 행 수로 존재하는 것이 138건이다

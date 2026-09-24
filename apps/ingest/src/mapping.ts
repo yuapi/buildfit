@@ -159,6 +159,23 @@ export const DERIVED_SPECS: Readonly<
      * 중복 불일치로 잡힌다. 집합이면 쪼갠 행과 합친 행이 같은 값이 된다.
      */
     m2_accepts: (r) => m2Accepts(storageM2Rows(r)),
+    /**
+     * PCIe 확장 슬롯 수 — 행마다 `quantity`를 더한다.
+     *
+     * **규칙 17이 `m2_slots = 0`을 믿어도 되는지 가르는 데만 쓴다.** M.2가 있는 보드
+     * 2,964건 중 PCIe 목록이 빈 것은 2건뿐이다. 둘 다 비었으면 목록을 안 적은
+     * 레코드일 수 있다 (docs/compat-rules.md §17.6). 개수가 맞는지는 검증하지 않았다.
+     */
+    pcie_slots: (r) => {
+      const raw = r['pcie_slots'];
+      if (!Array.isArray(raw)) return undefined;
+      let n = 0;
+      for (const row of raw) {
+        const q = row !== null && typeof row === 'object' ? (row as Record<string, unknown>)['quantity'] : undefined;
+        if (typeof q === 'number' && Number.isFinite(q)) n += q;
+      }
+      return n;
+    },
   },
 };
 
