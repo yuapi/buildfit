@@ -591,6 +591,18 @@ export const rule17: Rule = ({ motherboard, storage }) => {
         [ref(motherboard, 'M.2 슬롯 수')],
       );
     }
+    /**
+     * PCIe 목록까지 비었으면 「없다」와 「안 적었다」를 가를 수 없다. M.2가 있는 보드
+     * 2,964건 중 PCIe 목록이 빈 것은 2건뿐이다 — X570 Taichi가 이렇게 0으로 들어 있다 (§17.6).
+     */
+    if (motherboard.pcieSlots === 0) {
+      return inconsistent(
+        17,
+        'M.2 슬롯 수가 0으로 적혀 있어 판정하지 못했습니다.',
+        'PCIe 슬롯 목록도 비어 있습니다. 슬롯이 없는 것이 아니라 확장 슬롯 목록을 적지 않은 레코드로 보입니다.',
+        [ref(motherboard, 'M.2 슬롯 수'), ref(motherboard, 'PCIe 슬롯 수')],
+      );
+    }
     return withNotes(
       fail(17, 'error', `${motherboard.name}에는 M.2 슬롯이 없는데 M.2 드라이브 ${need}개를 담았습니다.`),
     );

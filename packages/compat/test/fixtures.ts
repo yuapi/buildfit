@@ -27,6 +27,7 @@ export const motherboard: Motherboard = {
   memoryMaxGb: 256,
   m2Slots: 3,
   m2Accepts: ['2242/PCIe', '2260/PCIe', '2280/PCIe'],
+  pcieSlots: 4,
   sataPorts: 6,
   sataPorts3Gbs: 0,
   releaseYear: 2024,

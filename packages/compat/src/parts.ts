@@ -66,7 +66,7 @@ export interface Motherboard extends PartRef {
    * 그래서 규칙 17은 개수를 세지 않고 **있다 / 없다**만 본다.
    *
    * **`0`은 값이다.** M.2가 없는 보드는 실재한다 — DDR2의 100%, DDR3의 86.3%가
-   * 그렇다. DDR5의 0만 미입력으로 본다 (§17.2).
+   * 그렇다. DDR5의 0과 PCIe 목록까지 빈 레코드의 0만 미입력으로 본다 (§17.2·§17.6).
    */
   readonly m2Slots: number | null;
   /**
@@ -76,6 +76,11 @@ export interface Motherboard extends PartRef {
    * 이 집합으로 판정한다 (§17.5). 없거나 비었으면 판정 불가다 — 오류가 아니다.
    */
   readonly m2Accepts: readonly string[] | null;
+  /**
+   * PCIe 확장 슬롯 수. **`m2Slots`가 0일 때 그 0을 믿어도 되는지만** 본다 (§17.6).
+   * 둘 다 0이면 확장 목록을 안 적은 레코드일 수 있다. 없으면(`null`) 지금처럼 0을 믿는다.
+   */
+  readonly pcieSlots: number | null;
   /** SATA 6Gb/s 포트 수. 규칙 18 (§18) */
   readonly sataPorts: number | null;
   /** SATA 3Gb/s 포트 수. 6Gb/s와 합산한다 — 둘 다 드라이브가 꽂히는 자리다 */

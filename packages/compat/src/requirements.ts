@@ -170,6 +170,8 @@ export const SPEC_REQUIREMENTS: readonly FieldRequirement[] = [
   // 드라이브가 하나일 때만 본다. 없으면 지금처럼 판정 불가다 (docs/compat-rules.md §17.5)
   { ruleId: 17, category: 'Storage', specKey: 'interface', label: '인터페이스', severity: 'error', valueType: 'string', optional: true },
   { ruleId: 17, category: 'Motherboard', specKey: 'm2_accepts', label: '받는 M.2 조합', severity: 'error', valueType: 'string[]', optional: true },
+  // M.2 0개를 믿어도 되는지만 가른다. 둘 다 0이면 목록을 안 적은 레코드다 (docs/compat-rules.md §17.6)
+  { ruleId: 17, category: 'Motherboard', specKey: 'pcie_slots', label: 'PCIe 슬롯 수', severity: 'error', valueType: 'number', optional: true },
   { ruleId: 18, category: 'Storage', specKey: 'interface', label: '인터페이스', severity: 'error', valueType: 'string' },
   { ruleId: 18, category: 'Motherboard', specKey: 'sata_ports', label: 'SATA 6Gb/s 포트 수', severity: 'error', valueType: 'number' },
   { ruleId: 18, category: 'Motherboard', specKey: 'sata_ports_3gbs', label: 'SATA 3Gb/s 포트 수', severity: 'error', valueType: 'number', optional: true },
