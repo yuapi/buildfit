@@ -1101,6 +1101,7 @@ CPU끼리 맞는다는 뜻이 아니다 — LGA 1150 CPU는 LGA 1151 보드에 �
 |---|---|---|
 | `LGA 1700` 쿨러 → `LGA 1851` CPU | **Intel 지원 문서**: "existing thermal solutions designed for LGA1700 can fit on LGA1851 without modification" ([000099700](https://www.intel.com/content/www/us/en/support/articles/000099700/processors.html)) | **통과** — 이 규칙은 장착을 본다 |
 | `AM4` 쿨러 → `AM5` CPU | AMD가 AM4 쿨러가 AM5에 맞는다고 밝혔다 ([PCGamesN](https://www.pcgamesn.com/amd/ryzen-7000-am5-cooler-compatibility)). 다만 **자체 백플레이트를 쓰는 쿨러는 예외**가 있다 | **경고 그대로** — 이유를 덧붙인다 |
+| `TR4`·`sTR4`·`sTRX4`·`sWRX8` 쿨러 → `sTR5` CPU | **AMD 쿨링 페이지**: "Threadripper 9000 and 7000 series processors come with the same Asetek-compatible cooler bracket in the box as previous-generation Threadripper products. Because of this, premium Asetek-compatible coolers are supported" ([AMD](https://www.amd.com/en/products/processors/ecosystem/threadripper-cooling-solutions.html), 2026-09-24 확인). 같은 페이지가 방열판을 넓게 덮는 **전용 sTR5 쿨러**를 권한다 | **경고 그대로** — Asetek 호환 쿨러에 한정된 말이다. 확인할 것을 덧붙인다 (이슈 #34) |
 
 - **LGA 1851은 한 방향만이다.** Intel 문서가 말하는 것은 1700 → 1851이다. 반대 방향은 적지 않는다
 - **냉각 성능은 보지 않는다.** Intel도 같은 문서에서 발열·전력 호환은 쿨러 제조사에 확인하라고
@@ -1110,6 +1111,23 @@ CPU끼리 맞는다는 뜻이 아니다 — LGA 1150 CPU는 LGA 1151 보드에 �
 - 규모: LGA 1851이 없는 쿨러 790개 중 119개가 통과로 바뀐다. AM4만 적은 363개는 메시지가 바뀐다
 - 이 보정도 **이 규칙 안에서만** 쓴다. `sockets.ts`의 CPU↔보드 등가 표에 넣지 않는다 — LGA 1700 CPU는
   LGA 1851 보드에 안 들어간다
+- **sTR5를 통과로 올리지 않는다.** AMD 문장은 「Asetek 호환 쿨러는 동봉 브래킷으로 된다」이지 「앞 세대
+  Threadripper 쿨러가 다 맞는다」가 아니다. 원본에 Asetek 호환 여부가 없다. 경고 메시지가 그 조건과 AMD가
+  권하는 전용 쿨러를 말한다. 규모: sTR5 CPU 19개, 앞 세대 Threadripper 표기가 있고 sTR5가 없는 쿨러 297개
+
+#### 20.3.1 찾았지만 더하지 않은 것 (2026-09-24)
+
+쿨러 목록에 그 소켓이 없는 비율이 **거의 전부**인 CPU 소켓이 셋 더 있다. 쿨러가 앞 세대 표기만 적는다.
+
+| CPU 소켓 | 목록에 없음 | 쿨러가 적는 것 | 공식 문서 |
+|---|---|---|---|
+| `LGA 2011-3` (CPU 70) | 98.6% | `LGA 2011` 1,327 | **없음.** Intel 설치 문서([000005928](https://www.intel.com/content/www/us/en/support/articles/000005928/processors.html))는 자사 쿨러 하나를 두 소켓에 쓰는 절차일 뿐이다. 열·기계 설계 가이드는 이 환경에서 열리지 않았다(403·연결 끊김) |
+| `FM2+` (CPU 35) | 99.1% | `FM2` 983 | **없음.** AMD FM2(#48639)·FM2b(#52237) 소켓 설계 명세가 같은 시험용 방열판(부품 번호 7120038000G)을 쓴다 — 간접 증거일 뿐 「쿨러가 맞는다」는 문장이 아니다 |
+| `AM3+` (CPU 18) | 98.0% | `AM3` 1,008 | **없음.** 위키백과·사용자 포럼뿐이다 |
+
+- 널리 알려진 사실이지만 **§20.1의 원칙대로 묶지 않는다.** 소켓 제조사의 문장을 찾으면 그때 더한다
+- **LGA 2011-3은 문서가 있어도 통과로 올리기 어렵다.** 서버 보드에 Narrow ILM이 있어 Square ILM용 쿨러가
+  안 맞는다. 이 규칙은 CPU 소켓만 보고 보드를 보지 않는다
 
 ---
 

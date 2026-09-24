@@ -913,6 +913,9 @@ export const rule23: Rule = ({ ram, motherboard }) => {
 export const phase0Rules: readonly Rule[] = [rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8];
 
 /** Phase 1에서 추가된 규칙까지. 명세 §4.2 */
+/** sTR5 이전의 Threadripper 소켓. AMD가 같은 브래킷을 동봉한다고 밝힌 세대다 (§20.3) */
+const PREVIOUS_THREADRIPPER = ['sTR4', 'sTRX4', 'sWRX8'] as const;
+
 /**
  * 규칙 20 — 쿨러가 CPU 소켓을 지원하는가. docs/compat-rules.md §20, 이슈 #17.
  *
@@ -955,6 +958,16 @@ export const rule20: Rule = ({ cpu, cooler }) => {
       'warning',
       `${base} AM4 소켓은 있습니다. AMD는 AM4용 쿨러가 AM5에 맞는다고 밝혔지만 ` +
         '자체 백플레이트를 쓰는 쿨러는 예외가 있습니다. 쿨러 제조사의 AM5 지원 여부를 확인해 주세요.',
+    );
+  }
+  // 앞 세대 Threadripper → sTR5. AMD 문장은 Asetek 호환 쿨러에 한정된다 (§20.3)
+  if (socket === 'sTR5' && PREVIOUS_THREADRIPPER.some((prev) => listed.some((s) => sameSocket(s, prev)))) {
+    return fail(
+      20,
+      'warning',
+      `${base} 앞 세대 Threadripper 소켓은 있습니다. AMD는 Threadripper 7000·9000 시리즈에 앞 세대와 같은 ` +
+        'Asetek 호환 브래킷을 동봉해 Asetek 호환 쿨러를 지원한다고 밝혔습니다. 그 밖의 쿨러는 제조사의 sTR5 지원 여부를 ' +
+        '확인해 주세요. AMD는 방열판을 넓게 덮는 sTR5 전용 쿨러를 권합니다.',
     );
   }
   return fail(20, 'warning', `${base} 별도 고정 부품이 필요하거나 장착되지 않을 수 있습니다. 제조사 스펙을 확인해 주세요.`);
