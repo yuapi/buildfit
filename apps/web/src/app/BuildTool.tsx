@@ -532,8 +532,41 @@ function SlotRow({
    */
   const actionLabel = open ? "닫기" : picked.length === 0 ? "선택" : many ? "추가" : "변경";
 
+  /*
+   * ★ 고르기를 닫거나 부품을 빼면 초점을 이 줄로 돌려놓는다 (WCAG 2.4.3).
+   *
+   * 고르기 목록이 사라지거나 누른 「제거」 버튼이 사라지면 초점이 페이지 맨 위로
+   * 떨어졌다. 키보드 사용자는 슬롯 하나를 고를 때마다 처음부터 다시 탭해야 했다.
+   *
+   * **초점을 뺏지 않는다.** 이 줄에서 시작한 동작이고, 초점이 실제로 사라졌을 때만
+   * 돌려놓는다 — 그사이 사용자가 다른 곳으로 옮겼으면 건드리지 않는다.
+   */
+  const rowRef = useRef<HTMLLIElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const clearRef = useRef<HTMLButtonElement>(null);
+  const returnFocus = useRef(false);
+  const andReturnFocus =
+    <A extends unknown[]>(fn: (...args: A) => void) =>
+    (...args: A) => {
+      returnFocus.current = true;
+      fn(...args);
+    };
+  useEffect(() => {
+    if (!returnFocus.current || open) return;
+    const active = document.activeElement;
+    if (active && active !== document.body) {
+      // 아직 이 줄 안에 있으면(제거 버튼이 사라지기 전) 기다린다. 밖이면 손 뗀다
+      if (!rowRef.current?.contains(active)) returnFocus.current = false;
+      return;
+    }
+    // 메모리·스토리지가 가득 차면 「추가」가 꺼진다. 그때는 「제거」로 간다
+    const target = toggleRef.current && !toggleRef.current.disabled ? toggleRef.current : clearRef.current;
+    target?.focus();
+    returnFocus.current = false;
+  });
+
   return (
-    <li className={open ? "bg-surface-2" : ""}>
+    <li ref={rowRef} className={open ? "bg-surface-2" : ""}>
       {/* 카드 더미가 아니라 표의 한 줄이다. 한 화면에 더 많이 들어간다 (ADR-0015) */}
       <div className="row-grid px-3 py-2 sm:px-4">
         {/* 넓은 화면에서는 두 칸으로 펼치고(contents), 좁으면 쌓인다 */}
@@ -565,7 +598,7 @@ function SlotRow({
                     {many && picked.length > 1 && (
                       <button
                         type="button"
-                        onClick={() => onClear(p.id)}
+                        onClick={andReturnFocus(() => onClear(p.id))}
                         aria-label={`${p.name} 제거`}
                         className="btn btn-ghost shrink-0 px-1.5 py-0.5 text-xs"
                       >
@@ -585,6 +618,7 @@ function SlotRow({
             * 눈으로 보는 사람에게는 옆의 라벨이 그 일을 한다.
             */}
           <button
+            ref={toggleRef}
             type="button"
             onClick={onToggle}
             aria-expanded={open}
@@ -600,10 +634,11 @@ function SlotRow({
           </button>
           {picked.length > 0 && (
             <button
+              ref={clearRef}
               type="button"
               // 인자 없이 부르면 이 칸을 비운다. 빈 문자열을 넘기면 아무것도
               // 걸러지지 않아 「전부 제거」가 조용히 실패한다.
-              onClick={() => onClear()}
+              onClick={andReturnFocus(() => onClear())}
               aria-label={`${label} ${many && picked.length > 1 ? "전부 " : ""}제거`}
               className="btn btn-ghost px-2 py-1 text-xs"
             >
@@ -616,8 +651,8 @@ function SlotRow({
         <PartPicker
           slot={slot}
           constraints={constraints}
-          onChoose={onChoose}
-          onClose={onToggle}
+          onChoose={andReturnFocus(onChoose)}
+          onClose={andReturnFocus(onToggle)}
         />
       )}
     </li>
