@@ -323,9 +323,51 @@ describe('8. PCIe 보조전원 커넥터', () => {
     expect(rule8(f.goodBuild)?.verdict).toBe('pass');
   });
 
-  it('16핀이 부족하면 오류', () => {
+  it('★ 16핀이 모자라도 남는 8핀이 있으면 오류가 아니라 경고다 — 변환 케이블 경우 (§8.7)', () => {
+    // 기준 GPU는 16핀 1개만 요구한다. 8핀 4개 파워는 변환 케이블로 연결하는 흔한 경우다
     const r = rule8(f.withBuild({ psu: { ...f.psu, connectors: { pcie6plus2: 4, pcie12vhpwr: 0 } } }));
     expect(r?.verdict).toBe('fail');
+    expect(r?.severity).toBe('warning');
+    expect(r?.message).toContain('변환 케이블');
+    expect(r?.message).toContain('남는 8핀 4개');
+  });
+
+  it('16핀이 모자라고 남는 8핀이 없으면 오류 — 변환 케이블을 꽂을 곳이 없다', () => {
+    const r = rule8(
+      f.withBuild({
+        gpu: { ...f.gpu, connectors: { pcie6: 0, pcie8: 2, pcie12vhpwr: 1, pcie12v2x6: 0 } },
+        psu: { ...f.psu, connectors: { pcie6plus2: 2, pcie12vhpwr: 0 } },
+      }),
+    );
+    expect(r?.verdict).toBe('fail');
+    expect(r?.severity).toBe('error');
+  });
+
+  it('8핀이 모자라면 16핀이 남아도 오류다', () => {
+    const r = rule8(
+      f.withBuild({
+        gpu: { ...f.gpu, tdp: 300, connectors: { pcie6: 0, pcie8: 3, pcie12vhpwr: 0, pcie12v2x6: 0 } },
+        psu: { ...f.psu, connectors: { pcie6plus2: 2, pcie12vhpwr: 1 } },
+      }),
+    );
+    expect(r?.severity).toBe('error');
+  });
+
+  it('★ 파워 커넥터가 둘 다 0이면 믿지 않고 판정 불가 (§8.6)', () => {
+    // 750W 이상의 약 26%가 이렇다. ATX 3.x 이름을 단 파워 126개 중 56개
+    const r = rule8(f.withBuild({ psu: { ...f.psu, name: 'SeaSonic Focus GX V4 ATX 3', connectors: { pcie6plus2: 0, pcie12vhpwr: 0 } } }));
+    expect(r?.verdict).toBe('unknown');
+    expect(r?.reason?.kind).toBe('inconsistent');
+  });
+
+  it('카드가 보조전원을 안 요구하면 파워 커넥터 0은 상관없다', () => {
+    const r = rule8(
+      f.withBuild({
+        gpu: { ...f.gpu, tdp: 70, connectors: { pcie6: 0, pcie8: 0, pcie12vhpwr: 0, pcie12v2x6: 0 } },
+        psu: { ...f.psu, connectors: { pcie6plus2: 0, pcie12vhpwr: 0 } },
+      }),
+    );
+    expect(r?.verdict).toBe('pass');
   });
 
   it('GPU 6핀과 8핀을 합쳐 PSU 6+2핀과 비교한다', () => {
