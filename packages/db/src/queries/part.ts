@@ -5,7 +5,7 @@
 import { and, eq, ne, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { Database } from '../client';
-import { partSpecs, parts, specReports } from '../schema';
+import { partBenchmarks, partSpecs, parts, specReports } from '../schema';
 import { canonicalOnly, nameWhere, searchTerms } from './search';
 
 /** 중복 레코드가 가리키는 대표. 자기 참조라 별칭이 필요하다 */
@@ -320,3 +320,38 @@ export async function comparableParts(
     limit,
   });
 }
+
+/** 부품 하나의 성능 측정값 — ADR-0023. 용도 축마다 한 줄이다 */
+export interface PartBenchmark {
+  readonly axis: string;
+  readonly value: number;
+  readonly unit: string;
+  readonly runs: number;
+  readonly deviceName: string;
+  readonly backend: string;
+  readonly measuredVersion: string;
+  readonly perChip: boolean;
+  readonly sourceUrl: string;
+  readonly snapshotDate: string;
+}
+
+export async function benchmarksForPart(db: Database, partId: string): Promise<PartBenchmark[]> {
+  const rows = await db
+    .select({
+      axis: partBenchmarks.axis,
+      value: partBenchmarks.value,
+      unit: partBenchmarks.unit,
+      runs: partBenchmarks.runs,
+      deviceName: partBenchmarks.deviceName,
+      backend: partBenchmarks.backend,
+      measuredVersion: partBenchmarks.measuredVersion,
+      perChip: partBenchmarks.perChip,
+      sourceUrl: partBenchmarks.sourceUrl,
+      snapshotDate: partBenchmarks.snapshotDate,
+    })
+    .from(partBenchmarks)
+    .where(eq(partBenchmarks.partId, partId));
+  // numeric은 문자열로 온다
+  return rows.map((r) => ({ ...r, value: Number(r.value) }));
+}
+

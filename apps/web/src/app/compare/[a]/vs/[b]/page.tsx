@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { partBySlug } from '@buildfit/db/part';
+import { benchmarksForPart, partBySlug, type PartBenchmark } from '@buildfit/db/part';
+import { BenchmarkBlock } from '@/components/BenchmarkBlock';
+import { axisLabel, backendLabel, feltDifference } from '@/lib/perf';
 import { Container } from '@/components/SiteShell';
 import { startBuildHref } from '@/lib/build-links';
 import { alignSpecs } from '@/lib/compare';
@@ -51,6 +53,16 @@ export default async function ComparePage({
   // 카테고리가 다르면 비교가 성립하지 않는다. §8의 "의미 있는 조합만"이다.
   if (left.category !== right.category) notFound();
   if (left.slug === right.slug) notFound();
+
+  // 성능 측정값 — ADR-0023. 테이블이 없는 DB(적재 전)에서도 페이지는 떠야 한다
+  const measurable = left.category === 'CPU' || left.category === 'GPU';
+  const [leftBench, rightBench]: PartBenchmark[][] = measurable
+    ? await Promise.all([
+        benchmarksForPart(getDb(), left.id).catch(() => []),
+        benchmarksForPart(getDb(), right.id).catch(() => []),
+      ])
+    : [[], []];
+  const axes = [...new Set([...leftBench, ...rightBench].map((x) => x.axis))];
 
   const rows = alignSpecs(left.specs, right.specs, (r) => specValueText(r.value, r.unit));
   const differing = rows.filter((r) => r.differs).length;
@@ -129,6 +141,53 @@ export default async function ComparePage({
           </tbody>
         </table>
       </div>
+
+      {axes.length > 0 && (
+        <section className="mt-10">
+          <h2 className="text-lg font-semibold">성능 측정값</h2>
+          {axes.map((axis) => {
+            const l = leftBench.find((x) => x.axis === axis);
+            const r = rightBench.find((x) => x.axis === axis);
+            const felt = l && r ? feltDifference(l.value, r.value) : null;
+            const faster = felt?.faster === 'a' ? left.modelName : felt?.faster === 'b' ? right.modelName : null;
+            return (
+              <div key={axis} className="mt-3">
+                {/* 차이는 체감 언어로 말한다 — 숫자만 주면 3%를 크게 읽는다 (ADR-0004) */}
+                <p className="text-sm text-fg-muted">
+                  {felt && faster ? (
+                    <>
+                      {axisLabel(axis)} — 빠른 쪽: <strong className="font-medium text-fg">{faster}</strong>{' '}
+                      · 느린 쪽보다 약 <span className="tnum">{felt.percent}</span>% 높음 ·{' '}
+                      <strong className="font-medium text-fg">{felt.label}</strong>
+                    </>
+                  ) : felt ? (
+                    <>{axisLabel(axis)} — 두 측정값이 같습니다.</>
+                  ) : (
+                    <>{axisLabel(axis)} — 한쪽 측정값이 없어 비교하지 않습니다.</>
+                  )}
+                </p>
+                {l && r && l.backend !== r.backend && (
+                  <p className="mt-1 text-xs text-fg-subtle">
+                    두 장치의 연산 방식이 다릅니다 ({backendLabel(l.backend)} · {backendLabel(r.backend)}). 각 장치에서
+                    가장 많이 쓰인 방식의 측정값이라, 실제로 쓰는 방식끼리의 비교입니다.
+                  </p>
+                )}
+                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {[l, r].map((bench, i) =>
+                    bench ? (
+                      <BenchmarkBlock key={i} bench={bench} />
+                    ) : (
+                      <p key={i} className="card p-4 text-sm text-fg-muted">
+                        측정값이 없습니다.
+                      </p>
+                    ),
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </section>
+      )}
 
       {/*
         * 비교만 하고 떠나게 두지 않는다. 이 도구가 하는 일은 판정이고,
