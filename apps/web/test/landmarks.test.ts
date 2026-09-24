@@ -42,3 +42,20 @@ describe('본문 랜드마크', () => {
     expect(header.slice(firstLink, header.indexOf('</a>'))).toContain('href="#main"');
   });
 });
+
+describe('보이는 이름표는 칸에 이어진다', () => {
+  // 이름표를 그려 놓고 잇지 않은 곳이 다섯이었다 (axe label · select-name).
+  // 칸을 감싸지 않는 <label>은 htmlFor가 있어야 한다.
+  it('★ 칸을 감싸지 않는 <label>에는 htmlFor가 있다', () => {
+    const offenders: string[] = [];
+    for (const f of tsxFiles('.')) {
+      const src = read(f);
+      for (const m of src.matchAll(/<label\b[^>]*>([\s\S]*?)<\/label>/g)) {
+        const [tag, body] = [m[0].slice(0, m[0].indexOf('>') + 1), m[1] ?? ''];
+        const wraps = /<(input|select|textarea)\b/.test(body);
+        if (!wraps && !/htmlFor=/.test(tag)) offenders.push(`${f}: ${tag.slice(0, 60)}`);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+});

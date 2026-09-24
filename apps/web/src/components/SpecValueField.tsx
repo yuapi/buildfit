@@ -36,6 +36,8 @@ export function specFieldKind(req: FieldRequirement): SpecFieldKind {
 export function SpecValueField({
   req,
   name = 'value',
+  id,
+  label,
   text,
   picked,
   onText,
@@ -44,6 +46,15 @@ export function SpecValueField({
   readonly req: FieldRequirement;
   /** 폼 필드 이름. 어드민과 제보 폼이 서로 다른 이름을 쓴다 */
   readonly name?: string;
+  /**
+   * 칸의 `id`. 화면에 보이는 `<label htmlFor>`가 있으면 그것과 맞춘다.
+   *
+   * **이름표가 칸에 이어져야 한다.** 세 화면이 전부 이름표를 그려 놓고 잇지 않았다 —
+   * 화면 낭독기는 「편집 가능, 빈칸」만 읽었다 (axe `label` · `select-name`).
+   */
+  readonly id?: string;
+  /** 보이는 이름표가 없을 때의 이름. 없으면 `req.label` */
+  readonly label?: string;
   /** 스칼라 값 */
   readonly text: string;
   /** `string[]` 항목에서 고른 것들 */
@@ -52,12 +63,14 @@ export function SpecValueField({
   readonly onPicked: (values: string[]) => void;
 }) {
   const kind = specFieldKind(req);
+  // 보이는 이름표와 이어지면(id) 그것이 이름이다. 아니면 직접 붙인다
+  const naming = id ? { id } : { 'aria-label': label ?? req.label };
 
   if (kind === 'boolean') {
     // 예/아니오를 라디오가 아니라 select로 둔다. 미선택 상태가 값과
     // 구분되어야 한다 — 라디오는 "아직 안 고름"을 표현하기 어렵다.
     return (
-      <select name={name} value={text} onChange={(e) => onText(e.target.value)} className="field">
+      <select {...naming} name={name} value={text} onChange={(e) => onText(e.target.value)} className="field">
         <option value="">선택하세요</option>
         <option value="true">예</option>
         <option value="false">아니오</option>
@@ -69,7 +82,7 @@ export function SpecValueField({
     return (
       <fieldset className="flex flex-wrap gap-x-4 gap-y-2">
         {/* 여러 개를 고를 수 있다는 것을 스크린리더도 알아야 한다 */}
-        <legend className="sr-only">{req.label} — 해당하는 것을 모두 고르세요</legend>
+        <legend className="sr-only">{label ?? req.label} — 해당하는 것을 모두 고르세요</legend>
         {(req.options ?? []).map((opt) => (
           <label key={opt} className="flex items-center gap-1.5 text-sm">
             <input
@@ -92,7 +105,7 @@ export function SpecValueField({
 
   if (kind === 'select') {
     return (
-      <select name={name} value={text} onChange={(e) => onText(e.target.value)} className="field">
+      <select {...naming} name={name} value={text} onChange={(e) => onText(e.target.value)} className="field">
         <option value="">선택하세요</option>
         {(req.options ?? []).map((opt) => (
           <option key={opt} value={opt}>
@@ -105,6 +118,7 @@ export function SpecValueField({
 
   return (
     <input
+      {...naming}
       type={kind === 'number' ? 'number' : 'text'}
       name={name}
       step="any"
