@@ -38,12 +38,12 @@ export default async function ComparePage({
     [left, right] = await Promise.all([partBySlug(db, a), partBySlug(db, b)]);
   } catch {
     return (
-      <main className="mx-auto max-w-3xl px-4 py-16">
+      <div className="mx-auto max-w-3xl px-4 py-16">
         <h1 className="text-xl font-semibold">지금은 비교할 수 없습니다</h1>
         <p className="mt-2 text-sm text-fg-muted">
           잠시 후 다시 시도해 주세요.
         </p>
-      </main>
+      </div>
     );
   }
 

@@ -20,6 +20,16 @@ const NAV = [
 export function SiteHeader() {
   return (
     <header className="sticky top-0 z-30 bg-chrome text-chrome-fg">
+      {/*
+        키보드로 들어오면 첫 탭이 여기다 — 메뉴를 매번 지나지 않고 본문으로 간다 (WCAG 2.4.1).
+        평소에는 보이지 않다가 초점을 받으면 나타난다
+      */}
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-2 focus:z-40 focus:rounded-(--radius-control) focus:bg-surface focus:px-3 focus:py-2 focus:text-sm focus:text-fg"
+      >
+        본문으로 건너뛰기
+      </a>
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-1 px-4 sm:gap-2">
         <Link
           href="/"
