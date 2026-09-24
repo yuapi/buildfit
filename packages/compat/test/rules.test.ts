@@ -269,6 +269,25 @@ describe('7. 소비전력 대비 PSU 정격 — 구간 판정', () => {
     expect(r?.severity).toBe('warning');
   });
 
+  it('★ 최대 추정치 이상이면 「가정에 따라 갈린다」고 하지 않는다 — 여유분만 모자라다 (§7.3.1, 이슈 #44)', () => {
+    // 612W 이상 796W 미만: 가장 높게 잡아도 정격 안이다. 등급은 같은 경고다
+    for (const w of [612, 650, 795]) {
+      const r = rule7(withPsu(w));
+      expect(r?.severity, `${w}W`).toBe('warning');
+      expect(r?.message, `${w}W`).not.toContain('가정에 따라 갈립니다');
+      expect(r?.message, `${w}W`).toContain('가장 높게 잡은 612W보다는 크지만');
+    }
+    // 여유 = 정격 ÷ 총_최대 − 1, 내림. 650 / 612 = 1.062 → 6%
+    expect(rule7(withPsu(650))?.message).toContain('여유가 6%뿐');
+    expect(rule7(withPsu(612))?.message).toContain('여유가 0%뿐');
+  });
+
+  it('최소와 최대 사이면 가정에 따라 갈린다', () => {
+    for (const w of [551, 611]) {
+      expect(rule7(withPsu(w))?.message, `${w}W`).toContain('가정에 따라 갈립니다');
+    }
+  });
+
   it('총 최소보다 낮으면 오류', () => {
     const r = rule7(withPsu(550));
     expect(r?.verdict).toBe('fail');
