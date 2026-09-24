@@ -1302,6 +1302,22 @@ function SaveBox({
   const [label, setLabel] = useState("");
   const [message, setMessage] = useState("");
 
+  /*
+   * 지운 줄의 「삭제」가 사라지면 초점이 페이지 맨 위로 떨어졌다 (WCAG 2.4.3).
+   * 같은 자리(다음 줄, 없으면 앞 줄)의 「삭제」로, 다 지웠으면 「저장」으로 간다.
+   */
+  const listRef = useRef<HTMLUListElement>(null);
+  const saveButtonRef = useRef<HTMLButtonElement>(null);
+  const focusIndexAfterDelete = useRef<number | null>(null);
+  useEffect(() => {
+    const at = focusIndexAfterDelete.current;
+    if (at === null) return;
+    focusIndexAfterDelete.current = null;
+    const buttons = listRef.current?.querySelectorAll<HTMLButtonElement>("button[data-delete]") ?? [];
+    const target = buttons[Math.min(at, buttons.length - 1)] ?? saveButtonRef.current;
+    target?.focus();
+  }, [builds]);
+
   if (!available) {
     return (
       <section className="card p-4 sm:p-5">
@@ -1332,6 +1348,7 @@ function SaveBox({
           className="field min-w-0 flex-1 text-xs disabled:opacity-50"
         />
         <button
+          ref={saveButtonRef}
           type="button"
           disabled={!canSave}
           onClick={() => {
@@ -1359,8 +1376,8 @@ function SaveBox({
           <h4 className="mt-5 text-xs font-medium text-fg-subtle">
             저장한 견적 {builds.length}
           </h4>
-          <ul className="mt-1.5 space-y-0.5">
-            {builds.map((b) => (
+          <ul ref={listRef} className="mt-1.5 space-y-0.5">
+            {builds.map((b, i) => (
               <li key={b.code} className="flex items-center gap-1">
                 <button
                   type="button"
@@ -1371,7 +1388,11 @@ function SaveBox({
                 </button>
                 <button
                   type="button"
-                  onClick={() => removeBuild(b.code)}
+                  data-delete
+                  onClick={() => {
+                    focusIndexAfterDelete.current = i;
+                    removeBuild(b.code);
+                  }}
                   aria-label={`${b.label} 삭제`}
                   className="btn btn-ghost shrink-0 px-2 py-1 text-xs"
                 >

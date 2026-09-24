@@ -12,7 +12,7 @@
  * 근거: `docs/research/quote-line-matching.md`
  */
 
-import { useCallback, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import type { QuoteLineResult } from "@buildfit/db/quote";
 import { SLOT_META, categoryLabel, type SlotName } from "@/lib/categories";
 import { MAX_QUOTE_CHARS } from "@/lib/picker";
@@ -56,6 +56,24 @@ export function QuoteBox({ onApply }: { onApply: (picks: readonly QuotePick[]) =
   /** 줄 번호 → 고른 부품 id. 고르지 않은 줄은 없다 */
   const [picked, setPicked] = useState<Record<number, string>>({});
   const [busy, start] = useTransition();
+
+  /*
+   * 열고 닫을 때 초점을 옮긴다 (WCAG 2.4.3). 누른 버튼이 사라지면 초점이 페이지
+   * 맨 위로 떨어졌다 — 열면 입력칸으로, 닫거나 넣으면 다시 「붙여넣기」로 간다.
+   * 사용자가 누른 뒤에만 옮긴다. 처음 그릴 때는 건드리지 않는다.
+   */
+  const openButtonRef = useRef<HTMLButtonElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const focusAfter = useRef<"textarea" | "open-button" | null>(null);
+  useEffect(() => {
+    if (focusAfter.current === "textarea") textareaRef.current?.focus();
+    if (focusAfter.current === "open-button") openButtonRef.current?.focus();
+    focusAfter.current = null;
+  }, [open]);
+  const toggle = (next: boolean) => {
+    focusAfter.current = next ? "textarea" : "open-button";
+    setOpen(next);
+  };
 
   const check = useCallback(() => {
     start(async () => {
@@ -125,7 +143,7 @@ export function QuoteBox({ onApply }: { onApply: (picks: readonly QuotePick[]) =
               않아도 됩니다.
             </p>
           </div>
-          <button type="button" onClick={() => setOpen(true)} className="btn btn-secondary shrink-0">
+          <button ref={openButtonRef} type="button" onClick={() => toggle(true)} className="btn btn-secondary shrink-0">
             붙여넣기
           </button>
         </div>
@@ -139,7 +157,7 @@ export function QuoteBox({ onApply }: { onApply: (picks: readonly QuotePick[]) =
         <h2 id="quote-heading" className="font-semibold">
           견적서 붙여넣기
         </h2>
-        <button type="button" onClick={() => setOpen(false)} className="btn btn-ghost px-2 py-1 text-xs">
+        <button type="button" onClick={() => toggle(false)} className="btn btn-ghost px-2 py-1 text-xs">
           닫기
         </button>
       </div>
@@ -150,6 +168,7 @@ export function QuoteBox({ onApply }: { onApply: (picks: readonly QuotePick[]) =
       </p>
 
       <textarea
+        ref={textareaRef}
         value={text}
         onChange={(e) => setText(e.target.value.slice(0, MAX_QUOTE_CHARS))}
         rows={6}
@@ -164,11 +183,18 @@ export function QuoteBox({ onApply }: { onApply: (picks: readonly QuotePick[]) =
           * 컨트롤의 대비를 요구하지 않는다 ("Incidental"). 버튼이 아닌 것을
           * 버튼처럼 옅게 그리는 것과는 다른 경우다 (부품 목록 페이지 주석 참조).
           */}
+        {/*
+          * 찾는 동안에는 `disabled`가 아니라 `aria-disabled`다. 누른 버튼이 꺼지면
+          * 초점이 페이지 맨 위로 떨어진다. 빈칸일 때는 누를 수 없으니 그대로 끈다.
+          */}
         <button
           type="button"
-          onClick={check}
-          disabled={busy || text.trim() === ""}
-          className="btn btn-primary disabled:opacity-40"
+          onClick={() => {
+            if (!busy) check();
+          }}
+          disabled={text.trim() === ""}
+          aria-disabled={busy}
+          className="btn btn-primary disabled:opacity-40 aria-disabled:opacity-40"
         >
           {busy ? "찾는 중…" : "부품 찾기"}
         </button>
@@ -177,7 +203,7 @@ export function QuoteBox({ onApply }: { onApply: (picks: readonly QuotePick[]) =
             type="button"
             onClick={() => {
               onApply(picks);
-              setOpen(false);
+              toggle(false);
             }}
             className="btn btn-secondary"
           >
@@ -194,6 +220,10 @@ export function QuoteBox({ onApply }: { onApply: (picks: readonly QuotePick[]) =
 
       {state.kind === "done" && (
         <>
+          {/* 결과가 나왔다는 것을 화면 낭독기도 알아야 한다. 초점은 버튼에 남아 있다 */}
+          <p role="status" className="sr-only">
+            {lines.filter((l) => l.isPart).length}줄에서 부품을 찾았습니다. 고른 것은 {picks.length}개입니다.
+          </p>
           {/*
             * 넓은 화면에서만 높이를 자른다. 좁은 화면에서 안쪽 스크롤을 만들면
             * 손가락이 바깥 페이지와 목록 중 어느 것을 미는지 알 수 없게 된다.
