@@ -81,6 +81,28 @@ const COOLER_FAMILY: Readonly<Record<string, readonly string[]>> = {
   'LGA 115': ['LGA 1150', 'LGA 1151', 'LGA 1155', 'LGA 1156'],
 };
 
+/**
+ * 소켓을 만든 회사가 밝힌 **쿨러 장착 호환** — 규칙 20, compat-rules §20.3.
+ *
+ * 표기 보정(`COOLER_FAMILY`)과 다르다. 이것은 호환 관계이고, 그래서 **공식 문서가
+ * 있는 것만** 넣는다. 한 방향이다 — 문서가 말한 쪽만 적는다.
+ *
+ * ★ `SOCKET_GROUPS`에 넣지 않는다. LGA 1700 CPU는 LGA 1851 보드에 안 들어간다.
+ */
+export const COOLER_MOUNT_COMPAT: Readonly<Record<string, { readonly from: string; readonly source: string }>> = {
+  // "existing thermal solutions designed for LGA1700 can fit on LGA1851 without modification"
+  'LGA 1851': {
+    from: 'LGA 1700',
+    source: 'https://www.intel.com/content/www/us/en/support/articles/000099700/processors.html',
+  },
+};
+
+/** 이 CPU 소켓에 공식 문서로 장착이 확인된 앞 세대 표기가 쿨러 목록에 있는가 */
+export function coolerMountCompat(listed: readonly string[], cpuSocket: string) {
+  const compat = COOLER_MOUNT_COMPAT[cpuSocket];
+  return compat && listed.some((entry) => sameSocket(entry, compat.from)) ? compat : null;
+}
+
 export function coolerListCovers(listed: readonly string[], cpuSocket: string): boolean {
   return listed.some(
     (entry) => sameSocket(entry, cpuSocket) || (COOLER_FAMILY[entry]?.includes(cpuSocket) ?? false),

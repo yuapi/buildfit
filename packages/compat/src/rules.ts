@@ -26,7 +26,7 @@ import {
   describeExcluded,
   estimatePower,
 } from './power';
-import { coolerListCovers, sameSocket } from './sockets';
+import { coolerListCovers, coolerMountCompat, sameSocket } from './sockets';
 
 export type Rule = (build: Build) => RuleResult | null;
 
@@ -917,17 +917,33 @@ export const rule20: Rule = ({ cpu, cooler }) => {
   }
 
   const socket = cpu.socket!;
+  const listed = cooler.supportedSockets!;
   // TR4/sTR4 같은 표기 차이와 잘린 「LGA 115」를 보정한다 (§20.2)
-  return coolerListCovers(cooler.supportedSockets!, socket)
-    ? pass(20, `쿨러가 ${socket} 소켓을 지원합니다.`)
-    : fail(
-        20,
-        'warning',
-        // 조사를 소켓 이름에 바로 붙이지 않는다. AM5는 모음으로, LGA 1700은
-        // 받침으로 끝나 「이/가」가 반은 틀린다. 「소켓」에 붙이면 늘 맞다
-        `쿨러의 지원 소켓 목록에 ${socket} 소켓이 없습니다. 별도 고정 부품이 필요하거나 ` +
-          '장착되지 않을 수 있습니다. 제조사 스펙을 확인해 주세요.',
-      );
+  if (coolerListCovers(listed, socket)) return pass(20, `쿨러가 ${socket} 소켓을 지원합니다.`);
+
+  // 소켓을 만든 회사가 장착 호환을 밝힌 앞 세대 (§20.3). 냉각 성능은 보지 않는다
+  const compat = coolerMountCompat(listed, socket);
+  if (compat) {
+    return pass(
+      20,
+      `쿨러 목록에 ${socket} 소켓은 없지만 ${compat.from} 소켓이 있습니다. Intel은 ${compat.from}용 쿨러를 ` +
+        `개조 없이 ${socket} 소켓에 장착할 수 있다고 밝혔습니다. 냉각 성능은 쿨러 제조사에 확인해 주세요.`,
+    );
+  }
+
+  // 조사를 소켓 이름에 바로 붙이지 않는다. AM5는 모음으로, LGA 1700은
+  // 받침으로 끝나 「이/가」가 반은 틀린다. 「소켓」에 붙이면 늘 맞다
+  const base = `쿨러의 지원 소켓 목록에 ${socket} 소켓이 없습니다.`;
+  // AM4 → AM5는 「대부분」이라 통과로 올리지 않는다. 무엇을 확인할지만 말한다 (§20.3)
+  if (socket === 'AM5' && listed.some((s) => sameSocket(s, 'AM4'))) {
+    return fail(
+      20,
+      'warning',
+      `${base} AM4 소켓은 있습니다. AMD는 AM4용 쿨러가 AM5에 맞는다고 밝혔지만 ` +
+        '자체 백플레이트를 쓰는 쿨러는 예외가 있습니다. 쿨러 제조사의 AM5 지원 여부를 확인해 주세요.',
+    );
+  }
+  return fail(20, 'warning', `${base} 별도 고정 부품이 필요하거나 장착되지 않을 수 있습니다. 제조사 스펙을 확인해 주세요.`);
 };
 
 export const phase1Rules: readonly Rule[] = [

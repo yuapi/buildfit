@@ -22,7 +22,8 @@ describe('규칙 20 (이슈 #17)', () => {
   it('★ 목록에 없으면 경고다 — 오류가 아니다', () => {
     // AM4만 적은 쿨러가 AM5에 맞는 경우가 흔하다고 알려져 있지만 데이터로
     // 증명되지 않는다. 오류로 단정하지 않는다 (§20.1)
-    const r = rule20(build('AM5', ['AM4', 'LGA 1700']));
+    // AM4가 있으면 §20.3의 메시지가 나온다. 여기서는 일반 경우를 본다
+    const r = rule20(build('AM5', ['LGA 1700', 'LGA 1200']));
     expect(r?.verdict).toBe('fail');
     expect(r?.severity).toBe('warning');
     expect(r?.message).toContain('AM5');
@@ -38,9 +39,33 @@ describe('규칙 20 (이슈 #17)', () => {
     },
   );
 
-  it('★ 앞 세대로 묶지 않는다 — AM4만 있는 쿨러는 AM5에서 경고다', () => {
+  it('★ 표기 보정은 앞 세대를 묶지 않는다 — 호환 관계는 §20.3이 따로 본다', () => {
     expect(coolerListCovers(['AM4'], 'AM5')).toBe(false);
     expect(coolerListCovers(['LGA 1700'], 'LGA 1851')).toBe(false);
+  });
+
+  describe('§20.3 소켓 제조사가 밝힌 장착 호환', () => {
+    it('★ LGA 1700 쿨러는 LGA 1851에서 통과 — Intel 지원 문서', () => {
+      const r = rule20(build('LGA 1851', ['LGA 1200', 'LGA 1700']));
+      expect(r?.verdict).toBe('pass');
+      expect(r?.message).toContain('Intel');
+      expect(r?.message).toContain('냉각 성능');
+    });
+
+    it('한 방향이다 — LGA 1851 쿨러를 LGA 1700에 올리는 것은 문서가 말하지 않는다', () => {
+      expect(rule20(build('LGA 1700', ['LGA 1851']))?.verdict).toBe('fail');
+    });
+
+    it('★ AM4만 있는 쿨러는 AM5에서 여전히 경고다 — 자체 백플레이트 예외가 있다', () => {
+      const r = rule20(build('AM5', ['AM4']));
+      expect(r?.verdict).toBe('fail');
+      expect(r?.severity).toBe('warning');
+      expect(r?.message).toContain('자체 백플레이트');
+    });
+
+    it('CPU↔보드 등가 표에는 새지 않는다 — LGA 1700 CPU는 LGA 1851 보드에 안 들어간다', () => {
+      expect(sameSocket('LGA 1700', 'LGA 1851')).toBe(false);
+    });
   });
 
   it('CPU 소켓이나 쿨러 목록이 없으면 판정 불가다', () => {
