@@ -146,3 +146,27 @@ PSU < 총_최소               →  오류   안 됨 (빨강)
 
 남은 판정 불가 86.7%는 규칙 6(케이스 데이터 83.3%)과 규칙 8의 모순 검사(20.7%)가
 만든다. **이제 케이스 보강이 가장 큰 개선 항목이다.**
+
+## 7. 원문 확인 — 2026-09-24 (이슈 #5)
+
+`seasonic.com`은 여전히 이 환경에서 Cloudflare 403이다. **웹 아카이브의 2025-07-11 사본**을
+읽었다: <https://web.archive.org/web/20250711215224/https://seasonic.com/insights/psu-calculator-using-guide-2025/>
+(원 페이지 게시 2025-06-13, 수정 2025-06-13).
+
+§3의 요약 인용이 원문과 일치한다.
+
+| 항목 | 원문 |
+|---|---|
+| 메인보드 | "Consumes roughly 25 to 80 watts. It all depends on its type, chipset, and additional features altogether." |
+| 메모리 | "Draws about 2 to 5 watts per module. A full setup usually uses no more than 20 watts in total." |
+| 스토리지 | "They are generally quite efficient, so you can put up to 15W, especially for some HDDs." |
+| 팬 | "Conventional fans consume 1–3 W each, with backlighting – up to 6 W. Water cooling (AIO) can draw 15–30 W, and a custom system – up to 50 W." |
+| 여유분 | "most calculators automatically add a 20–30% buffer" |
+
+그래서:
+
+- 규칙 7의 출처 라벨에서 **「원문 미확인」을 뗀다**
+- **이슈 #5가 풀린다.** 드라이브를 개당 **0~15W**로 넣는다. 원문은 상한만 주므로 하한은 0이다 —
+  하한을 지어내지 않고, 최소 합계를 낮게 두는 쪽이 거짓 오류를 덜 낸다
+- 쿨러·팬 값도 같은 원문에 있다. 별도 이슈로 넣는다
+
