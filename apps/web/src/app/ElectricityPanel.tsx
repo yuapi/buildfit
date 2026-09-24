@@ -59,6 +59,7 @@ export function ElectricityPanel({ build }: { build: Build }) {
     gpuW,
     ramModules: build.ram.reduce((n, k) => n + (k.moduleCount ?? 0), 0),
     storageCount: build.storage.length,
+    cooler: build.cooler,
   });
 
   const householdKwh = Number(householdText);

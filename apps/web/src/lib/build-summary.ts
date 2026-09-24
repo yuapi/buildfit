@@ -97,6 +97,7 @@ export function buildSummary(build: Build, verdict: BuildVerdict): string {
       gpuW,
       ramModules: build.ram.reduce((n, k) => n + (k.moduleCount ?? 0), 0),
       storageCount: build.storage.length,
+      cooler: build.cooler,
     });
     bits.push(`소비전력 ${est.minW}~${est.maxW}W`);
   }

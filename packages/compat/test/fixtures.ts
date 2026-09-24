@@ -81,6 +81,9 @@ export const cooler: CpuCooler = {
   heightMm: 160,
   waterCooled: false,
   supportedSockets: ['AM5', 'LGA1700', 'LGA1851'],
+  fanQuantity: 2,
+  fanless: false,
+  lighting: ['None'],
 };
 
 export const drive: StorageDrive = {

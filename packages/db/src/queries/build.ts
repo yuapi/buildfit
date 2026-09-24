@@ -238,6 +238,9 @@ function toCpuCooler(p: RawPart): CpuCooler {
     heightMm: num(p.specs, 'height_mm'),
     waterCooled: bool(p.specs, 'water_cooled'),
     supportedSockets: strArray(p.specs, 'cpu_sockets'),
+    fanQuantity: num(p.specs, 'fan_quantity'),
+    fanless: bool(p.specs, 'fanless'),
+    lighting: strArray(p.specs, 'lighting'),
   };
 }
 
