@@ -43,6 +43,13 @@
       "when": 1790155447737,
       "tag": "0005_drop_availability",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790212891965,
+      "tag": "0006_part_benchmarks",
+      "breakpoints": true
     }
   ]
 }
