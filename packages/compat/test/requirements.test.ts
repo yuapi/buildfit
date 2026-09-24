@@ -62,9 +62,13 @@ const BLANK: Record<string, () => Build> = {
   'Storage.form_factor': () => f.withBuild({ storage: [{ ...f.drive, formFactor: null }] }),
   'Storage.interface': () => f.withBuild({ storage: [{ ...f.drive, interface: null }] }),
   'Motherboard.m2_slots': () => f.withBuild({ motherboard: { ...f.motherboard, m2Slots: null } }),
-  // 3Gb/s만 남아 있으면 판정이 된다. 둘 다 비워야 판정 불가다 (§18)
+  // 3Gb/s만 남아 있으면 판정이 된다. 둘 다 비워야 판정 불가다 (§18).
+  // SATA 드라이브가 있어야 포트 수를 본다 (§18.3)
   'Motherboard.sata_ports': () =>
-    f.withBuild({ motherboard: { ...f.motherboard, sataPorts: null, sataPorts3Gbs: null } }),
+    f.withBuild({
+      storage: [f.sataDrive],
+      motherboard: { ...f.motherboard, sataPorts: null, sataPorts3Gbs: null },
+    }),
   // 3.5" 드라이브가 있어야 그 베이 수를 본다 (§19)
   'PCCase.internal_3_5_bays': () =>
     f.withBuild({
