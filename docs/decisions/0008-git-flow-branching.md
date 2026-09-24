@@ -95,9 +95,11 @@
 **후속 작업**
 
 - [x] 레포 기본 브랜치를 `develop`으로 변경 *(레포 설정 — 수동)* — 2026-09-24 확인 (`origin/HEAD` → `develop`)
-- [ ] `main` 브랜치 보호 규칙 — force-push 금지, 관리자 포함
-      (`pipeline-plan.md` §5.3) *(레포 설정 — 수동)* — 2026-09-24 기준 **꺼져 있다**. `develop` 보호(PR 필수)도
-      같이 켜면 ADR-0024를 사람의 기억 대신 설정이 지킨다
+- [x] `main` 브랜치 보호 규칙 — force-push 금지, 관리자 포함
+      (`pipeline-plan.md` §5.3) *(레포 설정 — 수동)* — 2026-09-24 켰다. **Ruleset 하나가 `main`·`develop`을
+      같이 막는다**: 삭제 금지 · force-push 금지 · PR 필수(승인 0 — 자기 PR은 승인할 수 없다) · `verify` 통과 필수 ·
+      병합은 merge만. 우회 목록은 비웠다(관리자 포함). `develop` 직접 push가 「Changes must be made through a
+      pull request」로 거절되는 것을 확인했다
 - [ ] 초기 구성 세션 브랜치 `claude/buildfit-initial-setup-23acp8` 삭제
       (`main`에 머지 완료됨) — **보류.** 클라우드 세션이 아직 이 브랜치를 작업 자리로 쓴다
 - [ ] 파이프라인 구축 시 Renovate `baseBranches: ["develop"]` 설정

@@ -71,8 +71,8 @@ head가 사라진다. 워크플로는 접두사로 가를 수 있다 — `featur
 
 - 워크플로 권한은 `contents: write` 하나다. 포크에서 온 PR은 head가 이 레포에 없으므로 건드리지 않는다
 - 이미 지워진 브랜치(사람이 먼저 지웠거나 설정이 켜진 경우)는 실패로 치지 않는다
-- **develop 보호 규칙(직접 push 금지, PR 필수)은 레포 설정이라 수동이다.** 켜기 전까지는 이 ADR을
-  지키는 것이 규칙이다
+- **develop·main 보호 규칙을 켰다** (2026-09-24, Ruleset). 직접 push는 거절되고, PR은 `verify`가 녹색이어야
+  머지되며, 병합 방식은 merge만 열려 있다. 이제 이 ADR은 기억이 아니라 설정이 지킨다
 - 원격에 남은 머지 완료 브랜치 17개는 **손으로 돌리는 워크플로**(`prune-merged-branches.yml`)로 치운다 —
   전부 develop의 조상임을 확인했다. 이 환경의 프록시가 `git push --delete`를 403으로 막아 GitHub 안에서 지운다.
   develop에 전부 들어간 `feature/`·`fix/`만, 열린 PR의 head가 아닌 것만 지우고 기본은 dry run이다
