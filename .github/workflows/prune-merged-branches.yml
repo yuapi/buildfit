@@ -1,0 +1,62 @@
+# 머지를 마친 feature/·fix/ 브랜치를 한꺼번에 지운다 — 손으로 돌린다 (ADR-0024).
+#
+# 머지될 때마다 지우는 것은 delete-merged-branch.yml이 한다. 이것은 그 워크플로가
+# 생기기 전에 남은 것(2026-09-24에 17개)이나, PR 없이 머지된 것을 치우는 용도다.
+# 이 환경의 프록시가 원격 브랜치 삭제를 막아서 GitHub 안에서 지운다.
+#
+# 지우는 조건 — 셋 다 맞아야 한다:
+#   - 이름이 feature/ 또는 fix/ 로 시작한다 (release/·hotfix/는 두 곳에 머지해야 한다)
+#   - develop에 없는 커밋이 하나도 없고, develop이 그보다 앞서 있다 (갓 딴 빈 브랜치는 두다)
+#   - 열린 PR의 head가 아니다
+name: Prune merged branches
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: '지우지 않고 무엇을 지울지만 적는다'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+        with:
+          script: |
+            const dry = process.env.DRY_RUN !== 'false';
+            const repo = context.repo;
+            const openHeads = new Set(
+              (await github.paginate(github.rest.pulls.list, { ...repo, state: 'open', per_page: 100 }))
+                .map((p) => p.head.ref),
+            );
+            const branches = await github.paginate(github.rest.repos.listBranches, { ...repo, per_page: 100 });
+            let deleted = 0;
+            for (const { name } of branches) {
+              if (!/^(feature|fix)\//.test(name)) continue;
+              if (openHeads.has(name)) {
+                core.info(`두다 (열린 PR): ${name}`);
+                continue;
+              }
+              // base=브랜치, head=develop. behind_by = 브랜치에만 있는 커밋 수
+              const { data } = await github.rest.repos.compareCommits({ ...repo, base: name, head: 'develop' });
+              if (data.behind_by !== 0 || data.status !== 'ahead') {
+                core.info(`두다 (${data.status}, develop에 없는 커밋 ${data.behind_by}개): ${name}`);
+                continue;
+              }
+              if (dry) {
+                core.info(`지울 것: ${name}`);
+              } else {
+                await github.rest.git.deleteRef({ ...repo, ref: `heads/${name}` });
+                core.info(`지웠다: ${name}`);
+              }
+              deleted++;
+            }
+            core.notice(`${dry ? '지울 것' : '지운 것'} ${deleted}개${dry ? ' (dry run)' : ''}`);
