@@ -564,7 +564,6 @@ export const rule17: Rule = ({ motherboard, storage }) => {
   for (const d of storage) {
     if (!isFilled(d.formFactor)) gaps.push(ref(d, '규격'));
   }
-  if (!isFilled(motherboard.m2Slots)) gaps.push(ref(motherboard, 'M.2 슬롯 수'));
   if (gaps.length > 0) {
     return missing(17, 'M.2 슬롯 정보가 없어 판정하지 못했습니다.', gaps);
   }
@@ -573,8 +572,12 @@ export const rule17: Rule = ({ motherboard, storage }) => {
   const notes = unplacedNote(storage);
   const withNotes = (r: RuleResult) => (notes ? { ...r, notes } : r);
 
+  // 볼 것이 없으면 보드 값을 묻지 않는다 (§18.3)
   if (need === 0) {
     return withNotes(pass(17, 'M.2 드라이브가 없습니다.'));
+  }
+  if (!isFilled(motherboard.m2Slots)) {
+    return missing(17, 'M.2 슬롯 정보가 없어 판정하지 못했습니다.', [ref(motherboard, 'M.2 슬롯 수')]);
   }
 
   const rows = motherboard.m2Slots!;
@@ -653,11 +656,19 @@ export const rule18: Rule = ({ motherboard, storage }) => {
   for (const d of storage) {
     if (!isFilled(d.interface)) gaps.push(ref(d, '인터페이스'));
   }
-  if (!isFilled(motherboard.sataPorts) && !isFilled(motherboard.sataPorts3Gbs)) {
-    gaps.push(ref(motherboard, 'SATA 포트 수'));
-  }
   if (gaps.length > 0) {
     return missing(18, 'SATA 포트 정보가 없어 판정하지 못했습니다.', gaps);
+  }
+
+  /**
+   * 볼 것이 없으면 보드 값을 묻지 않는다 (§18.3). 보드의 24.9%가 SATA 0이라,
+   * 먼저 물으면 NVMe 하나만 담은 견적의 4분의 1이 판정 불가가 된다.
+   */
+  const need = storage.filter(usesSataPort).length;
+  if (need === 0) return pass(18, 'SATA 포트를 쓰는 드라이브가 없습니다.');
+
+  if (!isFilled(motherboard.sataPorts) && !isFilled(motherboard.sataPorts3Gbs)) {
+    return missing(18, 'SATA 포트 정보가 없어 판정하지 못했습니다.', [ref(motherboard, 'SATA 포트 수')]);
   }
 
   // 6Gb/s와 3Gb/s를 합산한다. 둘 다 드라이브가 꽂히는 자리다.
@@ -675,7 +686,6 @@ export const rule18: Rule = ({ motherboard, storage }) => {
     );
   }
 
-  const need = storage.filter(usesSataPort).length;
   if (need > ports) {
     return fail(18, 'error', `SATA 드라이브가 ${need}개인데 메인보드 포트는 ${ports}개입니다.`);
   }

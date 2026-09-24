@@ -879,6 +879,8 @@ describe('17. M.2 드라이브를 보드가 받는가 (Phase 1)', () => {
     const r = rule17(b);
     expect(r?.verdict).toBe('pass');
     expect(r?.message).toContain('M.2 드라이브가 없습니다');
+    // 보드의 M.2 값이 없어도 마찬가지다 — 볼 것이 없으면 묻지 않는다 (§18.3)
+    expect(rule17(f.withBuild({ storage: [f.sataDrive], motherboard: { ...f.motherboard, m2Slots: null } }))?.verdict).toBe('pass');
   });
 
   it('★ DDR5 보드의 0은 판정하지 않는다 (§17.2)', () => {
@@ -953,12 +955,23 @@ describe('18. SATA 드라이브 수 ≤ 보드 SATA 포트 수 (Phase 1)', () =>
     // 포트 1개인데 M.2 SATA를 셌다면 통과했을지 아닐지가 달라진다
     const r = rule18(b);
     expect(r?.verdict).toBe('pass');
-    expect(r?.message).toContain('SATA 0개');
+    expect(r?.message).toContain('SATA 포트를 쓰는 드라이브가 없습니다');
   });
 
   it('SAS도 세지 않는다 — 일반 보드에 포트가 없다', () => {
     const sas = { ...f.sataDrive, id: 'sas', interface: 'SAS 12.0 Gb/s' };
-    expect(rule18(f.withBuild({ storage: [sas] }))?.message).toContain('SATA 0개');
+    expect(rule18(f.withBuild({ storage: [sas] }))?.message).toContain('SATA 포트를 쓰는 드라이브가 없습니다');
+  });
+
+  it('★ SATA 드라이브가 없으면 보드 포트 수를 묻지 않는다 — NVMe만 담은 견적 (§18.3, 이슈 #35)', () => {
+    // 보드의 24.9%가 SATA 0이다. 먼저 물으면 NVMe 견적의 4분의 1이 판정 불가가 됐다
+    for (const [sataPorts, sataPorts3Gbs] of [[0, 0], [null, null]] as const) {
+      const r = rule18(f.withBuild({ storage: [f.drive], motherboard: { ...f.motherboard, sataPorts, sataPorts3Gbs } }));
+      expect(r?.verdict, `${sataPorts}/${sataPorts3Gbs}`).toBe('pass');
+    }
+    // SATA 드라이브가 있으면 여전히 판정 불가다
+    const withSata = f.withBuild({ storage: [f.drive, f.sataDrive], motherboard: { ...f.motherboard, sataPorts: 0, sataPorts3Gbs: 0 } });
+    expect(rule18(withSata)?.verdict).toBe('unknown');
   });
 
   it('둘 다 결측이면 unknown, 한쪽만 있으면 판정한다', () => {
