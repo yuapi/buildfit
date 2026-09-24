@@ -245,7 +245,8 @@ export const rule7: Rule = ({ cpu, gpu, psu, ram, storage }) => {
   const wattage = psu.wattage ?? 0;
   // 빠진 부품을 먼저 적는다. 가정 설명보다 앞선다 — 구간 자체가 낮다는 뜻이라서다.
   const left = describeExcluded(est.excluded);
-  const notes = left ? [left, describeAssumptions()] : [describeAssumptions()];
+  const assumed = describeAssumptions(undefined, { drives: storage.length });
+  const notes = left ? [left, assumed] : [assumed];
   const estimate = `총 소비전력 약 ${minTotal}~${maxTotal}W로 추정됩니다`;
 
   if (wattage >= recommended) {

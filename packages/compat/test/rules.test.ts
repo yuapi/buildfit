@@ -11,7 +11,7 @@
 import { describe, expect, it } from 'vitest';
 import { evaluate } from '../src/engine';
 import { emptyBuild } from '../src/parts';
-import { estimatePower } from '../src/power';
+import { POWER_ASSUMPTIONS, describeAssumptions, describeExcluded, estimatePower } from '../src/power';
 import {
   rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8, rule9,
   rule12, rule15, rule16, rule17, rule18, rule19,
@@ -240,12 +240,13 @@ describe('6. PSU 폼팩터 ⊂ 케이스 지원', () => {
 });
 
 describe('7. 소비전력 대비 PSU 정격 — 구간 판정', () => {
-  // 기준 견적: CPU PPT 162W + GPU TDP 360W = 522W, 메모리 2모듈
+  // 기준 견적: CPU PPT 162W + GPU TDP 360W = 522W, 메모리 2모듈, **드라이브 없음**
   //   총_최소  = 522 + 25 + 2×2 = 551W
   //   총_최대  = 522 + 80 + 5×2 = 612W
   //   권장정격 = ceil(612 × 1.3) = 796W
+  // 드라이브는 아래 §7.4.1 블록이 따로 본다
   const withPsu = (wattage: number | null) =>
-    f.withBuild({ psu: { ...f.psu, wattage } });
+    f.withBuild({ psu: { ...f.psu, wattage }, storage: [] });
 
   it('권장 정격 이상이면 통과', () => {
     const r = rule7(withPsu(850));
@@ -287,21 +288,27 @@ describe('7. 소비전력 대비 PSU 정격 — 구간 판정', () => {
     expect(notes[0]).toContain('Seasonic');
   });
 
-  it('1차 출처 미확인 상태를 숨기지 않는다', () => {
+  it('원문을 확인한 출처에는 미확인 표시가 붙지 않는다 (2026-09-24 확인)', () => {
     const notes = rule7(withPsu(850))?.notes?.join(' ') ?? '';
-    expect(notes).toContain('원문 미확인');
+    expect(notes).toContain('Seasonic');
+    expect(notes).not.toContain('원문 미확인');
+  });
+
+  it('확인하지 못한 출처면 그 상태를 숨기지 않는다', () => {
+    const unverified = { ...POWER_ASSUMPTIONS, source: { ...POWER_ASSUMPTIONS.source, verified: false } };
+    expect(describeAssumptions(unverified)).toContain('원문 미확인');
   });
 
   it('GPU를 고르지 않으면 GPU 전력 없이 계산한다 (내장그래픽 구성)', () => {
     // 522 → 162W 기준. 총_최소 = 162+25+4 = 191, 총_최대 = 162+80+10 = 252, 권장 328
-    const r = rule7(f.withBuild({ gpu: null, psu: { ...f.psu, wattage: 400 } }));
+    const r = rule7(f.withBuild({ gpu: null, psu: { ...f.psu, wattage: 400 }, storage: [] }));
     expect(r?.verdict).toBe('pass');
     expect(r?.message).toContain('191~252W');
   });
 
   it('CPU는 PPT가 있으면 TDP 대신 PPT를 쓴다', () => {
     const withTdpOnly = rule7(
-      f.withBuild({ cpu: { ...f.cpu, ppt: null }, psu: { ...f.psu, wattage: 850 } }),
+      f.withBuild({ cpu: { ...f.cpu, ppt: null }, psu: { ...f.psu, wattage: 850 }, storage: [] }),
     );
     // PPT 162 대신 TDP 120 → 총_최소 509
     expect(withTdpOnly?.message).toContain('509~570W');
@@ -1032,7 +1039,7 @@ describe('estimatePower — 판정과 화면이 같은 수치를 쓴다', () => 
     expect(est.maxW).toBe(612); // 522 + 80 + 5×2
     expect(est.recommendedW).toBe(Math.ceil(612 * 1.3));
 
-    const r = rule7(f.goodBuild);
+    const r = rule7(f.withBuild({ storage: [] }));
     expect(r?.message).toContain(`${est.minW}~${est.maxW}W`);
     expect(r?.message).toContain(`${est.recommendedW}W`);
   });
@@ -1056,34 +1063,35 @@ describe('estimatePower — 판정과 화면이 같은 수치를 쓴다', () => 
   });
 });
 
-describe('7.4.1 계산에서 빠진 부품을 말한다 (§7.4.1)', () => {
-  it('★ 드라이브가 있으면 빠졌다고 적는다', () => {
-    const r = rule7(f.goodBuild);
-    const notes = r?.notes?.join(' ') ?? '';
-    expect(notes).toContain('드라이브 1개');
-    expect(notes).toContain('계산에 넣지 않았습니다');
-    // 어느 쪽으로 틀렸는지까지 말한다
-    expect(notes).toContain('이 구간보다 높습니다');
+describe('7.4.1 드라이브 전력 — 개당 0~15W (이슈 #5)', () => {
+  // Seasonic 원문: "you can put up to 15W, especially for some HDDs". 상한만 준다
+  const watts = (m: string | undefined) => m?.match(/약 (\d+)~(\d+)W/)?.slice(1, 3).map(Number);
+
+  it('★ 드라이브마다 최대 쪽에 15W를 더한다 — 최소 쪽은 그대로다', () => {
+    const none = watts(rule7(f.withBuild({ storage: [] }))?.message);
+    const three = watts(
+      rule7(f.withBuild({ storage: [f.drive, { ...f.drive, id: 'd2' }, { ...f.drive, id: 'd3' }] }))?.message,
+    );
+    expect(three?.[0]).toBe(none?.[0]);
+    expect(three?.[1]).toBe((none?.[1] ?? 0) + 45);
   });
 
-  it('빠진 부품을 가정 설명보다 앞에 적는다', () => {
+  it('★ 이제 드라이브를 「빠졌다」고 적지 않는다 — 계산에 들어갔다', () => {
     const notes = rule7(f.goodBuild)?.notes ?? [];
-    expect(notes[0]).toContain('드라이브');
-    expect(notes[1]).toContain('가정');
+    expect(notes).toHaveLength(1);
+    expect(notes.join(' ')).not.toContain('계산에 넣지 않았습니다');
+    expect(notes[0]).toContain('드라이브당 최대 15W');
   });
 
-  it('드라이브가 없으면 그 말을 하지 않는다', () => {
+  it('드라이브가 없으면 드라이브 가정을 적지 않는다', () => {
     const notes = rule7(f.withBuild({ storage: [] }))?.notes?.join(' ') ?? '';
     expect(notes).not.toContain('드라이브');
     expect(notes).toContain('가정');
   });
 
-  it('★ 드라이브를 전력 합계에 넣지 않는다 — 추정치를 지어내지 않는다', () => {
-    const none = rule7(f.withBuild({ storage: [] }));
-    const many = rule7(
-      f.withBuild({ storage: [f.drive, { ...f.drive, id: 'd2' }, { ...f.drive, id: 'd3' }] }),
-    );
-    const watts = (m: string | undefined) => m?.match(/약 (\d+)~(\d+)W/)?.slice(1, 3);
-    expect(watts(many?.message)).toEqual(watts(none?.message));
+  it('빠진 부품이 생기면 지금처럼 가정 설명보다 앞에 적는다', () => {
+    expect(describeExcluded(['케이스 팬 3개'])).toContain('이 구간보다 높습니다');
+    expect(describeExcluded([])).toBeNull();
   });
 });
+
