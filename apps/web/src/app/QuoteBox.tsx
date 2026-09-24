@@ -139,7 +139,8 @@ export function QuoteBox({ onApply }: { onApply: (picks: readonly QuotePick[]) =
           <div className="min-w-0">
             <h2 className="font-semibold">견적서가 이미 있나요?</h2>
             <p className="mt-1 text-sm text-fg-muted">
-              받아 온 견적서를 붙여넣으면 부품을 찾아 채웁니다. 일곱 칸을 손으로 채우지
+              {/* 칸 수를 적지 않는다 — 「일곱 칸」이 칸이 여덟이 된 뒤에도 남아 있었다 (이슈 #46) */}
+              받아 온 견적서를 붙여넣으면 부품을 찾아 채웁니다. 칸을 하나씩 손으로 채우지
               않아도 됩니다.
             </p>
           </div>

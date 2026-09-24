@@ -11,7 +11,7 @@ import {
   useSyncExternalStore,
   useTransition,
 } from "react";
-import type { Build, Constraint, RuleResult } from "@buildfit/compat";
+import type { Build, Constraint, FieldRef, RuleResult } from "@buildfit/compat";
 import {
   RULE_SUMMARY,
   SLOT_LABELS,
@@ -31,6 +31,7 @@ import { SLOT_META, type SlotName } from "@/lib/categories";
 import { ElectricityPanel } from "./ElectricityPanel";
 import { NO_CURSOR, nextCursor } from "@/lib/list-cursor";
 import { listWithJosa } from "@/lib/korean";
+import { groupFieldsByPart } from "@/lib/field-refs";
 import {
   clearDraft,
   getServerStorageSnapshot,
@@ -1008,6 +1009,35 @@ const HEADLINE: Record<Tone, { text: string; className: string }> = {
   pass: { text: "검사한 항목은 모두 통과했습니다", className: "text-ok" },
 };
 
+/**
+ * 결과가 가리키는 필드 목록. **부품별로 묶는다** — 필드마다 긴 부품 이름을 되풀이하면
+ * 한 줄이 모바일에서 여섯 줄을 넘는다 (이슈 #46). 부품마다 링크 하나다.
+ */
+function FieldList({
+  build,
+  refs,
+}: {
+  build: Build | undefined;
+  refs: readonly FieldRef[];
+}) {
+  return groupFieldsByPart(refs).map((g, i) => {
+    const text = `${g.part}의 ${g.fields.join("·")}`;
+    const href = partHref(build, g.slug);
+    return (
+      <span key={g.slug ?? g.part}>
+        {i > 0 && ", "}
+        {href ? (
+          <Link href={href} className="link">
+            {text}
+          </Link>
+        ) : (
+          text
+        )}
+      </span>
+    );
+  });
+}
+
 /** slug로 부품의 카테고리를 되찾는다. 상세 페이지 주소를 만들려면 둘 다 필요하다. */
 function partHref(
   build: Build | undefined,
@@ -1163,23 +1193,9 @@ export function VerdictPanel({
                           ? "없는 정보: "
                           : "데이터 이상: "}
                         {r.reason.kind !== "missing" && `${r.reason.detail} `}
-                        {r.reason.fields.map((f, i) => {
-                          const href = partHref(build, f.slug);
-                          return (
-                            <span key={`${f.part}-${f.field}`}>
-                              {i > 0 && ", "}
-                              {/* 판정 불가를 만난 사람이 그 값을 아는 경우가 있다.
-                                  거기서 제보로 이어지는 것이 가장 값싼 보강 경로다 (§5.5). */}
-                              {href ? (
-                                <Link href={href} className="link">
-                                  {f.part}의 {f.field}
-                                </Link>
-                              ) : (
-                                `${f.part}의 ${f.field}`
-                              )}
-                            </span>
-                          );
-                        })}
+                        {/* 판정 불가를 만난 사람이 그 값을 아는 경우가 있다.
+                            거기서 제보로 이어지는 것이 가장 값싼 보강 경로다 (§5.5). */}
+                        <FieldList build={build} refs={r.reason.fields} />
                         {r.reason.fields.some((f) =>
                           partHref(build, f.slug),
                         ) && (
@@ -1197,21 +1213,7 @@ export function VerdictPanel({
                     {r.contested && (
                       <p className="mt-1 text-xs leading-relaxed text-warn">
                         검증 중인 값으로 판정했습니다:{" "}
-                        {r.contested.map((f, i) => {
-                          const href = partHref(build, f.slug);
-                          return (
-                            <span key={`${f.part}-${f.field}`}>
-                              {i > 0 && ", "}
-                              {href ? (
-                                <Link href={href} className="link">
-                                  {f.part}의 {f.field}
-                                </Link>
-                              ) : (
-                                `${f.part}의 ${f.field}`
-                              )}
-                            </span>
-                          );
-                        })}
+                        <FieldList build={build} refs={r.contested} />
                         <span className="ml-1">
                           — 같은 제품의 다른 기록과 값이 다르거나 오류 신고가
                           들어온 항목입니다
