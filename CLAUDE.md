@@ -38,10 +38,12 @@ Git Flow를 따른다. 근거와 상세: `docs/decisions/0008-git-flow-branching
 | `release/<버전>` | 릴리스 준비 (버그 수정만) | `develop` | `main` + `develop` |
 | `hotfix/<요약>` | 배포된 것의 긴급 수정 | `main` | `main` + `develop` |
 
-- **`main`과 `develop`에 직접 커밋하지 않는다.** 항상 브랜치를 따서 머지한다
-- 머지는 **`--no-ff`**. 작업 단위가 히스토리에 남아야 한다
+- **`main`과 `develop`에 직접 커밋하지도, 직접 push하지도 않는다.** 항상 브랜치를 따서 **PR로** 머지한다 (ADR-0024)
+- 머지 방식은 **`merge`** — `--no-ff`와 같은 머지 커밋이다. squash·rebase는 작업 단위를 지운다
+- **PR의 CI가 녹색일 때 머지한다.** 로컬 머지 후 push하면 CI가 통합 브랜치에 들어간 **뒤에** 돈다
 - **이슈 하나 = feature 브랜치 하나.** 여러 이슈를 한 브랜치에서 처리하지 않는다
-- 머지한 feature 브랜치는 삭제한다
+- 머지한 feature 브랜치는 **워크플로가 지운다** (`.github/workflows/delete-merged-branch.yml`).
+  `release/`·`hotfix/`는 두 곳에 머지해야 해서 지우지 않는다 — 레포 설정의 자동 삭제를 쓰지 않는 이유다
 - 이슈 번호가 없는 작업은 `feature/<요약>`
 - 릴리스 태그는 semver. 1.0 이전이므로 **Phase 완료마다 minor를 올린다**
   (Phase 0a → `v0.1.0`, Phase 0b → `v0.2.0`, …)
@@ -51,11 +53,11 @@ Git Flow를 따른다. 근거와 상세: `docs/decisions/0008-git-flow-branching
 git checkout develop && git pull
 git checkout -b feature/1-opendb-schema-research
 
-# 작업 종료
-git checkout develop
-git merge --no-ff feature/1-opendb-schema-research
-git push origin develop
-git branch -d feature/1-opendb-schema-research
+# 작업 종료 — PR로 머지한다 (ADR-0024)
+git push -u origin feature/1-opendb-schema-research
+# develop으로 PR → CI 녹색 → merge 방식으로 머지 → 워크플로가 원격 브랜치를 지운다
+git checkout develop && git pull
+git branch -d feature/1-opendb-schema-research   # 로컬 사본만
 ```
 
 ## 절대 규칙

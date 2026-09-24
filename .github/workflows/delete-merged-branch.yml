@@ -1,0 +1,35 @@
+# 머지된 feature 브랜치를 지운다 — ADR-0024.
+#
+# 레포 설정 「Automatically delete head branches」를 쓰지 않는 이유: 그 설정은
+# release/·hotfix/도 지운다. 그 둘은 main과 develop 두 곳에 머지해야 해서(ADR-0008)
+# 첫 머지에서 지우면 둘째 PR의 head가 사라진다. 여기서는 feature/만 지운다.
+name: Delete merged branch
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+
+jobs:
+  delete:
+    # 머지된 것만, 이 레포의 브랜치만 (포크의 브랜치는 우리 것이 아니다), feature/만
+    if: >-
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      startsWith(github.event.pull_request.head.ref, 'feature/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const ref = context.payload.pull_request.head.ref;
+            try {
+              await github.rest.git.deleteRef({ ...context.repo, ref: `heads/${ref}` });
+              core.info(`지웠다: ${ref}`);
+            } catch (e) {
+              // 이미 지워졌으면(사람이 먼저 지웠거나 설정이 켜진 경우) 실패로 치지 않는다
+              if (e.status === 422 || e.status === 404) core.info(`이미 없다: ${ref}`);
+              else throw e;
+            }

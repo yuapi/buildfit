@@ -1,6 +1,6 @@
 # 검증을 사람의 기억에 맡기지 않는다.
 #
-# 이 저장소는 develop에 --no-ff로 머지하는 Git Flow를 쓴다 (ADR-0008).
+# 이 저장소는 develop에 PR로 머지하는 Git Flow를 쓴다 (ADR-0008, ADR-0024).
 # 머지 전에 무엇이 깨졌는지 알아야 하므로, feature 브랜치의 push와
 # develop·main으로 가는 PR에서 모두 돈다.
 name: CI
