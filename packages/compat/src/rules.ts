@@ -948,6 +948,30 @@ export const rule20: Rule = ({ cpu, cooler }) => {
   return fail(20, 'warning', `${base} 별도 고정 부품이 필요하거나 장착되지 않을 수 있습니다. 제조사 스펙을 확인해 주세요.`);
 };
 
+// --- 24. PSU 길이 ≤ 케이스 PSU 최대 길이 (Phase 1) ------------------------
+
+/**
+ * 규칙 24 — docs/compat-rules.md §24, 이슈 #32.
+ *
+ * **경고다.** 케이스의 PSU 최대 길이를 무엇을 기준으로 쟀는지 원본이 말하지 않는다
+ * (케이블 공간을 넣었는지). 규칙 9와 같은 이유로 단정하지 않는다 (§24.1).
+ */
+export const rule24: Rule = ({ psu, pcCase }) => {
+  if (!psu || !pcCase) return null;
+  const gaps: FieldRef[] = [];
+  if (!isFilled(psu.lengthMm)) gaps.push(ref(psu, '길이'));
+  // 케이스 쪽은 14%만 차 있다. 대부분 여기로 온다 (§24)
+  if (!isFilled(pcCase.maxPsuLengthMm)) gaps.push(ref(pcCase, 'PSU 최대 길이'));
+  if (gaps.length > 0) {
+    return missing(24, '파워 길이 정보가 없어 판정하지 못했습니다.', gaps);
+  }
+  const len = psu.lengthMm!;
+  const max = pcCase.maxPsuLengthMm!;
+  return len <= max
+    ? pass(24, `파워 길이 ${len}mm, 케이스 한계 ${max}mm입니다.`)
+    : fail(24, 'warning', `파워 길이 ${len}mm가 케이스 한계 ${max}mm를 넘습니다. 제조사 스펙을 확인해 주세요.`);
+};
+
 export const phase1Rules: readonly Rule[] = [
   ...phase0Rules,
   rule9,
@@ -961,4 +985,5 @@ export const phase1Rules: readonly Rule[] = [
   rule21,
   rule22,
   rule23,
+  rule24,
 ];

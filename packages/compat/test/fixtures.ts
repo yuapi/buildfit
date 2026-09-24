@@ -62,6 +62,7 @@ export const pcCase: PcCase = {
   supportedPsuFormFactors: ['ATX', 'SFX', 'SFX-L'],
   maxGpuLengthMm: 420,
   maxCpuCoolerHeightMm: 167,
+  maxPsuLengthMm: 200,
   expansionSlots: 8,
   internal35Bays: 6,
   internal25Bays: 3,
@@ -72,6 +73,7 @@ export const psu: Psu = {
   name: 'Corsair RM850x (2024)',
   wattage: 850,
   formFactor: 'ATX',
+  lengthMm: 160,
   connectors: { pcie6plus2: 4, pcie12vhpwr: 1 },
 };
 

@@ -154,6 +154,8 @@ export interface PcCase extends PartRef {
   readonly supportedPsuFormFactors: readonly string[] | null;
   readonly maxGpuLengthMm: number | null;
   readonly maxCpuCoolerHeightMm: number | null;
+  /** PSU 최대 길이. 규칙 24 (§24). **14%만 차 있다** — 어떤 기준으로 쟀는지 원본이 말하지 않는다 */
+  readonly maxPsuLengthMm: number | null;
   /** 뒷면 확장 슬롯 구멍의 개수. 규칙 15 (§15) */
   readonly expansionSlots: number | null;
   /** 내부 3.5" 베이. 규칙 19 (§19). **`0`은 값이다** — Mini-ITX에 실재한다 */
@@ -171,6 +173,8 @@ export interface PsuConnectors {
 export interface Psu extends PartRef {
   readonly wattage: number | null;
   readonly formFactor: string | null;
+  /** 길이(mm). 규칙 24 (§24) */
+  readonly lengthMm: number | null;
   readonly connectors: PsuConnectors;
 }
 
