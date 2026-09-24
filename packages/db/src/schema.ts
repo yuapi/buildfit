@@ -211,3 +211,42 @@ export const specReports = pgTable(
     uniqueIndex('spec_reports_dedupe_uq').on(t.partId, t.specKey, t.clientToken),
   ],
 );
+
+/**
+ * 부품별 성능 측정값 — ADR-0023, 명세 §6.9.
+ *
+ * **측정값이다. 추정·예측이 아니다.** 한 줄이 한 부품의 한 용도 축이다
+ * (`render.blender` = 3D 렌더링). 축을 합치지 않는다 (ADR-0004).
+ *
+ * GPU는 칩 단위로 측정된다. 같은 칩의 모든 부품이 같은 값을 받고, 그 사실을
+ * `per_chip`이 말한다 — 화면이 「칩 기준 측정」이라고 적는다.
+ */
+export const partBenchmarks = pgTable(
+  'part_benchmarks',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    partId: uuid('part_id')
+      .notNull()
+      .references(() => parts.id, { onDelete: 'cascade' }),
+    /** 용도 축. 지금은 `render.blender` 하나 */
+    axis: text('axis').notNull(),
+    /** 중앙값 */
+    value: numeric('value', { precision: 12, scale: 2 }).notNull(),
+    unit: text('unit').notNull(),
+    /** 중앙값을 낸 실행 수. 화면에 함께 낸다 */
+    runs: integer('runs').notNull(),
+    /** 출처가 기록한 장치 이름 그대로. 맞춘 것이 맞는지 사용자가 확인하게 한다 */
+    deviceName: text('device_name').notNull(),
+    /** GPU 연산 방식 (`OPTIX` · `HIP` · `ONEAPI` · `CPU`) */
+    backend: text('backend').notNull(),
+    /** 측정한 소프트웨어 버전 (`4.5`). 버전마다 점수가 다르다 */
+    measuredVersion: text('measured_version').notNull(),
+    /** 칩 단위 측정이라 같은 칩의 다른 제품도 같은 값을 받는가 */
+    perChip: boolean('per_chip').notNull().default(false),
+    sourceUrl: text('source_url').notNull(),
+    /** 출처 스냅숏 날짜 */
+    snapshotDate: text('snapshot_date').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('part_benchmarks_part_axis_uq').on(t.partId, t.axis)],
+);

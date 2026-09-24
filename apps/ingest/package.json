@@ -10,7 +10,8 @@
     "test": "vitest run",
     "sample": "tsx src/sample.ts",
     "verify": "tsx src/verify-stability.ts",
-    "measure:quote": "tsx src/measure-quote.ts"
+    "measure:quote": "tsx src/measure-quote.ts",
+    "ingest:benchmarks": "tsx src/benchmarks-cli.ts"
   },
   "dependencies": {
     "@buildfit/db": "*",

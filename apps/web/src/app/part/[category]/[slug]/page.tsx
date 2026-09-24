@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requiredKeysFor } from '@buildfit/compat';
-import { comparableParts, partBySlug, partsMatchingSpec, type RelatedPart } from '@buildfit/db/part';
+import { benchmarksForPart, comparableParts, partBySlug, partsMatchingSpec, type RelatedPart } from '@buildfit/db/part';
+import { BenchmarkBlock } from '@/components/BenchmarkBlock';
 import { Container } from '@/components/SiteShell';
 import { startBuildHref } from '@/lib/build-links';
 import { categoryLabel } from '@/lib/categories';
@@ -106,10 +107,13 @@ export default async function PartPage({
     .filter((r) => !have.has(r.specKey))
     .map((r) => r.specKey);
 
-  const [related, comparable] = await Promise.all([
+  const [related, comparable, benchmarks] = await Promise.all([
     relatedParts(part.category, part.id, part.specs),
     comparableParts(getDb(), part),
+    // 측정값 테이블이 없는 DB(적재 전)에서도 페이지는 떠야 한다
+    benchmarksForPart(getDb(), part.id).catch(() => []),
   ]);
+  const measurable = part.category === 'CPU' || part.category === 'GPU';
   const buildHref = startBuildHref(part.category, part.id);
   const sourceUrl = part.specs.find((s) => s.sourceUrl)?.sourceUrl ?? null;
 
@@ -223,6 +227,25 @@ export default async function PartPage({
           />
         </div>
       </section>
+
+      {/* 성능 측정값 — ADR-0023. CPU·GPU만. 없으면 없다고 적는다 */}
+      {measurable && (
+        <section className="mt-12">
+          <h2 className="text-lg font-semibold">성능 측정값</h2>
+          {benchmarks.length > 0 ? (
+            <div className="mt-3 space-y-3">
+              {benchmarks.map((b) => (
+                <BenchmarkBlock key={b.axis} bench={b} />
+              ))}
+            </div>
+          ) : (
+            <p className="mt-2 text-sm text-fg-muted">
+              이 부품의 측정값이 없습니다. 공개 벤치마크(Blender Open Data)에서 같은 이름을 찾지
+              못했거나 실행이 5회 미만입니다.
+            </p>
+          )}
+        </section>
+      )}
 
       {related && related.items.length > 0 && (
         <section className="mt-12">
