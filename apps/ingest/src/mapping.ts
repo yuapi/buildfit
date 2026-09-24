@@ -123,6 +123,11 @@ export const CATEGORY_SPECS: Readonly<Record<string, SpecMap>> = {
     water_cooled: 'water_cooled',
     radiator_size_mm: 'radiator_size',
     fan_size_mm: 'fan_size',
+    // 규칙 7이 공랭 팬 전력을 센다 (이슈 #30). 86%가 비어 있다 — 비면 넣지 않고 그렇다고 적는다
+    fan_quantity: 'fan_quantity',
+    fanless: 'fanless',
+    // 조명이 있으면 팬 개당 상한이 3W → 6W다. 빈 목록은 담지 않는다 — 없다는 뜻인지 모른다
+    lighting: 'lighting',
   },
 };
 

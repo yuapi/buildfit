@@ -411,3 +411,31 @@ describe('Storage 적재', () => {
     expect(specs(drive({ capacity: 0 })).has('capacity_gb')).toBe(false);
   });
 });
+
+describe('CPU 쿨러 팬 — 규칙 7의 전력 입력 (이슈 #30)', () => {
+  const cooler = (extra: Record<string, unknown>) =>
+    new Map(
+      (toPartRow('CPUCooler', 'cccccccc-0000-0000-0000-000000000000', {
+        cpu_sockets: ['AM5'],
+        water_cooled: false,
+        metadata: { name: '테스트 쿨러', manufacturer: 'Noctua' },
+        ...extra,
+      })?.specs ?? []).map((s) => [s.key, s.value]),
+    );
+
+  it('팬 수·팬 없음·조명을 담는다', () => {
+    const s = cooler({ fan_quantity: 2, fanless: false, lighting: ['ARGB'] });
+    expect(s.get('fan_quantity')).toBe(2);
+    expect(s.get('fanless')).toBe(false);
+    expect(s.get('lighting')).toEqual(['ARGB']);
+  });
+
+  it('★ 팬 수가 비면 담지 않는다 — 규칙 7이 넣지 않았다고 적는다', () => {
+    expect(cooler({ fan_quantity: null }).has('fan_quantity')).toBe(false);
+  });
+
+  it('빈 조명 목록은 담지 않는다 — 없다는 뜻인지 모른다', () => {
+    expect(cooler({ lighting: [] }).has('lighting')).toBe(false);
+    expect(cooler({ lighting: ['None'] }).get('lighting')).toEqual(['None']);
+  });
+});
