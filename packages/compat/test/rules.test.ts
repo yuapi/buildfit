@@ -11,7 +11,7 @@
 import { describe, expect, it } from 'vitest';
 import { evaluate } from '../src/engine';
 import { emptyBuild } from '../src/parts';
-import { POWER_ASSUMPTIONS, describeAssumptions, describeExcluded, estimatePower } from '../src/power';
+import { POWER_ASSUMPTIONS, coolerPower, describeAssumptions, describeExcluded, estimatePower } from '../src/power';
 import {
   rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8, rule9,
   rule12, rule15, rule16, rule17, rule18, rule19,
@@ -240,13 +240,13 @@ describe('6. PSU 폼팩터 ⊂ 케이스 지원', () => {
 });
 
 describe('7. 소비전력 대비 PSU 정격 — 구간 판정', () => {
-  // 기준 견적: CPU PPT 162W + GPU TDP 360W = 522W, 메모리 2모듈, **드라이브 없음**
+  // 기준 견적: CPU PPT 162W + GPU TDP 360W = 522W, 메모리 2모듈, **드라이브·쿨러 없음**
   //   총_최소  = 522 + 25 + 2×2 = 551W
   //   총_최대  = 522 + 80 + 5×2 = 612W
   //   권장정격 = ceil(612 × 1.3) = 796W
-  // 드라이브는 아래 §7.4.1 블록이 따로 본다
+  // 드라이브·쿨러는 아래 블록들이 따로 본다
   const withPsu = (wattage: number | null) =>
-    f.withBuild({ psu: { ...f.psu, wattage }, storage: [] });
+    f.withBuild({ psu: { ...f.psu, wattage }, storage: [], cooler: null });
 
   it('권장 정격 이상이면 통과', () => {
     const r = rule7(withPsu(850));
@@ -301,14 +301,14 @@ describe('7. 소비전력 대비 PSU 정격 — 구간 판정', () => {
 
   it('GPU를 고르지 않으면 GPU 전력 없이 계산한다 (내장그래픽 구성)', () => {
     // 522 → 162W 기준. 총_최소 = 162+25+4 = 191, 총_최대 = 162+80+10 = 252, 권장 328
-    const r = rule7(f.withBuild({ gpu: null, psu: { ...f.psu, wattage: 400 }, storage: [] }));
+    const r = rule7(f.withBuild({ gpu: null, psu: { ...f.psu, wattage: 400 }, storage: [], cooler: null }));
     expect(r?.verdict).toBe('pass');
     expect(r?.message).toContain('191~252W');
   });
 
   it('CPU는 PPT가 있으면 TDP 대신 PPT를 쓴다', () => {
     const withTdpOnly = rule7(
-      f.withBuild({ cpu: { ...f.cpu, ppt: null }, psu: { ...f.psu, wattage: 850 }, storage: [] }),
+      f.withBuild({ cpu: { ...f.cpu, ppt: null }, psu: { ...f.psu, wattage: 850 }, storage: [], cooler: null }),
     );
     // PPT 162 대신 TDP 120 → 총_최소 509
     expect(withTdpOnly?.message).toContain('509~570W');
@@ -1039,7 +1039,7 @@ describe('estimatePower — 판정과 화면이 같은 수치를 쓴다', () => 
     expect(est.maxW).toBe(612); // 522 + 80 + 5×2
     expect(est.recommendedW).toBe(Math.ceil(612 * 1.3));
 
-    const r = rule7(f.withBuild({ storage: [] }));
+    const r = rule7(f.withBuild({ storage: [], cooler: null }));
     expect(r?.message).toContain(`${est.minW}~${est.maxW}W`);
     expect(r?.message).toContain(`${est.recommendedW}W`);
   });
@@ -1068,9 +1068,11 @@ describe('7.4.1 드라이브 전력 — 개당 0~15W (이슈 #5)', () => {
   const watts = (m: string | undefined) => m?.match(/약 (\d+)~(\d+)W/)?.slice(1, 3).map(Number);
 
   it('★ 드라이브마다 최대 쪽에 15W를 더한다 — 최소 쪽은 그대로다', () => {
-    const none = watts(rule7(f.withBuild({ storage: [] }))?.message);
+    const none = watts(rule7(f.withBuild({ storage: [], cooler: null }))?.message);
     const three = watts(
-      rule7(f.withBuild({ storage: [f.drive, { ...f.drive, id: 'd2' }, { ...f.drive, id: 'd3' }] }))?.message,
+      rule7(
+        f.withBuild({ storage: [f.drive, { ...f.drive, id: 'd2' }, { ...f.drive, id: 'd3' }], cooler: null }),
+      )?.message,
     );
     expect(three?.[0]).toBe(none?.[0]);
     expect(three?.[1]).toBe((none?.[1] ?? 0) + 45);
@@ -1092,6 +1094,50 @@ describe('7.4.1 드라이브 전력 — 개당 0~15W (이슈 #5)', () => {
   it('빠진 부품이 생기면 지금처럼 가정 설명보다 앞에 적는다', () => {
     expect(describeExcluded(['케이스 팬 3개'])).toContain('이 구간보다 높습니다');
     expect(describeExcluded([])).toBeNull();
+  });
+});
+
+describe('7.2 CPU 쿨러 전력 (이슈 #30)', () => {
+  const watts = (m: string | undefined) => m?.match(/약 (\d+)~(\d+)W/)?.slice(1, 3).map(Number);
+  const base = watts(rule7(f.withBuild({ storage: [], cooler: null }))?.message)!;
+  const withCooler = (patch: Partial<typeof f.cooler>) =>
+    rule7(f.withBuild({ storage: [], cooler: { ...f.cooler, ...patch } }));
+
+  it('★ 수랭은 15~30W를 더한다', () => {
+    const r = withCooler({ waterCooled: true, fanQuantity: null });
+    expect(watts(r?.message)).toEqual([base[0]! + 15, base[1]! + 30]);
+    expect(r?.notes?.join(' ')).toContain('수랭 쿨러 15~30W');
+  });
+
+  it('공랭 팬 수를 알면 개당 1~3W — 조명이 없다고 확실할 때', () => {
+    const r = withCooler({ fanQuantity: 2, lighting: ['None'] });
+    expect(watts(r?.message)).toEqual([base[0]! + 2, base[1]! + 6]);
+  });
+
+  it('★ 조명이 있거나 모르면 개당 1~6W — 넓은 쪽이다', () => {
+    expect(watts(withCooler({ fanQuantity: 2, lighting: ['ARGB'] })?.message)).toEqual([base[0]! + 2, base[1]! + 12]);
+    expect(watts(withCooler({ fanQuantity: 2, lighting: null })?.message)).toEqual([base[0]! + 2, base[1]! + 12]);
+  });
+
+  it('팬 없는 쿨러는 0W다', () => {
+    expect(watts(withCooler({ fanless: true, fanQuantity: null })?.message)).toEqual(base);
+  });
+
+  it('★ 팬 수를 모르면 넣지 않고, 넣지 않았다고 적는다 — 수를 지어내지 않는다', () => {
+    const r = withCooler({ fanQuantity: null });
+    expect(watts(r?.message)).toEqual(base);
+    expect(r?.notes?.[0]).toContain('CPU 쿨러 팬');
+    expect(r?.notes?.[0]).toContain('이 구간보다 높습니다');
+  });
+
+  it('수랭 여부를 모르면 넣지 않는다', () => {
+    const r = withCooler({ waterCooled: null });
+    expect(r?.notes?.join(' ')).toContain('CPU 쿨러 팬');
+  });
+
+  it('화면과 같은 함수다 — coolerPower', () => {
+    expect(coolerPower({ ...f.cooler, waterCooled: true })?.range).toEqual({ minW: 15, maxW: 30 });
+    expect(coolerPower({ ...f.cooler, fanQuantity: null })).toBeNull();
   });
 });
 

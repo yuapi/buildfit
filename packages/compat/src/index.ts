@@ -38,6 +38,7 @@ export { emptyBuild } from './parts';
 export type { PowerRange, PowerSource, PowerAssumptions, PowerEstimate } from './power';
 export {
   POWER_ASSUMPTIONS,
+  coolerPower,
   describeAssumptions,
   describeExcluded,
   estimatePower,

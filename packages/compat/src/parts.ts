@@ -184,14 +184,19 @@ export interface CpuCooler extends PartRef {
   readonly heightMm: number | null;
   readonly waterCooled: boolean | null;
   readonly supportedSockets: readonly string[] | null;
+  /** 공랭 팬 수. 규칙 7 (이슈 #30). **86%가 비어 있다** — 비면 전력에 넣지 않고 그렇다고 적는다 */
+  readonly fanQuantity: number | null;
+  /** 팬이 없는 쿨러인가 */
+  readonly fanless: boolean | null;
+  /** 조명 목록. `["None"]`일 때만 조명이 없다고 본다 — 빈 목록은 담지 않는다 */
+  readonly lighting: readonly string[] | null;
 }
 
 /**
  * 스토리지 드라이브. 여러 개를 담을 수 있다.
  *
- * 전력은 담지 않는다. NVMe·SATA의 소비전력 범위를 출처와 함께 확보하지 못했고,
- * **추정치를 지어내지 않는다.** 규칙 7은 스토리지를 빼고 계산하며 뺐다는 사실을
- * 결과에 적는다 (docs/compat-rules.md §7.4, 이슈 #5).
+ * 전력 필드는 없다. 규칙 7은 드라이브마다 0~15W로 더한다 — Seasonic 가이드가 상한만
+ * 준다 (docs/compat-rules.md §7.2, 이슈 #5).
  */
 export interface StorageDrive extends PartRef {
   /** `M.2-2280` · `2.5"` · `3.5"` · `PCIe` · `mSATA`. 규칙 17·19 (§17, §19) */

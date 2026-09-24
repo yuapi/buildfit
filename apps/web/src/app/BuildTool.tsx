@@ -444,6 +444,7 @@ function PowerPanel({ build }: { build: Build }) {
     gpuW,
     ramModules: modules,
     storageCount: build.storage.length,
+    cooler: build.cooler,
   });
   const psuW = build.psu?.wattage ?? null;
   const left = describeExcluded(est.excluded);
