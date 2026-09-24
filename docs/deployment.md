@@ -84,6 +84,10 @@ DATABASE_URL=... npm run migrate
 # 2. 적재 (첫 배포, 그리고 주 1회 — 명세 §5.6)
 DATABASE_URL=... OPENDB_PATH=... npm run ingest
 
+# 2b. 성능 측정값 (선택 — ADR-0023). 부품 적재 **뒤에** 돈다. 빼면 「측정값 없음」이 나올 뿐이다
+curl -sSO https://opendata.blender.org/snapshots/opendata-latest.zip
+DATABASE_URL=... npm run ingest:benchmarks -- opendata-latest.zip
+
 # 3. 빌드. ★ 도메인을 여기서 준다
 NEXT_PUBLIC_SITE_URL=https://<도메인> DATABASE_URL=... npm run build
 
