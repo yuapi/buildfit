@@ -266,6 +266,19 @@ export const rule7: Rule = ({ cpu, gpu, psu, ram, storage, cooler }) => {
       notes,
     };
   }
+  // 가장 높게 잡아도 정격 안이면 갈리는 것이 없다 — 여유분만 모자라다 (§7.3.1).
+  // 등급은 같은 경고다. 말만 다르다
+  if (wattage >= maxTotal) {
+    const headroom = Math.floor((wattage / maxTotal - 1) * 100);
+    return {
+      ...fail(
+        7,
+        'warning',
+        `${estimate}. 가장 높게 잡은 ${maxTotal}W보다는 크지만 여유가 ${headroom}%뿐입니다. 30% 여유를 두면 ${recommended}W를 권합니다.`,
+      ),
+      notes,
+    };
+  }
   return {
     ...fail(
       7,
