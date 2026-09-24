@@ -322,6 +322,11 @@ DATABASE_URL=postgres://buildfit:buildfit@localhost:5432/buildfit npm run migrat
 git clone --depth 1 https://github.com/buildcores/buildcores-open-db ../buildcores-open-db
 DATABASE_URL=postgres://buildfit:buildfit@localhost:5432/buildfit \
   OPENDB_PATH=../buildcores-open-db npm run ingest
+
+# 6) (선택) 성능 측정값 — ADR-0023. 빼면 부품 페이지가 「측정값 없음」을 적는다
+#    SessionStart 훅은 이 단계를 하지 않는다 (압축 101MB)
+curl -sSO https://opendata.blender.org/snapshots/opendata-latest.zip
+npm run ingest:benchmarks -- opendata-latest.zip
 ```
 
 적재 끝 로그가 다음과 **비슷하면** 된다. 원본이 매일 동기화되므로 건수는
