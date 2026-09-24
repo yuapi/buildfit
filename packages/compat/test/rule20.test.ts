@@ -63,6 +63,23 @@ describe('규칙 20 (이슈 #17)', () => {
       expect(r?.message).toContain('자체 백플레이트');
     });
 
+    it.each([['TR4'], ['sTR4'], ['sTRX4'], ['sWRX8']])(
+      '★ 앞 세대 Threadripper 쿨러(%s)는 sTR5에서 여전히 경고다 — AMD 문장은 Asetek 호환 쿨러에 한정된다 (이슈 #34)',
+      (prev) => {
+        const r = rule20(build('sTR5', [prev]));
+        expect(r?.verdict).toBe('fail');
+        expect(r?.severity).toBe('warning');
+        expect(r?.message).toContain('Asetek 호환');
+        expect(r?.message).toContain('sTR5 전용 쿨러');
+      },
+    );
+
+    it('앞 세대 Threadripper 표기가 없으면 일반 경고다', () => {
+      const r = rule20(build('sTR5', ['AM5', 'LGA 1700']));
+      expect(r?.message).not.toContain('Asetek');
+      expect(r?.message).toContain('제조사 스펙을 확인');
+    });
+
     it('CPU↔보드 등가 표에는 새지 않는다 — LGA 1700 CPU는 LGA 1851 보드에 안 들어간다', () => {
       expect(sameSocket('LGA 1700', 'LGA 1851')).toBe(false);
     });
