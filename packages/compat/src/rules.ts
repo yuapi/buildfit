@@ -339,19 +339,41 @@ export const rule8: Rule = ({ gpu, psu }) => {
   }
 
   const have = psu.connectors;
-  const ok =
-    (have.pcie6plus2 ?? 0) >= demand.eightPin && (have.pcie12vhpwr ?? 0) >= demand.sixteenPin;
+  const psu8 = have.pcie6plus2 ?? 0;
+  const psu16 = have.pcie12vhpwr ?? 0;
 
-  return ok
-    ? pass(
-        8,
-        `보조전원 충족 (필요 8핀 ${demand.eightPin} / 16핀 ${demand.sixteenPin}, 파워 제공 ${have.pcie6plus2} / ${have.pcie12vhpwr}).`,
-      )
-    : fail(
-        8,
-        'error',
-        `보조전원이 부족합니다. 필요 8핀 ${demand.eightPin}개·16핀 ${demand.sixteenPin}개, 파워 제공 8핀 ${have.pcie6plus2}개·16핀 ${have.pcie12vhpwr}개.`,
-      );
+  // ★ 파워 쪽 0도 믿지 않는다. 750W 이상의 약 26%가 둘 다 0이다 — ATX 3.x 이름을 단
+  // 파워 126개 중 56개가 그렇다. 믿으면 「부족합니다」 거짓 오류가 난다. §8.6
+  if (psu8 === 0 && psu16 === 0 && (demand.eightPin > 0 || demand.sixteenPin > 0)) {
+    return inconsistent(
+      8,
+      '이 파워의 보조전원 커넥터 정보가 비어 있는 것으로 보여 판정하지 못했습니다.',
+      `8핀·16핀이 모두 0개로 적혀 있습니다. 같은 용량대 파워의 4분의 1가량이 이렇게 적혀 있고 대부분 커넥터가 있는 제품입니다.`,
+      [ref(psu, 'PCIe 6+2핀 커넥터 수'), ref(psu, '12VHPWR 커넥터 수')],
+    );
+  }
+
+  const detail = `필요 8핀 ${demand.eightPin}개·16핀 ${demand.sixteenPin}개, 파워 제공 8핀 ${psu8}개·16핀 ${psu16}개`;
+  if (psu8 >= demand.eightPin && psu16 >= demand.sixteenPin) {
+    return pass(
+      8,
+      `보조전원 충족 (필요 8핀 ${demand.eightPin} / 16핀 ${demand.sixteenPin}, 파워 제공 ${psu8} / ${psu16}).`,
+    );
+  }
+
+  // 16핀만 모자라고 남는 8핀이 있으면 변환 케이블(8핀 여러 개 → 16핀) 경우다.
+  // 모든 카드가 동봉한다는 근거가 없고 필요한 8핀 수도 카드마다 달라 통과가 아니라
+  // 확인하라는 경고다. 몇 개면 충분한지는 말하지 않는다. §8.7
+  const spare8 = psu8 - demand.eightPin;
+  if (spare8 > 0 && psu16 < demand.sixteenPin) {
+    return fail(
+      8,
+      'warning',
+      `파워에 16핀 커넥터가 없습니다 (${detail}). 8핀 여러 개를 16핀으로 모으는 변환 케이블로 연결하는 경우가 많습니다. 그래픽카드 구성품에 변환 케이블이 있는지, 남는 8핀 ${spare8}개로 충분한지 확인해 주세요.`,
+    );
+  }
+
+  return fail(8, 'error', `보조전원이 부족합니다. ${detail}.`);
 };
 
 /** 표시 순서를 고정하기 위해 번호순으로 둔다. docs/compat-rules.md §0.3 */
