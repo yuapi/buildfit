@@ -184,7 +184,7 @@ export default async function PartPage({
                       {specLabel(s.key)}
                     </th>
                     <td className="px-2 py-2.5 align-top break-words">
-                      {specValueText(s.value, s.unit)}
+                      {specValueText(s.value, s.unit, s.key)}
                       {/* 신고가 들어온 값은 "검증 중"으로 표시한다 (§5.5) */}
                       {s.disputed && <span className="chip ml-2">검증 중</span>}
                     </td>

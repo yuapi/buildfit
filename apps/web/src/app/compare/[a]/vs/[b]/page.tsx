@@ -64,7 +64,7 @@ export default async function ComparePage({
     : [[], []];
   const axes = [...new Set([...leftBench, ...rightBench].map((x) => x.axis))];
 
-  const rows = alignSpecs(left.specs, right.specs, (r) => specValueText(r.value, r.unit));
+  const rows = alignSpecs(left.specs, right.specs, (r) => specValueText(r.value, r.unit, r.key));
   const differing = rows.filter((r) => r.differs).length;
   const catPath = left.category.toLowerCase();
   const leftBuild = startBuildHref(left.category, left.id);
