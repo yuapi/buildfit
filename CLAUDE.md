@@ -208,6 +208,8 @@ git branch -d feature/1-opendb-schema-research   # 로컬 사본만
 결측을 축소해서 보여준다 — 규칙 12가 그랬다 (0.7%로 표시, 실제 85.7%).
 `parts` 컬럼에 있는 값은 `storedOnPart: true`로 싣는다 (이슈 #15).
 `apps/ingest/test/undeclared-input.test.ts`가 그 누락을 수치로 잡는다.
+반대로 **부품에 따라 안 읽는 입력은 `requiredWhen`으로 조건을 단다** — 쿨러 높이가 수랭까지
+세어져 30.2%로 부풀었다 (실제 0.6%, 이슈 #74).
 
 그때까지의 완화책으로, 판정 불가 3,196건 중 3,056건(95.6%)에 같은 폼팩터의
 **관측된** 지원 분포를 참고로 덧붙였다 (ADR-0013). 판정은 여전히 `unknown`이다.
