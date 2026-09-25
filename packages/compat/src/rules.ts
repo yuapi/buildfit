@@ -940,7 +940,6 @@ export const rule23: Rule = ({ ram, motherboard }) => {
 
 export const phase0Rules: readonly Rule[] = [rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8];
 
-/** Phase 1에서 추가된 규칙까지. 명세 §4.2 */
 /** sTR5 이전의 Threadripper 소켓. AMD가 같은 브래킷을 동봉한다고 밝힌 세대다 (§20.3) */
 const PREVIOUS_THREADRIPPER = ['sTR4', 'sTRX4', 'sWRX8'] as const;
 
@@ -1025,6 +1024,7 @@ export const rule24: Rule = ({ psu, pcCase }) => {
     : fail(24, 'warning', `파워 길이 ${len}mm가 케이스 한계 ${max}mm를 넘습니다. 제조사 스펙을 확인해 주세요.`);
 };
 
+/** Phase 1에서 추가된 규칙까지. 명세 §4.2 */
 export const phase1Rules: readonly Rule[] = [
   ...phase0Rules,
   rule9,
