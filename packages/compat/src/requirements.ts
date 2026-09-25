@@ -120,7 +120,7 @@ export const SPEC_REQUIREMENTS: readonly FieldRequirement[] = [
   // 쿨러 전력 (docs/compat-rules.md §7.2, 이슈 #30). 없으면 넣지 않고 그렇다고 적는다 — 판정은 막지 않는다
   { ruleId: 7, category: 'CPUCooler', specKey: 'water_cooled', label: '수랭 여부', severity: 'error', valueType: 'boolean', optional: true },
   { ruleId: 7, category: 'CPUCooler', specKey: 'fan_quantity', label: '팬 수', severity: 'error', valueType: 'number', optional: true, min: 0, max: 20 },
-  { ruleId: 7, category: 'CPUCooler', specKey: 'fanless', label: '팬 없음', severity: 'error', valueType: 'boolean', optional: true },
+  { ruleId: 7, category: 'CPUCooler', specKey: 'fanless', label: '팬리스 설계', severity: 'error', valueType: 'boolean', optional: true },
   { ruleId: 7, category: 'CPUCooler', specKey: 'lighting', label: '조명', severity: 'error', valueType: 'string[]', optional: true },
 
   // 8. PCIe 보조전원 커넥터
