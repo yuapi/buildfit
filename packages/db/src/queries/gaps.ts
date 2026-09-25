@@ -24,9 +24,27 @@ import { partSpecs, parts } from '../schema';
  * 하고, 빠뜨리면 그 필드가 조용히 100% 결측으로 잡힌다** —
  * `apps/ingest/test/mapping-coverage.test.ts`가 그 누락을 잡는다.
  */
-export const PART_COLUMNS: Readonly<Record<string, AnyPgColumn>> = {
-  release_year: parts.releaseYear,
-};
+const PART_FIELDS = {
+  release_year: 'releaseYear',
+} as const satisfies Record<string, keyof typeof parts.$inferSelect>;
+
+export const PART_COLUMNS: Readonly<Record<string, AnyPgColumn>> = Object.fromEntries(
+  Object.entries(PART_FIELDS).map(([key, field]) => [key, parts[field]]),
+);
+
+/**
+ * `parts` 컬럼에 있는 필수 입력 중 **채워진 것**의 specKey (이슈 #48).
+ *
+ * `part_specs`만 보고 채워졌는지 판단하면 연도가 있는 부품도 「출시 연도가 비어 있다」가 된다.
+ * 공개 부품 페이지가 그랬다. 위 표 하나에서 나오므로 `PART_COLUMNS`와 어긋나지 않는다.
+ */
+export function filledPartColumnKeys(part: {
+  readonly [K in (typeof PART_FIELDS)[keyof typeof PART_FIELDS]]: unknown;
+}): string[] {
+  return Object.entries(PART_FIELDS)
+    .filter(([, field]) => part[field] !== null && part[field] !== undefined)
+    .map(([key]) => key);
+}
 
 export interface FieldGap {
   readonly category: string;
@@ -267,10 +285,9 @@ export async function partWithSpecs(db: Database, id: string): Promise<PartWithS
     .where(eq(partSpecs.partId, id))
     .orderBy(partSpecs.key);
 
-  const have = new Set(specs.map((s) => s.key));
   // `parts` 컬럼에 있는 입력도 센다 (이슈 #15). 여기서 빠뜨리면 보강 화면이
   // "비어 있음" 표시를 안 붙이고, 작업자가 채울 대상으로 보지 않는다.
-  if (part.releaseYear !== null) have.add('release_year');
+  const have = new Set([...specs.map((s) => s.key), ...filledPartColumnKeys(part)]);
   const missing = SPEC_REQUIREMENTS.filter(
     (r) => r.category === part.category && r.optional !== true && !have.has(r.specKey),
   );
