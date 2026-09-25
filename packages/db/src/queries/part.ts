@@ -104,6 +104,24 @@ export async function partsMatchingSpec(
     limit?: number;
   },
 ): Promise<RelatedPart[]> {
+  return partsMatchingSpecs(db, {
+    category: input.category,
+    match: [{ key: input.specKey, value: input.value }],
+    excludePartId: input.excludePartId,
+    limit: input.limit,
+  });
+}
+
+/** 스펙 여러 개가 **모두** 같은 부품. 비교 후보가 쓴다 (이슈 #54) */
+export async function partsMatchingSpecs(
+  db: Database,
+  input: {
+    category: string;
+    match: readonly { key: string; value: unknown }[];
+    excludePartId?: string | undefined;
+    limit?: number | undefined;
+  },
+): Promise<RelatedPart[]> {
   return db
     .select({
       slug: parts.slug,
@@ -112,13 +130,17 @@ export async function partsMatchingSpec(
       brand: parts.brand,
     })
     .from(parts)
-    .innerJoin(partSpecs, eq(partSpecs.partId, parts.id))
     .where(
       and(
         eq(parts.category, input.category),
         canonicalOnly(),
-        eq(partSpecs.key, input.specKey),
-        sql`${partSpecs.value} = ${JSON.stringify(input.value)}::jsonb`,
+        ...input.match.map(
+          (m) => sql`exists (
+            select 1 from ${partSpecs}
+            where ${partSpecs.partId} = ${parts.id}
+              and ${partSpecs.key} = ${m.key}
+              and ${partSpecs.value} = ${JSON.stringify(m.value)}::jsonb)`,
+        ),
         input.excludePartId ? ne(parts.id, input.excludePartId) : undefined,
       ),
     )
@@ -291,14 +313,16 @@ export async function slugsInCategory(
  * §8이 "의미 있는 조합만 생성한다"고 한 것에 대한 구현이다. 아무 두 부품이나
  * 비교 페이지를 만들면 저품질 페이지 양산이 된다. 같은 축을 공유하는 것끼리만 묶는다.
  */
-const COMPARABLE_BY: Readonly<Record<string, string>> = {
-  GPU: 'chipset', // 같은 칩의 AIB 모델끼리. 길이·클럭 차이가 커서 비교 가치가 높다
-  CPU: 'socket',
-  Motherboard: 'socket',
-  RAM: 'ram_type',
-  PSU: 'form_factor',
-  PCCase: 'form_factor',
-  CPUCooler: 'water_cooled',
+export const COMPARABLE_BY: Readonly<Record<string, readonly string[]>> = {
+  GPU: ['chipset'], // 같은 칩의 AIB 모델끼리. 길이·클럭 차이가 커서 비교 가치가 높다
+  CPU: ['socket'],
+  Motherboard: ['socket'],
+  // 규격만 보면 16GB 키트에 96GB 키트가 섞인다. 대신할 수 있는 것끼리 (이슈 #54)
+  RAM: ['ram_type', 'capacity_gb'],
+  // 폼팩터만 보면 750W에 1600W가 섞인다 (이슈 #54)
+  PSU: ['form_factor', 'wattage_w'],
+  PCCase: ['form_factor'],
+  CPUCooler: ['water_cooled'],
 };
 
 /** 이 부품과 비교할 만한 다른 부품들. */
@@ -307,15 +331,15 @@ export async function comparableParts(
   part: { id: string; category: string; specs: readonly { key: string; value: unknown }[] },
   limit = 6,
 ): Promise<RelatedPart[]> {
-  const key = COMPARABLE_BY[part.category];
-  if (!key) return [];
-  const value = part.specs.find((s) => s.key === key)?.value;
-  if (value === undefined || value === null) return [];
+  const keys = COMPARABLE_BY[part.category];
+  if (!keys) return [];
+  const match = keys.map((key) => ({ key, value: part.specs.find((s) => s.key === key)?.value }));
+  // 축 하나라도 모르면 무엇과 대신할 수 있는지 모른다
+  if (match.some((m) => m.value === undefined || m.value === null)) return [];
 
-  return partsMatchingSpec(db, {
+  return partsMatchingSpecs(db, {
     category: part.category,
-    specKey: key,
-    value,
+    match,
     excludePartId: part.id,
     limit,
   });
