@@ -135,6 +135,8 @@ export const SPEC_REQUIREMENTS: readonly FieldRequirement[] = [
   { ruleId: 9, category: 'CPUCooler', specKey: 'water_cooled', label: '수랭 여부', severity: 'warning', valueType: 'boolean' },
   { ruleId: 9, category: 'CPUCooler', specKey: 'height_mm', label: '높이', severity: 'warning', valueType: 'number' },
   { ruleId: 9, category: 'PCCase', specKey: 'max_cpu_cooler_height_mm', label: '쿨러 최대 높이', severity: 'warning', valueType: 'number' },
+  // 수랭이면 알려 주기만 한다. 판정에는 쓰지 않는다 (docs/compat-rules.md §9.2)
+  { ruleId: 9, category: 'CPUCooler', specKey: 'radiator_size_mm', label: '라디에이터 크기', severity: 'warning', valueType: 'number', optional: true },
 
   // 12. BIOS 업데이트 필요 여부 (Phase 1)
   //

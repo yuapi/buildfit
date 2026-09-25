@@ -85,6 +85,7 @@ export const cooler: CpuCooler = {
   waterCooled: false,
   supportedSockets: ['AM5', 'LGA1700', 'LGA1851'],
   fanQuantity: 2,
+  radiatorSizeMm: null,
   fanless: false,
   lighting: ['None'],
 };
