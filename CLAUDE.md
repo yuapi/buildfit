@@ -174,7 +174,8 @@ git branch -d feature/1-opendb-schema-research   # 로컬 사본만
 **Phase 3 — 첫 단계만** (ADR-0023, 이슈 #31)
 - 부품·비교 페이지에 **3D 렌더링 측정값** ✅ — Blender Open Data(**CC0**) 4.5의 장치별 중앙값.
   GPU는 실행이 가장 많은 연산 방식, 실행 5회 이상만. 이름 **정확 일치만** 잇고 측정 장치 이름을
-  보인다. 부품 3,069개(장치 254개)에 붙었다 — `docs/research/blender-open-data.md`
+  보인다. 부품 3,105개(장치 257개)에 붙었다 — `docs/research/blender-open-data.md`. 포장 표기(OEM/Tray·Box)는
+  걷어낸다 — 붙은 채로는 포장 표기 CPU 200개가 하나도 안 맞았다 (이슈 #52)
   - **노트북 GPU는 잇지 않는다** — 「Laptop GPU」를 걷어내면 데스크톱 카드에 붙는다
   - 차이는 ADR-0004의 **체감 언어**로. CPU 값과 GPU 값은 같은 눈금이 아니다
   - 적재는 선택 단계다 (`npm run ingest:benchmarks -- <zip>`). 스냅숏은 레포에 넣지 않는다

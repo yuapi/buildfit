@@ -28,7 +28,7 @@ const SCENES = ['monster', 'junkshop', 'classroom'] as const;
  * 장치 이름을 맞대기 위한 모양으로 — **정확히 같은 것만 잇는다.**
  *
  * 상표(®·™), `N-Core Processor`, `CPU @ 2.80GHz`, `with Radeon Graphics`,
- * 제조사·브랜드 낱말을 걷어낸다. 걷어낸 뒤 비면 `null`이다 — 「AMD Radeon(TM) Graphics」
+ * 제조사·브랜드 낱말, 포장 표기(`OEM/Tray`·`Box`)를 걷어낸다. 걷어낸 뒤 비면 `null`이다 — 「AMD Radeon(TM) Graphics」
  * 같은 내장 그래픽은 무엇인지 모른다.
  *
  * ★ **노트북용은 `null`이다.** `RTX 4070 Laptop GPU`에서 「Laptop GPU」를 걷어내면 데스크톱
@@ -45,6 +45,8 @@ export function normalizeDeviceName(raw: string): string | null {
     .replace(/\b\d+-core processor\b/g, ' ')
     .replace(/\b(processor|cpu)\b/g, ' ')
     .replace(/\b(nvidia|amd|intel|geforce|radeon|corporation|graphics)\b/g, ' ')
+    // 포장 표기는 칩이 아니다. 카탈로그 이름에만 붙어 포장 표기 CPU 200개가 하나도 안 맞았다 (이슈 #52)
+    .replace(/\b(oem|tray|boxed|box|wof|mpk)\b/g, ' ')
     .replace(/[^a-z0-9]+/g, ' ')
     .trim();
   return s === '' ? null : s;

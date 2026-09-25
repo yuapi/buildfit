@@ -19,9 +19,19 @@ describe('normalizeDeviceName', () => {
     ['NVIDIA GeForce RTX 4070', 'GeForce RTX 4070'],
     ['AMD Radeon RX 7900 XTX', 'Radeon RX 7900 XTX'],
     ['Intel(R) Arc(TM) B580 Graphics', 'Arc B580'],
+    // 포장 표기는 칩이 아니다 (이슈 #52)
+    ['AMD Ryzen 7 7800X3D 8-Core Processor', 'AMD Ryzen 7 7800X3D OEM/Tray'],
+    ['Intel(R) Core(TM) i7-8700K CPU @ 3.70GHz', 'Intel Core i7 8700K OEM / Tray'],
+    ['AMD Ryzen 5 5600X 6-Core Processor', 'AMD Ryzen 5 5600X Boxed'],
+    ['AMD Ryzen 7 5700X 8-Core Processor', 'AMD Ryzen 7 5700X WOF'],
   ])('Blender의 「%s」와 카탈로그의 「%s」가 같다', (blender, catalog) => {
     expect(normalizeDeviceName(blender)).not.toBeNull();
     expect(normalizeDeviceName(blender)).toBe(normalizeDeviceName(catalog));
+  });
+
+  it('포장 낱말은 낱말째로만 걷어낸다 — 이름 속 글자는 두다', () => {
+    // 「box」가 들어간 다른 낱말을 자르지 않는다
+    expect(normalizeDeviceName('Xbox Series X')).toBe('xbox series x');
   });
 
   it('다른 모델은 다르다 — 접미사 하나가 다른 제품이다', () => {
