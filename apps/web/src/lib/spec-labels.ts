@@ -64,8 +64,21 @@ export function specLabel(key: string): string {
   return EXTRA[key] ?? FROM_RULES[key] ?? key;
 }
 
-/** 값 표시. 배열·불리언을 사람이 읽는 형태로 바꾼다. */
-export function specValueText(value: unknown, unit: string | null): string {
+/**
+ * `0`이 「없다」를 뜻하는 키. 원본이 공랭 부품에 라디에이터 크기 0을 적는다 — GPU 117개,
+ * CPU 쿨러 23개가 전부 라디에이터가 없는 부품이다. 「0 mm」로 보이면 크기가 0인 라디에이터가
+ * 있는 것처럼 읽힌다 (이슈 #69)
+ */
+const ZERO_MEANS_NONE: ReadonlySet<string> = new Set(['radiator_size_mm']);
+
+/**
+ * 값 표시. 배열·불리언을 사람이 읽는 형태로 바꾼다.
+ *
+ * `key`를 주면 키마다 다른 읽기를 쓴다(`ZERO_MEANS_NONE`). 어드민은 원래 값을 고치는 화면이라
+ * 주지 않는다.
+ */
+export function specValueText(value: unknown, unit: string | null, key?: string): string {
+  if (key !== undefined && ZERO_MEANS_NONE.has(key) && value === 0) return '없음';
   let text: string;
   if (Array.isArray(value)) text = value.join(', ');
   else if (typeof value === 'boolean') text = value ? '있음' : '없음';
