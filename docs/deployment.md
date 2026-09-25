@@ -90,7 +90,9 @@ DATABASE_URL=... OPENDB_PATH=... npm run ingest
 #     원본 clone이 그대로이기 때문이다
 DATABASE_URL=... OPENDB_PATH=... npm run sync:opendb
 
-# 2b. 성능 측정값 (선택 — ADR-0023). 부품 적재 **뒤에** 돈다. 빼면 「측정값 없음」이 나올 뿐이다
+# 2b. 성능 측정값 (선택 — ADR-0023). 부품 적재 **뒤에** 돈다. 빼면 「측정값 없음」이 나올 뿐이다.
+#     ★ 2'가 재적재했으면 이것도 다시 돌린다 — 측정값은 적재 순간의 부품 이름에 잇는다.
+#     새로 들어온 부품은 다시 돌리기 전까지 「측정값 없음」이다
 curl -sSO https://opendata.blender.org/snapshots/opendata-latest.zip
 DATABASE_URL=... npm run ingest:benchmarks -- opendata-latest.zip
 

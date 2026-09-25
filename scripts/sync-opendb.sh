@@ -30,3 +30,6 @@ fi
 n=$(git -C "$OPENDB_PATH" rev-list --count "$before..$after")
 echo "원본 ${before:0:8} → ${after:0:8} (커밋 ${n}개, $(git -C "$OPENDB_PATH" log -1 --format='%cd' --date=short))"
 npm run verify --silent --workspace @buildfit/ingest
+
+# 측정값은 적재 순간의 부품 이름에 잇는다 (ADR-0023) — 새 부품은 다시 돌려야 붙는다
+echo "성능 측정값을 쓴다면 이어서: npm run ingest:benchmarks -- <opendata-latest.zip>"
