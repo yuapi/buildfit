@@ -9,6 +9,12 @@
 
 import type { Severity } from './verdict';
 
+export interface RequiredWhen {
+  /** 같은 부품의 `part_specs.key` */
+  readonly specKey: string;
+  readonly equals: boolean | number | string;
+}
+
 export interface FieldRequirement {
   /** 이 필드가 없으면 막히는 규칙 번호 */
   readonly ruleId: number;
@@ -25,6 +31,16 @@ export interface FieldRequirement {
    * 예: 규칙 2의 CPU 지원 메모리 규격은 결측이면 건너뛴다 (docs/compat-rules.md §2).
    */
   readonly optional?: true;
+  /**
+   * **같은 부품의 다른 필드가 이 값일 때만** 필수다 (이슈 #74).
+   *
+   * 쿨러 높이는 공랭일 때만 규칙 9가 읽는다. 조건 없이 세면 `/rules`가 높이 결측을
+   * 30.2%로 적는데, 그중 712건이 높이를 묻지 않는 수랭이었다 — 공랭만 보면 1.1%다.
+   * 부품 페이지도 수랭 쿨러에 「높이를 알려주세요」라고 했다. 알려 줘도 쓰이지 않는다.
+   *
+   * **조건 필드가 비어 있으면 필수로 센다.** 수랭인지 모르면 높이가 필요할 수 있다.
+   */
+  readonly requiredWhen?: RequiredWhen;
   /**
    * 이 값이 `part_specs` 행이 아니라 **`parts` 컬럼**에 있다 (이슈 #15).
    *
@@ -133,7 +149,8 @@ export const SPEC_REQUIREMENTS: readonly FieldRequirement[] = [
 
   // 9. CPU 쿨러 높이 ≤ 케이스 최대 높이 (Phase 1, 경고 등급)
   { ruleId: 9, category: 'CPUCooler', specKey: 'water_cooled', label: '수랭 여부', severity: 'warning', valueType: 'boolean' },
-  { ruleId: 9, category: 'CPUCooler', specKey: 'height_mm', label: '높이', severity: 'warning', valueType: 'number' },
+  // 높이는 공랭일 때만 읽는다 (§9.2). 수랭은 높이를 묻지 않는다 — 결측으로 세지 않는다 (이슈 #74)
+  { ruleId: 9, category: 'CPUCooler', specKey: 'height_mm', label: '높이', severity: 'warning', valueType: 'number', requiredWhen: { specKey: 'water_cooled', equals: false } },
   { ruleId: 9, category: 'PCCase', specKey: 'max_cpu_cooler_height_mm', label: '쿨러 최대 높이', severity: 'warning', valueType: 'number' },
   // 수랭이면 알려 주기만 한다. 판정에는 쓰지 않는다 (docs/compat-rules.md §9.2)
   { ruleId: 9, category: 'CPUCooler', specKey: 'radiator_size_mm', label: '라디에이터 크기', severity: 'warning', valueType: 'number', optional: true },
@@ -199,6 +216,44 @@ export const SPEC_REQUIREMENTS: readonly FieldRequirement[] = [
 /** 이 카테고리에서 반드시 필요한 (보조 아닌) 필드들. 어드민의 구멍 계산 대상. */
 export function requiredKeysFor(category: string): readonly FieldRequirement[] {
   return SPEC_REQUIREMENTS.filter((r) => r.category === category && r.optional !== true);
+}
+
+/**
+ * (카테고리, 키)가 부품에 따라 필요 없을 수 있으면 그 조건 (이슈 #74).
+ *
+ * 선언 중 하나라도 조건 없이 필수면 `null`이다 — 그 규칙에는 언제나 필요하다.
+ * 필수 선언이 없으면 `null`이다 (필수가 아니다 — `requiredKeysFor`가 가른다).
+ */
+export function requiredCondition(category: string, specKey: string): RequiredWhen | null {
+  const reqs = SPEC_REQUIREMENTS.filter(
+    (r) => r.category === category && r.specKey === specKey && r.optional !== true,
+  );
+  const first = reqs[0]?.requiredWhen;
+  if (!first) return null;
+  // 조건이 서로 다르면 어느 하나로 줄일 수 없다. 언제나 필요한 것으로 본다
+  const same = reqs.every(
+    (r) => r.requiredWhen?.specKey === first.specKey && r.requiredWhen.equals === first.equals,
+  );
+  return same ? first : null;
+}
+
+/**
+ * 이 부품에서 비어 있는 필수 필드 (이슈 #74).
+ *
+ * `values`는 이 부품에 **있는** 키와 그 값이다. 값이 널이어도 키가 있으면 채운 것으로 센다 —
+ * 결측 집계와 같은 기준이다. `requiredWhen`의 조건 필드가 비었거나 널이면 필수로 센다.
+ */
+export function missingRequiredFor(
+  category: string,
+  values: ReadonlyMap<string, unknown>,
+): readonly FieldRequirement[] {
+  return requiredKeysFor(category).filter((r) => {
+    if (values.has(r.specKey)) return false;
+    const cond = requiredCondition(category, r.specKey);
+    if (!cond) return true;
+    const v = values.get(cond.specKey);
+    return v === undefined || v === null || v === cond.equals;
+  });
 }
 
 /** 이 필드가 없으면 막히는 규칙 번호들. */
