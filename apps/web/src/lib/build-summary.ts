@@ -72,6 +72,21 @@ export function filledSlotCount(build: Build): number {
 }
 
 /**
+ * 판정 수 한 줄. 화면의 요약 막대와 공유 미리보기가 **같은 함수**를 쓴다.
+ *
+ * 정보 등급은 「문제」가 아니다 (이슈 #83). 규칙 12의 「Flashback으로 CPU 없이 올릴 수
+ * 있다」가 「문제 1」로 세어져, 제목은 「알아둘 것이 있습니다」인데 수는 문제라고 했다.
+ */
+export function countsText(counts: BuildVerdict['counts']): string {
+  const problems = counts.fail - counts.info;
+  const parts = [`통과 ${counts.pass}`];
+  if (problems > 0) parts.push(`문제 ${problems}`);
+  if (counts.info > 0) parts.push(`알아둘 것 ${counts.info}`);
+  if (counts.unknown > 0) parts.push(`판정 불가 ${counts.unknown}`);
+  return parts.join(' · ');
+}
+
+/**
  * 미리보기에 쓸 한 줄.
  *
  * **없는 것을 지어내지 않는다.** 판정이 없으면 판정을 말하지 않고, 전력을
@@ -81,12 +96,7 @@ export function buildSummary(build: Build, verdict: BuildVerdict): string {
   const bits: string[] = [];
 
   const counts = verdict.counts;
-  if (counts.pass + counts.fail + counts.unknown > 0) {
-    const parts = [`통과 ${counts.pass}`];
-    if (counts.fail > 0) parts.push(`문제 ${counts.fail}`);
-    if (counts.unknown > 0) parts.push(`판정 불가 ${counts.unknown}`);
-    bits.push(parts.join(' · '));
-  }
+  if (counts.pass + counts.fail + counts.unknown > 0) bits.push(countsText(counts));
 
   // 규칙 7과 같은 함수다. 두 벌이 되면 미리보기와 화면이 어긋난다.
   const cpuW = build.cpu ? (build.cpu.ppt ?? build.cpu.tdp) : null;

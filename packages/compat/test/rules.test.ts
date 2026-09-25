@@ -1126,6 +1126,7 @@ describe('엔진', () => {
     // 받는 행으로 판정한다 (§17.5, 이슈 #27)
     expect(v.counts.pass).toBe(20);
     expect(v.counts.fail).toBe(0);
+    expect(v.counts.info).toBe(0);
     expect(v.counts.unknown).toBe(0);
   });
 

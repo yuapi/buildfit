@@ -11,11 +11,12 @@
 
 import { emptyBuild, evaluate } from '@buildfit/compat';
 import { describe, expect, it } from 'vitest';
-import { cpu, drive, gpu, goodBuild, ramKit, withBuild } from '../../../packages/compat/test/fixtures';
+import { cpu, drive, gpu, goodBuild, motherboard, ramKit, withBuild } from '../../../packages/compat/test/fixtures';
 import { SLOT_META } from '../src/lib/categories';
 import {
   buildLabel,
   buildSummary,
+  countsText,
   filledSlotCount,
   nameOf,
   pickedCount,
@@ -113,6 +114,21 @@ describe('요약 한 줄', () => {
     expect(buildSummary(b, evaluate(b))).toMatch(/문제 [1-9]/);
   });
 
+  it('★ 정보 등급은 「문제」가 아니다 — Flashback 안내가 「문제 1」이었다 (이슈 #83)', () => {
+    // CPU가 보드보다 나중이지만 Flashback이 있다 → 규칙 12의 정보
+    const b = withBuild({ motherboard: { ...motherboard, releaseYear: 2022, biosFlashback: true } });
+    const v = evaluate(b);
+    expect(v.results.find((r) => r.ruleId === 12)?.severity).toBe('info');
+    const s = buildSummary(b, v);
+    expect(s).toContain('알아둘 것 1');
+    expect(s).not.toContain('문제');
+  });
+
+  it('Flashback이 없으면 경고라 「문제」다', () => {
+    const b = withBuild({ motherboard: { ...motherboard, releaseYear: 2022, biosFlashback: false } });
+    expect(buildSummary(b, evaluate(b))).toContain('문제 1');
+  });
+
   it('빈 견적도 던지지 않는다', () => {
     expect(buildSummary(emptyBuild, evaluate(emptyBuild))).toBe('부품 0개');
   });
@@ -130,5 +146,12 @@ describe('한 칸을 한 줄로', () => {
 
   it('비면 null', () => {
     expect(nameOf(emptyBuild, 'storage')).toBeNull();
+  });
+});
+
+describe('판정 수 한 줄 — 요약 막대와 미리보기가 같이 쓴다', () => {
+  it('문제·알아둘 것·판정 불가를 나눠 적고 0건은 적지 않는다', () => {
+    expect(countsText({ pass: 17, fail: 2, info: 1, unknown: 1 })).toBe('통과 17 · 문제 1 · 알아둘 것 1 · 판정 불가 1');
+    expect(countsText({ pass: 20, fail: 0, info: 0, unknown: 0 })).toBe('통과 20');
   });
 });
