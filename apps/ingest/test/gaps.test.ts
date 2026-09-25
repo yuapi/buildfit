@@ -77,8 +77,18 @@ describeIfDb('결측 현황 집계', () => {
 
   it('이 필드가 막는 규칙을 함께 준다', async () => {
     const g = await find('CPU', 'socket');
-    // CPU 소켓은 규칙 1과 12를 막는다.
+    // CPU 소켓은 규칙 1과 20을 막는다.
     expect(g?.blocksRules).toContain(1);
+  });
+
+  it('★ (카테고리, 키) 하나에 한 줄이다 — 두 규칙이 같은 필드를 써도 (이슈 #58)', async () => {
+    const all = await fieldGapSummary(db);
+    const ids = all.map((g) => `${g.category}.${g.specKey}`);
+    expect(ids.length).toBe(new Set(ids).size);
+    // CPU 소켓은 규칙 1과 20이 각각 선언한다. 한 줄에 두 규칙이 다 적힌다
+    const socket = all.filter((g) => g.category === 'CPU' && g.specKey === 'socket');
+    expect(socket).toHaveLength(1);
+    expect(socket[0]!.blocksRules).toEqual(expect.arrayContaining([1, 20]));
   });
 
   it('보조 필드는 세지 않는다 — 없어도 판정이 막히지 않는다', async () => {

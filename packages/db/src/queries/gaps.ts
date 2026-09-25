@@ -125,7 +125,13 @@ export async function fieldGapSummary(db: Database): Promise<FieldGap[]> {
   }
 
   const out: FieldGap[] = [];
+  // (카테고리, 키) 하나에 한 줄. CPU 소켓은 규칙 1과 20이 각각 선언해 두 줄이 됐다 (이슈 #58).
+  // 막는 규칙은 `rulesBlockedBy`가 이미 모은다
+  const seen = new Set<string>();
   for (const req of required) {
+    const id = `${req.category}\u0000${req.specKey}`;
+    if (seen.has(id)) continue;
+    seen.add(id);
     const total = totals.get(req.category) ?? 0;
     // 아직 적재하지 않은 카테고리다. 0을 100% 결측으로 내면 표가 거짓말을 한다.
     if (total === 0) continue;
