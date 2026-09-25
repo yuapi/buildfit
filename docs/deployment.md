@@ -81,8 +81,14 @@ DB가 끊긴 채로 계속 서비스된다. 이 주소는 인증이 없으므로
 # 1. 스키마
 DATABASE_URL=... npm run migrate
 
-# 2. 적재 (첫 배포, 그리고 주 1회 — 명세 §5.6)
+# 2. 적재 (첫 배포)
+git clone https://github.com/buildcores/buildcores-open-db <OPENDB_PATH>
 DATABASE_URL=... OPENDB_PATH=... npm run ingest
+
+# 2'. 재동기 (그 뒤 주 1회 — 명세 §5.6, ADR-0025). 원본을 받아 **새 커밋이 있을 때만** 재적재하고,
+#     부품 id가 그대로인지 확인한다. ★ `npm run ingest`만 돌리면 새 데이터가 들어오지 않는다 —
+#     원본 clone이 그대로이기 때문이다
+DATABASE_URL=... OPENDB_PATH=... npm run sync:opendb
 
 # 2b. 성능 측정값 (선택 — ADR-0023). 부품 적재 **뒤에** 돈다. 빼면 「측정값 없음」이 나올 뿐이다
 curl -sSO https://opendata.blender.org/snapshots/opendata-latest.zip
@@ -94,6 +100,10 @@ NEXT_PUBLIC_SITE_URL=https://<도메인> DATABASE_URL=... npm run build
 # 4. 실행
 DATABASE_URL=... ADMIN_TOKEN=... npm start
 ```
+
+**재동기가 케이스 데이터를 늘리는 유일한 자동 경로다** (ADR-0025). 업스트림이 6시간마다 자동 동기로
+채운다 — 2026-09-21 → 09-25의 커밋 16개로 케이스 PSU 폼팩터 599 → 703, PSU 길이 539 → 654,
+출시 연도 578 → 687이 됐다.
 
 적재는 멱등하다 (`opendb_id` upsert). **재적재해도 `parts.id`가 유지되므로**
 이미 뿌려진 공유 링크가 살아 있다 (ADR-0012,

@@ -375,6 +375,8 @@ npm run sample -w @buildfit/ingest   # 규칙별 판정 불가율. 조사 §9.3.
   `sleep 90`을 걸면 끝날 때 알림이 온다. 한 번 도는 데 1분 20초 남짓이다
 - **`git push --delete`는 403이다** (프록시). 원격 브랜치는 워크플로가 지운다 —
   머지 때 `delete-merged-branch.yml`, 남은 것은 `prune-merged-branches.yml`(손으로, 기본 dry run)
+- **세션 훅은 원본을 새로 받지 않는다.** 카탈로그가 있으면 적재도 건너뛴다. 업스트림이 채운 값을
+  받으려면 `OPENDB_PATH=… npm run sync:opendb` (원본 pull → 새 커밋이 있으면 재적재 + id 확인, 1분 남짓)
 - **이 세션의 GitHub 도구는 옛 레포 이름(`partfit`)으로 부른다.** `buildfit`으로 부르면
   「설정되지 않은 레포」로 거절된다. 레포 API를 `curl`로 직접 부르는 것도 프록시가 막는다
 - **SQL 템플릿 안에 백틱을 쓰지 않는다.** drizzle의 `` sql`…` ``은 템플릿
