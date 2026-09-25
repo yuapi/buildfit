@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requiredKeysFor } from '@buildfit/compat';
-import { partWithSpecs } from '@buildfit/db/queries';
+import { filledPartColumnKeys, partWithSpecs } from '@buildfit/db/queries';
 import { Container } from '@/components/SiteShell';
 import { getDb } from '@/lib/db';
 import { requireAdmin } from '@/lib/admin-auth';
@@ -26,14 +26,15 @@ export default async function PartEditor({
   if (!part) notFound();
 
   const byKey = new Map(part.specs.map((s) => [s.key, s]));
+  const filled = new Set([...byKey.keys(), ...filledPartColumnKeys(part)]);
 
   // 필수 필드를 전부 보여준다. 채워진 것도 남겨두어야 저장 직후 확인 메시지가
   // 사라지지 않고, 잘못 넣은 값을 고칠 수도 있다.
   const fields = [...requiredKeysFor(part.category)].sort((a, b) => {
     if (a.specKey === focus) return -1;
     if (b.specKey === focus) return 1;
-    const aFilled = byKey.has(a.specKey) ? 1 : 0;
-    const bFilled = byKey.has(b.specKey) ? 1 : 0;
+    const aFilled = filled.has(a.specKey) ? 1 : 0;
+    const bFilled = filled.has(b.specKey) ? 1 : 0;
     return aFilled - bFilled; // 비어 있는 것 먼저
   });
 

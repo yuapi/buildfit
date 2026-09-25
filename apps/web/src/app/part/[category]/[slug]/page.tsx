@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requiredKeysFor } from '@buildfit/compat';
 import { benchmarksForPart, comparableParts, partBySlug, partsMatchingSpec, type RelatedPart } from '@buildfit/db/part';
+import { filledPartColumnKeys } from '@buildfit/db/queries';
 import { BenchmarkBlock } from '@/components/BenchmarkBlock';
 import { Container } from '@/components/SiteShell';
 import { startBuildHref } from '@/lib/build-links';
@@ -102,7 +103,8 @@ export default async function PartPage({
 
   // 값이 있는 항목뿐 아니라 **비어 있는 필수 항목**도 제보 대상이다.
   // 견적에서 "판정 불가"를 만난 사용자가 그 값을 알려줄 수 있어야 한다 (§5.5).
-  const have = new Set(part.specs.map((s) => s.key));
+  // 출시 연도는 `parts` 컬럼에 있다. 스펙 키만 보면 연도가 있어도 비어 있다고 말한다 (이슈 #48)
+  const have = new Set([...part.specs.map((s) => s.key), ...filledPartColumnKeys(part)]);
   const missingRequired = requiredKeysFor(part.category)
     .filter((r) => !have.has(r.specKey))
     .map((r) => r.specKey);

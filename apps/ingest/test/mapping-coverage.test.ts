@@ -18,7 +18,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { SPEC_REQUIREMENTS } from '@buildfit/compat';
-import { PART_COLUMNS } from '@buildfit/db/queries';
+import { PART_COLUMNS, filledPartColumnKeys } from '@buildfit/db/queries';
 import { describe, expect, it } from 'vitest';
 import { CATEGORIES, CATEGORY_SPECS, DERIVED_SPECS } from '../src/mapping';
 
@@ -134,5 +134,15 @@ describe('요구사항 선언 ↔ 적재 매핑', () => {
         ).toBeUndefined();
       }
     }
+  });
+});
+
+describe('채워진 컬럼 키 (이슈 #48)', () => {
+  it('★ 연도가 있으면 release_year는 채워진 것이다 — 부품 페이지가 「비어 있음」이라 했다', () => {
+    expect(filledPartColumnKeys({ releaseYear: 2023 })).toEqual(['release_year']);
+  });
+
+  it('연도가 없으면 채워지지 않았다', () => {
+    expect(filledPartColumnKeys({ releaseYear: null })).toEqual([]);
   });
 });
