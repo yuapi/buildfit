@@ -17,6 +17,7 @@ import type { QuoteLineResult } from "@buildfit/db/quote";
 import { SLOT_META, categoryLabel, type SlotName } from "@/lib/categories";
 import { MAX_QUOTE_CHARS } from "@/lib/picker";
 import { MAX_RAM_KITS } from "@/lib/multi-slot";
+import { josa } from "@/lib/korean";
 import { readQuote } from "./actions";
 
 /** 카테고리 → 슬롯. 견적에 넣을 수 없는 카테고리면 undefined */
@@ -287,7 +288,10 @@ function QuoteRow({
 
       {line.unsupported !== null ? (
         // "못 찾음"과 "아직 다루지 않음"은 사용자가 할 행동이 다르다.
-        <p className="mt-1 text-fg-muted">{line.unsupported}는 아직 다루지 않습니다.</p>
+        <p className="mt-1 text-fg-muted">
+          {line.unsupported}
+          {josa(line.unsupported, "은", "는")} 아직 다루지 않습니다.
+        </p>
       ) : !line.isPart ? (
         <p className="mt-1 text-fg-subtle">부품 줄로 보이지 않아 건너뜁니다.</p>
       ) : usable.length === 0 ? (

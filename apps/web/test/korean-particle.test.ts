@@ -35,12 +35,15 @@ function sources(dir: string): string[] {
 }
 
 /**
- * `${…}` 바로 뒤에 끝소리를 타는 조사가 오고, 그 뒤가 한글이 아닌 것.
+ * `${…}`나 JSX `{…}` 바로 뒤에 끝소리를 타는 조사가 오고, 그 뒤가 한글이 아닌 것.
+ *
+ * JSX도 본다 (이슈 #50). 템플릿만 보다가 부품 페이지의 `{c.modelName}와 비교`가
+ * 「AMD Ryzen 5 9600와 비교」로 나갔다.
  *
  * 뒤가 한글이면 조사가 아니라 낱말의 일부일 수 있어 뺀다 (`${n}개`, `${x}이상`).
  * 「의·에·도·만·까지」처럼 끝소리를 타지 않는 조사는 괜찮다.
  */
-const PARTICLE = /\$\{[^}]+\}(이|가|을|를|은|는|과|와|으로|로)(?![가-힣])/;
+const PARTICLE = /\{[^{}]+\}(이|가|을|를|은|는|과|와|으로|로)(?![가-힣])/;
 
 describe('보간한 값 바로 뒤에 조사를 붙이지 않는다', () => {
   const files = ROOTS.flatMap(sources);
@@ -69,10 +72,14 @@ describe('보간한 값 바로 뒤에 조사를 붙이지 않는다', () => {
     expect(PARTICLE.test('`${socket}이 없습니다`')).toBe(true);
     expect(PARTICLE.test('`${a}와 ${b}의 스펙`')).toBe(true);
     expect(PARTICLE.test('`${name}로 바꾼다`')).toBe(true);
+    expect(PARTICLE.test('{c.modelName}와 비교')).toBe(true);
+    expect(PARTICLE.test('규칙 {id}이 쓰는')).toBe(true);
     // 괜찮은 것들
     expect(PARTICLE.test('`${socket} 소켓이 없습니다`')).toBe(false);
     expect(PARTICLE.test('`${name}의 지원 폼팩터`')).toBe(false);
     expect(PARTICLE.test('`${n}개`')).toBe(false);
     expect(PARTICLE.test('`${x}이상`')).toBe(false);
+    expect(PARTICLE.test('규칙 {id}번이 쓰는')).toBe(false);
+    expect(PARTICLE.test('{name}하고 비교')).toBe(false);
   });
 });

@@ -93,7 +93,7 @@ export function BillResult({
         */}
       {high.tierRose && (
         <p className="mt-3 rounded-(--radius-control) border border-warn-border bg-warn-bg p-2.5 text-sm">
-          <span className="font-medium">누진 구간이 올라갑니다.</span> {subject}를 더하면
+          <span className="font-medium">누진 구간이 올라갑니다.</span> {subject} 사용량을 더하면
           가구 사용량이 {low.before.kwh.toFixed(0)}kWh에서 {high.after.kwh.toFixed(0)}kWh로
           올라 단가가 {high.before.marginalWonPerKwh}원에서 {high.marginalWonPerKwh}원이
           됩니다.

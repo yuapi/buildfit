@@ -196,12 +196,12 @@ export default async function ComparePage({
       <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
         {leftBuild && (
           <Link href={leftBuild} className="btn btn-secondary justify-start">
-            <span className="truncate">{left.modelName}로 견적 시작</span>
+            <span className="truncate">견적 시작: {left.modelName}</span>
           </Link>
         )}
         {rightBuild && (
           <Link href={rightBuild} className="btn btn-secondary justify-start">
-            <span className="truncate">{right.modelName}로 견적 시작</span>
+            <span className="truncate">견적 시작: {right.modelName}</span>
           </Link>
         )}
       </div>

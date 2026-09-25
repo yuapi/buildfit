@@ -286,7 +286,7 @@ export default async function PartPage({
                   href={`/compare/${part.slug}/vs/${c.slug}`}
                   className="-mx-2 block truncate rounded-(--radius-control) px-2 py-1.5 text-sm transition-colors hover:bg-surface-2"
                 >
-                  {c.modelName}와 비교
+                  {c.modelName}하고 비교
                 </Link>
               </li>
             ))}

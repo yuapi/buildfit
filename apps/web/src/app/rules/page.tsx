@@ -138,7 +138,7 @@ export default async function RulesPage() {
               {fields.length > 0 && (
                 <table className="mt-3 w-full text-sm">
                   <caption className="sr-only">
-                    규칙 {id}이 쓰는 데이터의 결측 현황
+                    규칙 {id}번이 쓰는 데이터의 결측 현황
                   </caption>
                   <thead>
                     <tr className="text-left text-xs text-fg-subtle">
