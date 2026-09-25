@@ -244,6 +244,7 @@ function toCpuCooler(p: RawPart): CpuCooler {
     fanQuantity: num(p.specs, 'fan_quantity'),
     fanless: bool(p.specs, 'fanless'),
     lighting: strArray(p.specs, 'lighting'),
+    radiatorSizeMm: num(p.specs, 'radiator_size_mm'),
   };
 }
 

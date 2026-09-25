@@ -404,15 +404,20 @@ export const rule9: Rule = ({ cooler, pcCase }) => {
   }
 
   if (cooler.waterCooled === true) {
-    // 통과로 표시하지 않는다. 라디에이터가 들어가는지는 아직 아무도 확인하지 않았다.
-    // 규칙 10이 Phase 2 이후라 지금은 확인할 방법이 없다 (명세 §4.2).
+    // 통과로 표시하지 않는다. 라디에이터가 들어가는지는 아무도 확인하지 않았다.
+    // 케이스의 라디에이터 장착 위치는 원본에 필드가 없어 그 검사(규칙 10)는 폐기했다 (ADR-0025).
+    // **없는 필드를 결측으로 적지 않는다** — 「알려주세요」라고 해도 담을 곳이 없다 (§9.2, 이슈 #66)
+    const size = isFilled(cooler.radiatorSizeMm) && cooler.radiatorSizeMm! > 0
+      ? ` 이 쿨러의 라디에이터는 ${cooler.radiatorSizeMm}mm입니다.`
+      : '';
     return {
       ruleId: 9,
       verdict: 'unknown',
       severity: 'info',
-      message: '수랭 쿨러는 높이가 아니라 라디에이터 장착 위치가 관건입니다.',
-      reason: { kind: 'missing', fields: [ref(pcCase, '라디에이터 장착 위치')] },
-      skipped: ['높이 비교는 공랭에만 적용합니다. 라디에이터 검사는 아직 준비되지 않았습니다.'],
+      message:
+        `수랭 쿨러는 높이가 아니라 라디에이터 장착 위치가 관건입니다.${size} ` +
+        '케이스의 라디에이터 장착 정보는 데이터에 없어 판정하지 않습니다. 케이스 제조사의 라디에이터 지원 규격을 확인해 주세요.',
+      skipped: ['높이 비교는 공랭에만 적용합니다.'],
     };
   }
 

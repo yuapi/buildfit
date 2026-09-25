@@ -199,6 +199,11 @@ export interface CpuCooler extends PartRef {
   readonly fanless: boolean | null;
   /** 조명 목록. `["None"]`일 때만 조명이 없다고 본다 — 빈 목록은 담지 않는다 */
   readonly lighting: readonly string[] | null;
+  /**
+   * 수랭 라디에이터 크기(mm). 규칙 9가 수랭이면 알려 주기만 한다 — 맞댈 케이스 쪽 값이 없어
+   * 판정에는 쓰지 않는다 (§9.2, 이슈 #66)
+   */
+  readonly radiatorSizeMm: number | null;
 }
 
 /**

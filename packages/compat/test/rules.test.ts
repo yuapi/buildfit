@@ -491,6 +491,27 @@ describe('9. CPU 쿨러 높이 ≤ 케이스 최대 높이 (Phase 1)', () => {
     expect(r?.verdict).not.toBe('pass');
   });
 
+  it('★ 수랭이면 없는 필드를 알려 달라고 하지 않는다 — 담을 곳이 없다 (§9.2, 이슈 #66)', () => {
+    const r = rule9(f.withBuild({ cooler: { ...f.cooler, waterCooled: true } }));
+    // 결측 사유가 있으면 화면이 「아는 값이 있으면 알려주세요」를 붙인다
+    expect(r?.reason).toBeUndefined();
+    expect(r?.message).toContain('데이터에 없어 판정하지 않습니다');
+    expect(r?.message).toContain('제조사의 라디에이터 지원 규격');
+    // 폐기한 검사를 「준비 중」이라 하지 않는다 (ADR-0025)
+    expect([r?.message, ...(r?.skipped ?? [])].join(' ')).not.toContain('준비');
+  });
+
+  it('라디에이터 크기를 알면 함께 적는다 — 케이스 스펙과 맞대 볼 숫자다', () => {
+    const r = rule9(f.withBuild({ cooler: { ...f.cooler, waterCooled: true, radiatorSizeMm: 360 } }));
+    expect(r?.message).toContain('라디에이터는 360mm');
+    expect(r?.verdict).toBe('unknown');
+    // 모르거나 0이면 말하지 않는다
+    for (const radiatorSizeMm of [null, 0]) {
+      const q = rule9(f.withBuild({ cooler: { ...f.cooler, waterCooled: true, radiatorSizeMm } }));
+      expect(q?.message).not.toContain('mm입니다');
+    }
+  });
+
   it('수랭 여부가 없으면 높이가 있어도 판정 불가', () => {
     const r = rule9(f.withBuild({ cooler: { ...f.cooler, waterCooled: null } }));
     expect(r?.verdict).toBe('unknown');

@@ -29,7 +29,7 @@ export function m2Requirement(drive: StorageDrive): string | null {
  * SATA 포트를 쓰는가.
  *
  * **`M.2 SATA`는 세지 않는다.** 그 드라이브가 SATA 포트를 가져가는지는 칩셋의
- * 레인 분배에 달려 있고, 그 데이터가 없어서 규칙 13이 막혀 있다 (§18.1).
+ * 레인 분배에 달려 있고, 그 데이터가 없어서 규칙 13은 폐기했다 (§18.1, ADR-0025).
  * SAS도 세지 않는다 — 일반 보드에 포트가 없다.
  */
 export function usesSataPort(drive: StorageDrive): boolean {
