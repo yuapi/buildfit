@@ -323,6 +323,8 @@ export const COMPARABLE_BY: Readonly<Record<string, readonly string[]>> = {
   PSU: ['form_factor', 'wattage_w'],
   PCCase: ['form_factor'],
   CPUCooler: ['water_cooled'],
+  // 1TB M.2 PCIe 4.0 SSD끼리. 스토리지만 빠져 부품 페이지에 후보가 없었다 (이슈 #56)
+  Storage: ['storage_type', 'form_factor', 'interface', 'capacity_gb'],
 };
 
 /** 이 부품과 비교할 만한 다른 부품들. */

@@ -2,7 +2,7 @@
  * 「비교해 볼 만한 부품」 — 살 때 서로 대신할 수 있는 것끼리 (명세 §8, 이슈 #54).
  *
  * 1. 파워는 폼팩터 **와** 정격 출력이 같아야 한다 — 750W에 1600W를 내놓지 않는다
- * 2. 메모리는 DDR 규격 **과** 총 용량이 같아야 한다
+ * 2. 메모리는 DDR 규격 **과** 총 용량이 같아야 한다. 스토리지는 종류·폼팩터·인터페이스·용량 (이슈 #56)
  * 3. 대표 레코드만 — 중복은 후보가 아니다
  * 4. 축 하나라도 모르면 후보를 내지 않는다
  * 5. 스펙 하나로 찾는 `partsMatchingSpec`은 전과 같다
@@ -64,6 +64,13 @@ describeIfDb('비교 후보의 축 (이슈 #54)', () => {
     await part(12, 'RAM', { ram_type: 'DDR5', capacity_gb: 32 });
     await part(13, 'RAM', { ram_type: 'DDR5', capacity_gb: 96 });
     await part(14, 'RAM', { ram_type: 'DDR4', capacity_gb: 32 });
+
+    const nvme1tb = { storage_type: 'SSD', form_factor: 'M.2-2280', interface: 'M.2 PCIe 4.0 x4', capacity_gb: 1000 };
+    await part(21, 'Storage', nvme1tb);
+    await part(22, 'Storage', nvme1tb);
+    await part(23, 'Storage', { ...nvme1tb, capacity_gb: 2000 });
+    await part(24, 'Storage', { ...nvme1tb, interface: 'M.2 PCIe 3.0 x4' });
+    await part(25, 'Storage', { ...nvme1tb, form_factor: '2.5"', interface: 'SATA 6.0 Gb/s' });
   });
 
   afterAll(async () => {
@@ -79,6 +86,12 @@ describeIfDb('비교 후보의 축 (이슈 #54)', () => {
   it('★ 메모리는 규격과 총 용량이 모두 같은 것만', async () => {
     const got = await comparableParts(db, subject(11, 'RAM', { ram_type: 'DDR5', capacity_gb: 32 }));
     expect(got.map((p) => p.slug)).toEqual(['p-12']);
+  });
+
+  it('스토리지는 종류·폼팩터·인터페이스·용량이 모두 같은 것만 (이슈 #56)', async () => {
+    const nvme1tb = { storage_type: 'SSD', form_factor: 'M.2-2280', interface: 'M.2 PCIe 4.0 x4', capacity_gb: 1000 };
+    const got = await comparableParts(db, subject(21, 'Storage', nvme1tb));
+    expect(got.map((p) => p.slug)).toEqual(['p-22']);
   });
 
   it('축 하나라도 모르면 후보를 내지 않는다', async () => {
