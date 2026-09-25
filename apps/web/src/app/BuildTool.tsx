@@ -25,7 +25,7 @@ import {
 import { decodeBuildCode, encodeBuildCode } from "@/lib/build-code";
 import { FitBar } from "@/components/FitBar";
 import { PartIcon } from "@/components/Icons";
-import { buildLabel, filledSlotCount, pickedCount } from "@/lib/build-summary";
+import { buildLabel, countsText, filledSlotCount, pickedCount } from "@/lib/build-summary";
 import { addToSlot, isMultiSlot, maxForSlot, removeFromSlot } from "@/lib/multi-slot";
 import { SLOT_META, type SlotName } from "@/lib/categories";
 import { ElectricityPanel } from "./ElectricityPanel";
@@ -1095,11 +1095,7 @@ function VerdictBar({
       className={`verdict-bar verdict-${tone} flex flex-wrap items-baseline gap-x-4 gap-y-1.5`}
     >
       <span className="text-base font-semibold">{HEADLINE[tone].text}</span>
-      <span className="text-sm tnum">
-        통과 {counts.pass}
-        {counts.fail > 0 && ` · 문제 ${counts.fail}`}
-        {counts.unknown > 0 && ` · 판정 불가 ${counts.unknown}`}
-      </span>
+      <span className="text-sm tnum">{countsText(counts)}</span>
       {waiting.length > 0 && (
         <span className="verdict-aside text-xs">
           {listWithJosa(
