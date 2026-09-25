@@ -224,11 +224,17 @@ export interface CategoryCount {
   readonly total: number;
 }
 
-/** 카테고리별 부품 수. 목록 진입점과 sitemap 분할에 쓴다. */
+/**
+ * 카테고리별 부품 수. 목록 진입점(`/part`)에 쓴다.
+ *
+ * **목록과 같은 조건(`canonicalOnly`)으로 센다** (이슈 #79). 전에는 중복 레코드까지 세어
+ * 색인이 「CPU 789개」인데 눌러 들어가면 「718개」였다.
+ */
 export async function categoryCounts(db: Database): Promise<CategoryCount[]> {
   const rows = await db
     .select({ category: parts.category, total: sql<number>`count(*)::int` })
     .from(parts)
+    .where(canonicalOnly())
     .groupBy(parts.category)
     .orderBy(sql`count(*) desc`);
   return rows;
