@@ -256,3 +256,75 @@ describeIfDb('결측 현황 집계', () => {
     expect(await fieldGapSummary(db)).toEqual([]);
   });
 });
+
+/**
+ * 조건부 필수 필드 (이슈 #74). 쿨러 높이는 공랭일 때만 규칙 9가 읽는다.
+ *
+ * 따로 스크래치 DB를 쓴다 — 위 묶음은 「CPU만 있다」를 전제로 센다.
+ */
+describeIfDb('결측 현황 집계 — 조건부 필드 (이슈 #74)', () => {
+  let scratch: Scratch;
+  let db: ReturnType<typeof createDb>['db'];
+  let close: () => Promise<void>;
+
+  beforeAll(async () => {
+    scratch = await createScratchDb();
+    const made = createDb(scratch.url, { max: 2 });
+    db = made.db;
+    close = () => made.client.end();
+
+    // 쿨러 다섯: 높이가 빈 것 넷 — 공랭 · 수랭 · 수랭 여부 없음 · 수랭 여부가 JSON 널
+    await db.execute(sql`
+      insert into parts (id, slug, category, model_name) values
+        ('c1111111-1111-4111-8111-111111111111', 'k-air',       'CPUCooler', '공랭 높이 없음'),
+        ('c2222222-2222-4222-8222-222222222222', 'k-water',     'CPUCooler', '수랭 높이 없음'),
+        ('c3333333-3333-4333-8333-333333333333', 'k-unknown',   'CPUCooler', '수랭 여부 없음'),
+        ('c4444444-4444-4444-8444-444444444444', 'k-null',      'CPUCooler', '수랭 여부 널'),
+        ('c5555555-5555-4555-8555-555555555555', 'k-air-fine',  'CPUCooler', '공랭 높이 있음')
+    `);
+    await db.execute(sql`
+      insert into part_specs (part_id, key, value) values
+        ('c1111111-1111-4111-8111-111111111111', 'water_cooled', 'false'::jsonb),
+        ('c2222222-2222-4222-8222-222222222222', 'water_cooled', 'true'::jsonb),
+        ('c4444444-4444-4444-8444-444444444444', 'water_cooled', 'null'::jsonb),
+        ('c5555555-5555-4555-8555-555555555555', 'water_cooled', 'false'::jsonb),
+        ('c5555555-5555-4555-8555-555555555555', 'height_mm', '158'::jsonb)
+    `);
+  }, 60_000);
+
+  afterAll(async () => {
+    await close?.();
+    await scratch?.drop();
+  });
+
+  const NEEDED = ['k-air', 'k-null', 'k-unknown'];
+
+  it('★ 수랭 쿨러의 높이는 결측으로 세지 않는다 — 규칙 9가 묻지 않는다', async () => {
+    const g = (await fieldGapSummary(db)).find(
+      (r) => r.category === 'CPUCooler' && r.specKey === 'height_mm',
+    );
+    expect(g?.totalParts).toBe(5);
+    // 수랭 여부를 모르면 공랭일 수 있으므로 센다
+    expect(g?.missingParts).toBe(NEEDED.length);
+  });
+
+  it('집계와 목록과 건수가 같은 조건을 쓴다', async () => {
+    const rows = await partsMissingField(db, 'CPUCooler', 'height_mm');
+    expect(rows.map((r) => r.slug).sort()).toEqual(NEEDED);
+    expect((await gapCounts(db, 'CPUCooler', 'height_mm')).missing).toBe(NEEDED.length);
+  });
+
+  it('조건 없는 필드는 전과 같이 센다', async () => {
+    const g = (await fieldGapSummary(db)).find(
+      (r) => r.category === 'CPUCooler' && r.specKey === 'water_cooled',
+    );
+    expect(g?.missingParts).toBe(1);
+  });
+
+  it('부품 하나의 빈 필드도 같은 조건이다 — 부품 페이지·어드민이 쓴다', async () => {
+    const water = await partWithSpecs(db, 'c2222222-2222-4222-8222-222222222222');
+    expect(water?.missing.map((r) => r.specKey)).not.toContain('height_mm');
+    const air = await partWithSpecs(db, 'c1111111-1111-4111-8111-111111111111');
+    expect(air?.missing.map((r) => r.specKey)).toContain('height_mm');
+  });
+});
