@@ -12,6 +12,7 @@ export const cpu: Cpu = {
   ppt: 162,
   memoryTypes: ['DDR5'],
   memoryMaxGb: 256,
+  memoryChannels: 2,
   releaseYear: 2024,
   integratedGraphics: 'AMD Radeon Graphics',
   includesCooler: false,

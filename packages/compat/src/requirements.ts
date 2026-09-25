@@ -115,6 +115,8 @@ export const SPEC_REQUIREMENTS: readonly FieldRequirement[] = [
   // 3. 모듈 수 ≤ 슬롯 수
   { ruleId: 3, category: 'RAM', specKey: 'module_count', label: '모듈 개수', severity: 'error', valueType: 'number' },
   { ruleId: 3, category: 'Motherboard', specKey: 'memory_slots', label: '메모리 슬롯 수', severity: 'error', valueType: 'number' },
+  // 채널 안내에만 쓴다 — 판정은 바꾸지 않는다 (§3.1, 이슈 #77)
+  { ruleId: 3, category: 'CPU', specKey: 'memory_channels', label: '메모리 채널 수', severity: 'error', valueType: 'number', optional: true, min: 1, max: 12 },
 
   // 4. GPU 길이 ≤ 케이스 최대 길이
   { ruleId: 4, category: 'GPU', specKey: 'length_mm', label: '길이', severity: 'error', valueType: 'number' },

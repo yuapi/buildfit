@@ -7,7 +7,7 @@
  */
 
 import { describeCaseReference } from './case-reference';
-import type { Build, Gpu, StorageDrive } from './parts';
+import type { Build, Cpu, Gpu, StorageDrive } from './parts';
 import { bayKind, m2Requirement, unplacedDrives, usesM2Slot, usesSataPort } from './storage';
 import {
   type FieldRef,
@@ -96,7 +96,28 @@ export const rule2: Rule = ({ cpu, motherboard, ram }) => {
 
 // --- 3. 메모리 모듈 수 ≤ 슬롯 수 -------------------------------------------
 
-export const rule3: Rule = ({ motherboard, ram }) => {
+/**
+ * 채널 안내 — 규칙 3에 덧붙이는 정보다. 판정이 아니다 (§3.1, 이슈 #77).
+ *
+ * CPU의 채널 수를 모르면 말하지 않는다. **소켓으로 짐작하지 않는다** — LGA 2066에는
+ * 2채널과 4채널이 함께 있다. 몇 % 느려지는지도 말하지 않는다 — 근거 있는 수치가 없다.
+ */
+function channelNote(cpu: Cpu | null, modules: number, slots: number): string | null {
+  const channels = cpu?.memoryChannels;
+  if (!isFilled(channels) || channels! < 2 || modules === 0) return null;
+  const ch = channels!;
+  if (modules < ch) {
+    // 보드에 채널 수만큼 슬롯이 없으면 채울 방법이 없다. 권할 것이 없으니 말하지 않는다
+    if (slots < ch) return null;
+    return `CPU는 메모리 ${ch}채널인데 모듈이 ${modules}개라 ${modules}채널만 씁니다. 메모리 대역폭이 줄어드니 모듈 ${ch}개로 채우는 것을 권합니다.`;
+  }
+  if (modules % ch !== 0) {
+    return `모듈 ${modules}개는 CPU의 메모리 ${ch}채널에 고르게 나뉘지 않습니다. 채널 수의 배수(${ch}개, ${ch * 2}개…)로 맞추면 모든 채널을 고르게 씁니다.`;
+  }
+  return null;
+}
+
+export const rule3: Rule = ({ motherboard, ram, cpu }) => {
   if (ram.length === 0 || !motherboard) return null;
 
   const gaps: FieldRef[] = [];
@@ -111,9 +132,12 @@ export const rule3: Rule = ({ motherboard, ram }) => {
   // 키트를 여러 개 담을 수 있으므로 합산한다. docs/compat-rules.md §3
   const total = ram.reduce((n, kit) => n + (kit.moduleCount ?? 0), 0);
   const slots = motherboard.memorySlots ?? 0;
-  return total <= slots
-    ? pass(3, `메모리 ${total}개 / 슬롯 ${slots}개.`)
-    : fail(3, 'error', `메모리 모듈이 ${total}개인데 메인보드 슬롯은 ${slots}개입니다.`);
+  if (total > slots) {
+    return fail(3, 'error', `메모리 모듈이 ${total}개인데 메인보드 슬롯은 ${slots}개입니다.`);
+  }
+  const note = channelNote(cpu, total, slots);
+  const ok = pass(3, `메모리 ${total}개 / 슬롯 ${slots}개.`);
+  return note ? { ...ok, notes: [note] } : ok;
 };
 
 // --- 4. GPU 길이 ≤ 케이스 GPU 최대 길이 ------------------------------------

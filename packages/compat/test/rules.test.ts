@@ -87,6 +87,53 @@ describe('3. 메모리 모듈 수 ≤ 슬롯 수', () => {
     const r = rule3(f.withBuild({ motherboard: { ...f.motherboard, memorySlots: null } }));
     expect(r?.verdict).toBe('unknown');
   });
+
+  // --- §3.1 채널 안내 (이슈 #77) — 판정이 아니다 ---
+  const one = { ...f.ramKit, moduleCount: 1 };
+  const quad = { ...f.cpu, memoryChannels: 4 };
+
+  it('★ 2채널 CPU에 모듈 1개 — 통과 그대로, 한 채널만 쓴다고 알린다', () => {
+    const r = rule3(f.withBuild({ ram: [one] }));
+    expect(r?.verdict).toBe('pass');
+    expect(r?.notes?.[0]).toContain('2채널인데 모듈이 1개라 1채널만');
+  });
+
+  it('채널을 다 채우면 말하지 않는다', () => {
+    expect(rule3(f.goodBuild)?.notes).toBeUndefined();
+    expect(rule3(f.withBuild({ ram: [{ ...f.ramKit, moduleCount: 4 }] }))?.notes).toBeUndefined();
+  });
+
+  it('★ 4채널 CPU에 모듈 2개 — 2의 배수여도 절반만 쓴다', () => {
+    const r = rule3(f.withBuild({ cpu: quad }));
+    expect(r?.notes?.[0]).toContain('4채널인데 모듈이 2개라 2채널만');
+  });
+
+  it('채널 수의 배수가 아니면 고르게 나뉘지 않는다고 알린다', () => {
+    const r = rule3(f.withBuild({ ram: [f.ramKit, one] })); // 3개 / 2채널
+    expect(r?.verdict).toBe('pass');
+    expect(r?.notes?.[0]).toContain('고르게 나뉘지 않습니다');
+  });
+
+  it('★ 채널 수를 모르면 말하지 않는다 — 소켓으로 짐작하지 않는다', () => {
+    const r = rule3(f.withBuild({ ram: [one], cpu: { ...f.cpu, memoryChannels: null } }));
+    expect(r?.verdict).toBe('pass');
+    expect(r?.notes).toBeUndefined();
+  });
+
+  it('CPU를 안 골랐으면 말하지 않는다', () => {
+    expect(rule3(f.withBuild({ ram: [one], cpu: null }))?.notes).toBeUndefined();
+  });
+
+  it('보드 슬롯이 채널 수보다 적으면 채울 방법이 없으니 말하지 않는다', () => {
+    const r = rule3(f.withBuild({ cpu: quad, motherboard: { ...f.motherboard, memorySlots: 2 } }));
+    expect(r?.notes).toBeUndefined();
+  });
+
+  it('슬롯을 넘으면 오류만 낸다 — 안내를 섞지 않는다', () => {
+    const r = rule3(f.withBuild({ ram: [f.ramKit, f.ramKit, one] })); // 5 > 4
+    expect(r?.verdict).toBe('fail');
+    expect(r?.notes).toBeUndefined();
+  });
 });
 
 describe('4. GPU 길이 ≤ 케이스 최대 길이', () => {
