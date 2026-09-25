@@ -145,6 +145,7 @@ function toCpu(p: RawPart): Cpu {
     ppt: num(p.specs, 'ppt_w'),
     memoryTypes: strArray(p.specs, 'memory_types'),
     memoryMaxGb: num(p.specs, 'memory_max_gb'),
+    memoryChannels: num(p.specs, 'memory_channels'),
     releaseYear: p.releaseYear,
     integratedGraphics: str(p.specs, 'integrated_graphics'),
     includesCooler: bool(p.specs, 'includes_cooler'),

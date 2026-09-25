@@ -43,6 +43,8 @@ export interface Cpu extends PartRef {
   readonly releaseYear: number | null;
   /** 메모리 컨트롤러가 다루는 최대 총 용량 (GB). 규칙 16 (§16) */
   readonly memoryMaxGb: number | null;
+  /** 메모리 채널 수. 규칙 3의 안내에만 쓴다 — 판정은 바꾸지 않는다 (§3.1, 이슈 #77) */
+  readonly memoryChannels: number | null;
   /**
    * 내장그래픽 모델 이름. 규칙 21 (§21).
    *
