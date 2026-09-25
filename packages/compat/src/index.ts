@@ -108,11 +108,13 @@ export {
   phase1Rules,
 } from './rules';
 
-export type { FieldRequirement } from './requirements';
+export type { FieldRequirement, RequiredWhen } from './requirements';
 export {
   SPEC_REQUIREMENTS,
   REQUIREMENT_CATEGORIES,
   requiredKeysFor,
+  requiredCondition,
+  missingRequiredFor,
   rulesBlockedBy,
   MOBO_FORM_FACTORS,
   PSU_FORM_FACTORS,

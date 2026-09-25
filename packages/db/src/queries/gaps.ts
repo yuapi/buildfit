@@ -7,6 +7,8 @@
 
 import {
   SPEC_REQUIREMENTS,
+  missingRequiredFor,
+  requiredCondition,
   rulesBlockedBy,
   socketCanonicalPairs,
   type FieldRequirement,
@@ -79,7 +81,17 @@ export async function fieldGapSummary(db: Database): Promise<FieldGap[]> {
    * 그러면 `have > total`이 되어 결측이 0으로 눌린다 — 표가 "다 채워졌다"고
    * 거짓말한다. 이 수는 공개 페이지(`/rules`)가 그대로 보여주는 값이다.
    */
-  const [totalRows, haveRows, columnRows] = await db.transaction(
+  // 부품 값에 따라 필요 없을 수 있는 필드 (이슈 #74). 「키가 있는 부품 수」를 빼는 셈으로는
+  // 조건을 볼 수 없으므로, 목록과 **같은 조건**(`missingWhere`)으로 따로 센다
+  const conditional = [
+    ...new Map(
+      required
+        .filter((r) => requiredCondition(r.category, r.specKey) !== null)
+        .map((r) => [`${r.category}\u0000${r.specKey}`, r] as const),
+    ).values(),
+  ];
+
+  const [totalRows, haveRows, columnRows, conditionalRows] = await db.transaction(
     async (tx) =>
       await Promise.all([
         tx
@@ -111,6 +123,20 @@ export async function fieldGapSummary(db: Database): Promise<FieldGap[]> {
           })
           .from(parts)
           .groupBy(parts.category),
+        conditional.length === 0
+          ? Promise.resolve([] as Record<string, unknown>[])
+          : tx
+              .select(
+                Object.fromEntries(
+                  conditional.map((r, i) => [
+                    `c${i}`,
+                    sql<number>`count(*) filter (where ${missingWhere(r.category, r.specKey)})::int`,
+                  ]),
+                ),
+              )
+              .from(parts)
+              // 해당 카테고리만 훑는다. 부품 전체를 훑으면 집계가 약 67ms에서 108ms로 늘었다 (실측)
+              .where(inArray(parts.category, [...new Set(conditional.map((r) => r.category))])),
       ]),
     // 두 쿼리가 같은 시점을 보게 한다. 기본 격리 수준은 문장마다 스냅샷이 바뀐다.
     { isolationLevel: 'repeatable read' },
@@ -123,6 +149,13 @@ export async function fieldGapSummary(db: Database): Promise<FieldGap[]> {
       have.set(`${String(r['category'])}\u0000${key}`, Number(r[key] ?? 0));
     }
   }
+
+  // 조건부 필드의 결측 수. 아래에서 `total - have` 대신 쓴다
+  const conditionalMissing = new Map<string, number>();
+  const counted = (conditionalRows as Record<string, unknown>[])[0];
+  conditional.forEach((r, i) => {
+    conditionalMissing.set(`${r.category}\u0000${r.specKey}`, Number(counted?.[`c${i}`] ?? 0));
+  });
 
   const out: FieldGap[] = [];
   // (카테고리, 키) 하나에 한 줄. CPU 소켓은 규칙 1과 20이 각각 선언해 두 줄이 됐다 (이슈 #58).
@@ -138,7 +171,9 @@ export async function fieldGapSummary(db: Database): Promise<FieldGap[]> {
     // 한 스냅샷에서 읽었으므로 음수가 될 수 없다. 그래도 눌러두는 이유는
     // 조인이 언젠가 중복 계수하게 되면 **음수가 그 증상**이기 때문이다 —
     // 눌러서 감추지 않고 드러나게 두려면 여기가 아니라 테스트가 잡아야 한다.
-    const missing = Math.max(0, total - (have.get(`${req.category}\u0000${req.specKey}`) ?? 0));
+    const missing =
+      conditionalMissing.get(id) ??
+      Math.max(0, total - (have.get(`${req.category}\u0000${req.specKey}`) ?? 0));
     out.push({
       category: req.category,
       specKey: req.specKey,
@@ -180,10 +215,20 @@ export interface GapCounts {
  */
 function missingWhere(category: string, specKey: string): SQL {
   const column = PART_COLUMNS[specKey];
-  if (column) return sql`${eq(parts.category, category)} and ${column} is null`;
-  return sql`${eq(parts.category, category)} and not exists (
+  const empty = column
+    ? sql`${eq(parts.category, category)} and ${column} is null`
+    : sql`${eq(parts.category, category)} and not exists (
     select 1 from ${partSpecs} s
     where s.part_id = ${parts.id} and s.key = ${specKey}
+  )`;
+  const cond = requiredCondition(category, specKey);
+  if (!cond) return empty;
+  // 조건 필드에 **다른 값이 적힌** 부품은 이 필드가 필요 없다 (이슈 #74). 조건 필드가
+  // 없거나 널이면 필요하다고 본다 — `missingRequiredFor`와 같은 기준이다
+  return sql`${empty} and not exists (
+    select 1 from ${partSpecs} c
+    where c.part_id = ${parts.id} and c.key = ${cond.specKey}
+      and c.value <> 'null'::jsonb and c.value <> ${JSON.stringify(cond.equals)}::jsonb
   )`;
 }
 
@@ -293,10 +338,12 @@ export async function partWithSpecs(db: Database, id: string): Promise<PartWithS
 
   // `parts` 컬럼에 있는 입력도 센다 (이슈 #15). 여기서 빠뜨리면 보강 화면이
   // "비어 있음" 표시를 안 붙이고, 작업자가 채울 대상으로 보지 않는다.
-  const have = new Set([...specs.map((s) => s.key), ...filledPartColumnKeys(part)]);
-  const missing = SPEC_REQUIREMENTS.filter(
-    (r) => r.category === part.category && r.optional !== true && !have.has(r.specKey),
-  );
+  // 조건부 필드(이슈 #74)를 풀려면 키뿐 아니라 값이 필요하다
+  const values = new Map<string, unknown>([
+    ...specs.map((s) => [s.key, s.value] as const),
+    ...filledPartColumnKeys(part).map((k) => [k, true] as const),
+  ]);
+  const missing = missingRequiredFor(part.category, values);
 
   return { ...part, specs, missing };
 }

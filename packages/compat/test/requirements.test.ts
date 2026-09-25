@@ -6,7 +6,13 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { SPEC_REQUIREMENTS, requiredKeysFor, rulesBlockedBy } from '../src/requirements';
+import {
+  SPEC_REQUIREMENTS,
+  missingRequiredFor,
+  requiredCondition,
+  requiredKeysFor,
+  rulesBlockedBy,
+} from '../src/requirements';
 import { phase1Rules } from '../src/rules';
 import type { Build } from '../src/parts';
 import * as f from './fixtures';
@@ -145,3 +151,63 @@ describe('조회 헬퍼', () => {
     expect(rulesBlockedBy('PCCase', 'max_gpu_length_mm')).toEqual([4]);
   });
 });
+
+/**
+ * `requiredWhen` — 부품 값에 따라 필요 없는 필드 (이슈 #74).
+ *
+ * 선언이 「필요 없다」고 하는데 규칙이 그 필드를 결측으로 적으면, 집계는 줄었는데 견적은
+ * 여전히 「알려주세요」라고 한다. 조건이 **규칙 구현과 같은지** 여기서 맞대 본다.
+ */
+const BLANK_UNNEEDED: Record<string, () => Build> = {
+  // 수랭이면 높이를 묻지 않는다 (§9.2)
+  'CPUCooler.height_mm': () => f.withBuild({ cooler: { ...f.cooler, waterCooled: true, heightMm: null } }),
+};
+
+describe('조건부 필수 필드 (이슈 #74)', () => {
+  const conditional = SPEC_REQUIREMENTS.filter((r) => r.requiredWhen !== undefined);
+
+  it('조건이 있는 선언마다 「필요 없는 경우」가 정의되어 있다', () => {
+    for (const r of conditional) {
+      expect(BLANK_UNNEEDED, `${r.category}.${r.specKey}`).toHaveProperty(`${r.category}.${r.specKey}`);
+    }
+  });
+
+  it.each(conditional.map((r) => [`${r.category}.${r.specKey}`, r.ruleId, r.label] as const))(
+    '★ %s 는 조건이 맞지 않으면 규칙 %d이 결측으로 적지 않는다',
+    (key, ruleId, label) => {
+      const build = BLANK_UNNEEDED[key]!();
+      const rule = phase1Rules.find((fn) => fn(f.goodBuild)?.ruleId === ruleId)!;
+      const result = rule(build);
+      const fields = result?.reason?.kind === 'missing' ? result.reason.fields : [];
+      expect(fields.map((x) => x.field)).not.toContain(label);
+    },
+  );
+
+  it('쿨러 높이는 공랭일 때만 필요하다', () => {
+    expect(requiredCondition('CPUCooler', 'height_mm')).toEqual({ specKey: 'water_cooled', equals: false });
+    // 조건 없는 필드는 null
+    expect(requiredCondition('CPUCooler', 'water_cooled')).toBeNull();
+    expect(requiredCondition('CPU', 'socket')).toBeNull();
+  });
+
+  const missingKeys = (values: [string, unknown][]) =>
+    missingRequiredFor('CPUCooler', new Map(values)).map((r) => r.specKey);
+
+  it('★ 수랭 쿨러에 높이가 없어도 빈 필드가 아니다', () => {
+    expect(missingKeys([['water_cooled', true], ['cpu_sockets', ['AM5']]])).not.toContain('height_mm');
+  });
+
+  it('공랭 쿨러에 높이가 없으면 빈 필드다', () => {
+    expect(missingKeys([['water_cooled', false], ['cpu_sockets', ['AM5']]])).toContain('height_mm');
+  });
+
+  it('★ 수랭인지 모르면 높이도 빈 필드로 센다 — 공랭이면 필요하다', () => {
+    expect(missingKeys([['cpu_sockets', ['AM5']]])).toEqual(expect.arrayContaining(['water_cooled', 'height_mm']));
+    expect(missingKeys([['water_cooled', null]])).toContain('height_mm');
+  });
+
+  it('키가 있으면 채운 것이다 — 결측 집계와 같은 기준', () => {
+    expect(missingKeys([['water_cooled', false], ['height_mm', null]])).not.toContain('height_mm');
+  });
+});
+

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { requiredKeysFor } from '@buildfit/compat';
+import { missingRequiredFor } from '@buildfit/compat';
 import { benchmarksForPart, comparableParts, partBySlug, partsMatchingSpec, type RelatedPart } from '@buildfit/db/part';
 import { filledPartColumnKeys } from '@buildfit/db/queries';
 import { BenchmarkBlock } from '@/components/BenchmarkBlock';
@@ -104,10 +104,12 @@ export default async function PartPage({
   // 값이 있는 항목뿐 아니라 **비어 있는 필수 항목**도 제보 대상이다.
   // 견적에서 "판정 불가"를 만난 사용자가 그 값을 알려줄 수 있어야 한다 (§5.5).
   // 출시 연도는 `parts` 컬럼에 있다. 스펙 키만 보면 연도가 있어도 비어 있다고 말한다 (이슈 #48)
-  const have = new Set([...part.specs.map((s) => s.key), ...filledPartColumnKeys(part)]);
-  const missingRequired = requiredKeysFor(part.category)
-    .filter((r) => !have.has(r.specKey))
-    .map((r) => r.specKey);
+  // 수랭 쿨러의 높이처럼 **이 부품에는 필요 없는** 필드는 묻지 않는다 (이슈 #74)
+  const values = new Map<string, unknown>([
+    ...part.specs.map((s) => [s.key, s.value] as const),
+    ...filledPartColumnKeys(part).map((k) => [k, true] as const),
+  ]);
+  const missingRequired = missingRequiredFor(part.category, values).map((r) => r.specKey);
 
   const [related, comparable, benchmarks] = await Promise.all([
     relatedParts(part.category, part.id, part.specs),
