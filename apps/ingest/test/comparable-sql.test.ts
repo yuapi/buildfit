@@ -11,7 +11,7 @@
  */
 
 import { createDb } from '@buildfit/db';
-import { comparableParts, partsMatchingSpec } from '@buildfit/db/part';
+import { categoryCounts, comparableParts, partsInCategory, partsMatchingSpec } from '@buildfit/db/part';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createScratchDb, type Scratch } from './helpers/scratch-db';
@@ -101,5 +101,14 @@ describeIfDb('비교 후보의 축 (이슈 #54)', () => {
   it('스펙 하나로 찾기는 전과 같다', async () => {
     const got = await partsMatchingSpec(db, { category: 'PSU', specKey: 'wattage_w', value: 750 });
     expect(got.map((p) => p.slug).sort()).toEqual(['p-1', 'p-2', 'p-4']);
+  });
+
+  // 같은 데이터에 중복(p-5)이 있어 여기서 함께 본다
+  it('★ 색인의 카테고리 수는 목록 수와 같다 — 중복을 세지 않는다 (이슈 #79)', async () => {
+    const counts = new Map((await categoryCounts(db)).map((c) => [c.category, c.total]));
+    expect(counts.get('PSU')).toBe(4); // 5건 중 p-5는 p-2의 중복
+    for (const category of ['PSU', 'RAM', 'Storage']) {
+      expect(counts.get(category), category).toBe((await partsInCategory(db, category)).total);
+    }
   });
 });
