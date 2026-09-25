@@ -16,6 +16,7 @@
     "migrate": "npm run migrate --workspace @buildfit/db",
     "ingest": "npm run ingest --workspace @buildfit/ingest",
     "test:empty-db": "bash scripts/test-empty-db.sh",
+    "sync:opendb": "bash scripts/sync-opendb.sh",
     "ingest:benchmarks": "npm run ingest:benchmarks --workspace @buildfit/ingest --"
   },
   "engines": {
