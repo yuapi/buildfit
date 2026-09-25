@@ -66,6 +66,8 @@ export default async function ComparePage({
 
   const rows = alignSpecs(left.specs, right.specs, (r) => specValueText(r.value, r.unit, r.key));
   const differing = rows.filter((r) => r.differs).length;
+  // 한쪽 값이 없는 항목은 다른 것이 아니라 모르는 것이다 — 따로 센다 (이슈 #81)
+  const oneSided = rows.filter((r) => r.oneSided).length;
   const catPath = left.category.toLowerCase();
   const leftBuild = startBuildHref(left.category, left.id);
   const rightBuild = startBuildHref(right.category, right.id);
@@ -86,8 +88,17 @@ export default async function ComparePage({
         {left.modelName} <span className="font-normal text-fg-subtle">vs</span> {right.modelName}
       </h1>
       <p className="mt-2 text-sm text-fg-muted">
-        스펙 {rows.length}개 중 <strong className="font-medium text-fg tnum">{differing}개</strong>가
-        다릅니다. 조합의 호환성은{' '}
+        {differing > 0 ? (
+          <>
+            스펙 {rows.length}개 중 <strong className="font-medium text-fg tnum">{differing}개</strong>가
+            다릅니다.
+          </>
+        ) : oneSided > 0 ? (
+          <>두 쪽 모두 값이 있는 스펙은 전부 같습니다.</>
+        ) : (
+          <>스펙 {rows.length}개가 모두 같습니다.</>
+        )}
+        {oneSided > 0 && <> {oneSided}개는 한쪽 값이 없어 비교하지 않았습니다.</>} 조합의 호환성은{' '}
         <Link href="/" className="link">
           견적 구성
         </Link>
@@ -123,6 +134,8 @@ export default async function ComparePage({
                   {specLabel(row.key)}
                   {/* 굵은 글씨만으로 차이를 표시하면 훑을 때 놓친다. 글자로 적는다 */}
                   {row.differs && <span className="chip mt-1 block w-fit">다름</span>}
+                  {/* 모르는 것을 차이처럼 보이지 않는다 (이슈 #81) */}
+                  {row.oneSided && <span className="chip mt-1 block w-fit">비교 불가</span>}
                 </th>
                 <td className={`px-3 py-2.5 align-top break-words ${row.differs ? 'font-medium text-fg' : ''}`}>
                   {/* 한쪽에만 있는 항목은 "없음"이 아니라 "정보 없음"이다.

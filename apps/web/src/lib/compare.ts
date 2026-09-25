@@ -20,8 +20,18 @@ export interface CompareRow<T> {
   /** 화면에 쓸 글자. 한쪽에 항목이 없으면 `null` */
   readonly lText: string | null;
   readonly rText: string | null;
+  /** 둘 다 값이 있고 다르다 */
   readonly differs: boolean;
+  /**
+   * 한쪽 값이 없다 — **다른 것이 아니라 모르는 것이다** (이슈 #81). 「다름」으로 세면
+   * 두 부품이 다르다는 근거 없이 차이를 주장한다. 측정값 절이 한쪽이 없을 때
+   * 「비교하지 않습니다」라고 하는 것과 같은 기준이다.
+   */
+  readonly oneSided: boolean;
 }
+
+/** 줄 순서: 다름 → 비교 불가 → 같음. 차이를 먼저 보이되, 모르는 것을 차이 사이에 섞지 않는다 */
+const rank = (row: { differs: boolean; oneSided: boolean }) => (row.differs ? 0 : row.oneSided ? 1 : 2);
 
 /**
  * 한쪽에만 있는 항목도 빠뜨리지 않는다.
@@ -45,10 +55,10 @@ export function alignSpecs<T extends SpecInput>(
         const r = byKeyR.get(key);
         const lText = l ? text(l) : null;
         const rText = r ? text(r) : null;
-        // 한쪽에만 있는 것도 "다름"이다. null과 값은 같지 않다.
-        return { key, l, r, lText, rText, differs: lText !== rText };
+        const oneSided = (lText === null) !== (rText === null);
+        return { key, l, r, lText, rText, oneSided, differs: !oneSided && lText !== rText };
       })
       // Array.prototype.sort는 안정적이다 (ES2019). 키 순서가 유지된다.
-      .sort((x, y) => Number(y.differs) - Number(x.differs))
+      .sort((x, y) => rank(x) - rank(y))
   );
 }

@@ -48,9 +48,11 @@ describe('한쪽에만 있는 항목', () => {
     expect(keys(rows).sort()).toEqual(['only_left', 'only_right']);
   });
 
-  it('★ 없는 것과 있는 것은 다름이다', () => {
+  it('★ 없는 것과 있는 것은 「다름」이 아니라 「비교 불가」다 (이슈 #81)', () => {
+    // 다르다는 근거가 없다. 한쪽을 모를 뿐이다 — 측정값 절도 이때 비교하지 않는다
     const [row] = alignSpecs([spec('x', 1)], [], text);
-    expect(row?.differs).toBe(true);
+    expect(row?.differs).toBe(false);
+    expect(row?.oneSided).toBe(true);
     expect(row?.lText).toBe('1');
     // `null`이다. 빈 문자열이면 화면이 "값이 비어 있다"로 읽는다.
     expect(row?.rText).toBeNull();
@@ -67,5 +69,17 @@ describe('글자로 비교한다', () => {
     // 120과 "120"은 단위를 붙인 뒤 같은 글자가 된다.
     const rows = alignSpecs([spec('tdp', 120)], [spec('tdp', '120')], text);
     expect(rows[0]?.differs).toBe(false);
+  });
+});
+
+describe('순서 — 다름 → 비교 불가 → 같음 (이슈 #81)', () => {
+  it('★ 모르는 것을 차이 사이에 섞지 않는다', () => {
+    const rows = alignSpecs(
+      [spec('a', 1), spec('b', 1), spec('c', 1)],
+      [spec('b', 2), spec('c', 1)],
+      text,
+    );
+    expect(keys(rows)).toEqual(['b', 'a', 'c']);
+    expect(rows.map((r) => [r.differs, r.oneSided])).toEqual([[true, false], [false, true], [false, false]]);
   });
 });
