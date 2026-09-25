@@ -78,7 +78,13 @@ export interface BuildVerdict {
   readonly results: readonly RuleResult[];
   readonly counts: {
     readonly pass: number;
+    /** 등급을 가리지 않은 `fail` 수 */
     readonly fail: number;
+    /**
+     * `fail` 중 **정보** 등급의 수 (이슈 #83). 「문제」가 아니다 — 규칙 12의 「Flashback으로
+     * CPU 없이 올릴 수 있다」가 그렇다. 화면은 `fail - info`를 문제로 센다.
+     */
+    readonly info: number;
     readonly unknown: number;
   };
 }
@@ -147,13 +153,16 @@ export function inconsistent(
 export function summarize(results: readonly RuleResult[]): BuildVerdict {
   let p = 0;
   let f = 0;
+  let i = 0;
   let u = 0;
   for (const r of results) {
     if (r.verdict === 'pass') p += 1;
-    else if (r.verdict === 'fail') f += 1;
-    else u += 1;
+    else if (r.verdict === 'fail') {
+      f += 1;
+      if (r.severity === 'info') i += 1;
+    } else u += 1;
   }
-  return { results, counts: { pass: p, fail: f, unknown: u } };
+  return { results, counts: { pass: p, fail: f, info: i, unknown: u } };
 }
 
 /** 값이 판정에 쓸 수 있는 상태인가. `null`·`undefined`·빈 배열·빈 문자열은 결측이다. */
