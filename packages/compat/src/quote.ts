@@ -144,10 +144,73 @@ export interface QuoteOptions {
   readonly mergeShort?: boolean;
 }
 
+/**
+ * 견적서가 줄여 쓰는 영문 제조사 (이슈 #85). 「WD BLUE SN580」의 `WD`가 `blue`에 붙어
+ * `wdblue`가 되는데, 카탈로그는 대개 `Western Digital Blue`다. 둘 다 받는다.
+ */
+const EN_ABBR: Readonly<Record<string, string>> = { wd: 'westerndigital' };
+
+/**
+ * 용량 `12GB` → `12g` (이슈 #85). 카탈로그가 `12G`와 `12GB`를 섞어 쓴다 —
+ * `MSI GeForce RTX 4070 SUPER 12G VENTUS 2X OC`. `12g`는 둘 다에 들어 있다.
+ */
+function capacityStem(s: string): string {
+  return /^\d+gb$/.test(s) ? s.slice(0, -1) : s;
+}
+
+/**
+ * 부품 이름이 아닌 것을 걷어낸다 (이슈 #85).
+ *
+ * 쇼핑몰 견적서를 복사하면 `분류 ⇥ 상품명 ⇥ 수량 ⇥ 가격`이 탭으로 붙어 온다. 수량 `1`이
+ * 짧은 조각으로 앞 낱말에 붙어 `AK400` → `ak4001`이 되고, 가격 `489,000`이 검색어가
+ * 되어 **표 형식 줄의 97.7%가 0건이었다.** 이름만 있는 줄에서는 0%였다.
+ *
+ * - **숫자만 든 탭 칸**은 수량·가격이다 (첫 칸 제외). 부품 이름이 숫자 한 칸으로 떨어져 오지는 않는다
+ * - `1개`·`489,000원`은 칸 구분 없이 붙어 와도 같다
+ * - `M.2`는 버린다. `M`이 앞에 붙어 `990 PRO M.2` → `prom`이 됐다. 규격 표기라 이름을 가리지
+ *   않고, 카탈로그 이름에 없는 것도 있다
+ * - 키트 표기 `16Gx2`·`16GB x 2`를 카탈로그의 `2x16GB`로 맞춘다. 수는 2~8만 — `12GB x 1`은
+ *   키트가 아니다
+ * - 그래픽 메모리 표기 `D6`·`D6X`·`D7`은 버린다. GDDR6X의 줄임인데 `gddr6x`에 `d6x`가 들어 있지
+ *   않다(`dr6x`). 칩이 정하는 값이라 이름을 가리지도 않는다. 보드의 `D4`·`D5`는 두다 —
+ *   `B760M PG Lightning/D4`처럼 이름의 일부다
+ */
+function stripNonName(rest: string): { text: string; dropped: string[] } {
+  const dropped: string[] = [];
+  // **첫 칸은 이름이다** — 「CPU: 12400」의 `12400`은 수량이 아니다
+  const cells = rest.split('\t').filter((cell, i) => {
+    const t = cell.trim();
+    if (i > 0 && t !== '' && /^₩?\s*[\d,.]+\s*(?:원|개|ea|pcs)?$/i.test(t)) {
+      dropped.push(t);
+      return false;
+    }
+    return true;
+  });
+  const text = cells
+    .join(' ')
+    .replace(/(^|\s)([\d,]+\s*(?:개|원))(?=\s|$)/g, (_m, pre: string, hit: string) => {
+      dropped.push(hit);
+      return pre;
+    })
+    .replace(/\bM\.2\b/gi, (hit) => {
+      dropped.push(hit);
+      return ' ';
+    })
+    .replace(/\bD(?:6X?|7)\b/gi, (hit) => {
+      dropped.push(hit);
+      return ' ';
+    })
+    .replace(/\b(\d+)\s*G(?:B)?\s*[x×*]\s*([2-8])\b/gi, '$2x$1GB');
+  return { text, dropped };
+}
+
 export function readQuoteLine(line: string, opts: QuoteOptions = {}): QuoteLine {
-  const { label, rest } = splitLabel(line);
+  const labeled = splitLabel(line);
+  const { label } = labeled;
+  const stripped = stripNonName(labeled.rest);
+  const rest = stripped.text;
   const terms: Term[] = [];
-  const ignored: string[] = [];
+  const ignored: string[] = [...stripped.dropped];
 
   /**
    * 바로 앞 덩어리가 조각이 됐는가.
@@ -206,8 +269,9 @@ export function readQuoteLine(line: string, opts: QuoteOptions = {}): QuoteLine 
     if (s.length > SHORT) {
       // 들고 있던 짧은 조각이 있으면 **앞에** 붙인다. 원문 순서 그대로다.
       const merged = pending !== null ? pending + s : s;
+      const abbr = pending !== null ? EN_ABBR[pending] : undefined;
       pending = null;
-      terms.push({ raw: chunk, any: [merged] });
+      terms.push({ raw: chunk, any: [merged, ...(abbr ? [abbr + s] : [])] });
       joinable = true;
       continue;
     }
@@ -228,6 +292,12 @@ export function readQuoteLine(line: string, opts: QuoteOptions = {}): QuoteLine 
   }
   // 줄 끝에 남은 것은 붙일 데가 없다.
   dropPending();
+  // 용량은 **붙이기를 마친 뒤에** 줄인다. 먼저 줄이면 `16GB OC`가 `16goc`가 된다
+  // (원래는 `16gboc`, 카탈로그에 그대로 있다)
+  for (let i = 0; i < terms.length; i++) {
+    const t = terms[i]!;
+    if (t.any.length === 1) terms[i] = { raw: t.raw, any: [capacityStem(t.any[0]!)] };
+  }
 
   /**
    * 부품 줄로 볼 것인가.
