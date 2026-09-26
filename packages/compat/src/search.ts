@@ -123,7 +123,7 @@ export const KO_ALIASES: readonly KoAlias[] = [
   { ko: ['조스보', '존스보'], en: 'jonsbo' },
   { ko: ['아틱'], en: 'arctic' },
   { ko: ['실버스톤'], en: 'silverstone' },
-  { ko: ['삼성'], en: 'samsung' },
+  { ko: ['삼성', '삼성전자'], en: 'samsung' },
   { ko: ['하이닉스'], en: 'hynix' },
   { ko: ['마이크론'], en: 'micron' },
   { ko: ['크루셜'], en: 'crucial' },

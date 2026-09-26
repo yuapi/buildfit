@@ -76,8 +76,9 @@ describe('부품 이름이 아닌 말은 버린다', () => {
 
   it('타이핑 중 표기를 받지 않는다 — 견적서는 다 쓴 글이다', () => {
     // 검색창의 앞부분 일치를 그대로 쓰면 「개」가 「갤럭시」로 잡힌다.
-    // 실제로 "수량 1개"가 GALAX 그래픽카드를 불렀다.
-    expect(readQuoteLine('1개').ignored).toEqual(['1', '개']);
+    // 실제로 "수량 1개"가 GALAX 그래픽카드를 불렀다. 지금은 `1개`를 통째로 뺀다 (이슈 #85)
+    expect(readQuoteLine('1개').ignored).toEqual(['1개']);
+    expect(terms('1개')).toEqual([]);
     expect(terms('라이')).toEqual([]);
     expect(terms('라이젠')).toEqual(['ryzen']);
   });
@@ -193,6 +194,60 @@ describe('한글과 영문이 붙어 있으면 거기서 자른다', () => {
   it('라이젠7은 두 덩어리다', () => {
     expect(terms('라이젠7 9800X3D')).toEqual(['ryzen7', '9800x3d']);
     expect(terms('코어 울트라5 245K')).toEqual(['core', 'ultra5', '245k']);
+  });
+});
+
+describe('견적서 표 형식 — 부품 이름이 아닌 칸 (이슈 #85)', () => {
+  // 쇼핑몰 견적서를 복사하면 `분류 ⇥ 상품명 ⇥ 수량 ⇥ 가격`이 탭으로 붙어 온다.
+  // 이 형식에서 줄의 97.7%가 0건이었다 (같은 표본의 이름만 있는 줄은 0%)
+
+  it('★ 수량 칸이 앞 낱말에 붙지 않는다 — `AK400 ⇥ 1`이 `ak4001`이었다', () => {
+    expect(terms('쿨러\tDEEPCOOL AK400\t1')).toEqual(['deepcool', 'ak400']);
+    expect(readQuoteLine('쿨러\tDEEPCOOL AK400\t1').ignored).toContain('1');
+  });
+
+  it('★ 가격 칸을 검색어로 쓰지 않는다', () => {
+    expect(terms('CPU\tAMD 라이젠7 7800X3D\t1\t489,000')).toEqual(['amd', 'ryzen7', '7800x3d']);
+    expect(terms('CPU\tAMD 라이젠7 7800X3D\t1개\t489,000원')).toEqual(['amd', 'ryzen7', '7800x3d']);
+  });
+
+  it('칸 구분 없이 붙어 온 `1개`·`원`도 뺀다', () => {
+    expect(terms('쿨러: DEEPCOOL AK400 1개 32,000원')).toEqual(['deepcool', 'ak400']);
+  });
+
+  it('★ 이름 속 숫자는 그대로다 — 숫자만 든 **칸**만 뺀다', () => {
+    expect(terms('그래픽카드: RTX 4070')).toEqual(['rtx', '4070']);
+  });
+
+  it('★ `M.2`의 `M`이 앞에 붙지 않는다 — `990 PRO M.2`가 `prom`이었다', () => {
+    expect(terms('SSD: 삼성전자 990 PRO M.2 NVMe (1TB)')).toEqual(['samsung', '990', 'pro', 'nvme', '1tb']);
+  });
+
+  it('그래픽 메모리 줄임 `D6X`를 버린다 — `gddr6x`에 `d6x`가 없다', () => {
+    expect(terms('그래픽카드: MSI RTX 4070 SUPER D6X 12GB')).toEqual(['msi', 'rtx', '4070', 'super', '12g']);
+  });
+
+  it('보드 이름의 `D4`는 그대로다 — `B760M PG Lightning/D4`의 일부다', () => {
+    expect(terms('메인보드: ASRock B760M PG Lightning D4')).toContain('lightningd4');
+  });
+
+  it('★ 용량 `12GB`는 `12g`로 — 카탈로그가 `12G`와 `12GB`를 섞어 쓴다', () => {
+    expect(terms('그래픽카드: MSI RTX 4070 SUPER 12GB')).toContain('12g');
+  });
+
+  it('용량을 줄이는 것은 붙이기를 마친 뒤다 — `16GB OC`는 `16gboc`', () => {
+    expect(terms('그래픽카드: RX 7800 XT 16GB OC')).toContain('16gboc');
+  });
+
+  it('키트 표기를 카탈로그 모양으로 — `(16Gx2)` → `2x16gb`', () => {
+    expect(terms('메모리: TeamGroup Vulcan Z 32GB(16Gx2)')).toContain('2x16gb');
+    expect(terms('메모리: TeamGroup Vulcan Z 16GB x 2')).toContain('2x16gb');
+    // 한 개는 키트가 아니다
+    expect(terms('그래픽카드: RTX 4070 12GB x 1')).not.toContain('1x12gb');
+  });
+
+  it('`WD`는 `Western Digital`로도 찾는다', () => {
+    expect(terms('SSD: WD BLUE SN580')).toContain('wdblue|westerndigitalblue');
   });
 });
 

@@ -27,7 +27,26 @@ const PER_CATEGORY = 60;
 /** 이보다 오래된 것은 견적서에 잘 오르지 않는다 */
 const SINCE = 2023;
 
-const CATEGORIES = ['CPU', 'GPU', 'Motherboard', 'RAM', 'PSU', 'PCCase', 'CPUCooler'];
+const CATEGORIES = ['CPU', 'GPU', 'Motherboard', 'RAM', 'PSU', 'PCCase', 'CPUCooler', 'Storage'];
+
+/** 표 형식 견적서의 분류 칸. 이름표 사전(`QUOTE_LABELS`)에 있는 말로만 */
+const TABLE_LABEL: Record<string, string> = {
+  CPU: 'CPU', GPU: '그래픽카드', Motherboard: '메인보드', RAM: '메모리',
+  PSU: '파워', PCCase: '케이스', CPUCooler: '쿨러', Storage: 'SSD',
+};
+
+/**
+ * 견적서 표 한 줄 — `분류 ⇥ 상품명 ⇥ 수량 ⇥ 가격` (이슈 #85).
+ *
+ * 쇼핑몰 견적서를 복사하면 칸이 탭으로 붙어 온다. 수량·가격은 부품 이름이 아닌데,
+ * 수량 `1`이 앞 낱말에 붙어 `AK400` → `ak4001`이 되어 줄이 통째로 0건이었다.
+ * 가격은 지어낸 값이 아니라 **형식만** 흉내 낸 숫자다 — 매칭에 쓰이지 않아야 한다.
+ */
+function tableRow(category: string, line: string, seed: number): string {
+  const price = `${((seed * 37) % 900) + 50},000`;
+  const [qty, won] = [['1', price], ['2', price], ['1개', `${price}원`]][seed % 3]!;
+  return `${TABLE_LABEL[category]}\t${line}\t${qty}\t${won}`;
+}
 
 /** 영문 → 한글. 사전을 뒤집어 쓴다 — **우리가 아는 표기로만** 흐트러뜨린다 */
 const TO_KO = new Map<string, string>();
@@ -77,6 +96,8 @@ interface Knobs {
    * 것을 오답으로 세면, 이 필터가 손해처럼 보인다 — 실제로는 같은 제품이다.
    */
   readonly canonicalOnly: boolean;
+  /** 견적서 표 형식으로 붙인다 (이슈 #85) */
+  readonly table?: boolean;
 }
 
 async function measure(url: string, knobs: Knobs): Promise<Tally> {
@@ -96,7 +117,9 @@ async function measure(url: string, knobs: Knobs): Promise<Tally> {
       let seed = 0;
       for (const row of rows) {
         t.total++;
-        const line = mangle(row.model_name, row.brand, seed++);
+        const mangled = mangle(row.model_name, row.brand, seed);
+        const line = knobs.table ? tableRow(category, mangled, seed) : mangled;
+        seed++;
         const parsed = readQuoteLine(line, { mergeShort });
         if (!parsed.isPart) {
           t.none++;
@@ -111,7 +134,7 @@ async function measure(url: string, knobs: Knobs): Promise<Tally> {
           select id from parts
           where category = ${category}
             and ${knobs.canonicalOnly ? sql`duplicate_of is null` : sql`true`}
-            and ${conds.reduce((a, c) => sql`${a} and ${c}`)}
+            and ${conds.length === 0 ? sql`false` : conds.reduce((a, c) => sql`${a} and ${c}`)}
           limit 40`;
         const want = knobs.canonicalOnly ? row.canon : row.id;
 
@@ -149,6 +172,10 @@ async function main(): Promise<void> {
   report(
     '짧은 조각 붙임 + 중복 제외 (현재 기본값)',
     await measure(url, { mergeShort: true, canonicalOnly: true }),
+  );
+  report(
+    '견적서 표 형식 — 분류·수량·가격 칸 (이슈 #85)',
+    await measure(url, { mergeShort: true, canonicalOnly: true, table: true }),
   );
 }
 
