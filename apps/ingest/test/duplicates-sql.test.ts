@@ -318,3 +318,69 @@ describeIfDb('중복 레코드 묶기 (이슈 #11)', () => {
     expect(build.ram.map((r) => r.id)).toEqual([A]);
   });
 });
+
+/**
+ * 스토리지는 용량까지 본다 (이슈 #87). `Rocket Q NVMe SSD`는 500GB·1TB·4TB가 한 이름이라
+ * 둘이 목록에서 사라지고, 맞는 용량에 「검증 중」이 붙었다.
+ */
+describeIfDb('중복 묶기 — 스토리지 용량 (이슈 #87)', () => {
+  let scratch: Scratch;
+  let db: ReturnType<typeof createDb>['db'];
+  let close: () => Promise<void>;
+  const id = (n: number) => `e0000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+
+  beforeAll(async () => {
+    scratch = await createScratchDb();
+    const made = createDb(scratch.url, { max: 2 });
+    db = made.db;
+    close = () => made.client.end();
+
+    await db.execute(sql`
+      insert into parts (id, slug, category, brand, model_name, release_year, opendb_id) values
+        (${id(1)}, 'rq-500', 'Storage', 'Sabrent', 'Rocket Q NVMe SSD', 2021, 'a1'),
+        (${id(2)}, 'rq-1tb', 'Storage', 'Sabrent', 'Rocket Q NVMe SSD', 2021, 'a2'),
+        (${id(3)}, 'rq-1tb-dup', 'Storage', 'Sabrent', 'Rocket Q NVMe SSD', 2021, 'a3'),
+        (${id(4)}, 'ram-1', 'RAM', 'Corsair', 'Vengeance 32GB', 2023, 'b1'),
+        (${id(5)}, 'ram-2', 'RAM', 'Corsair', 'Vengeance 32GB', 2023, 'b2')
+    `);
+    await db.execute(sql`
+      insert into part_specs (part_id, key, value) values
+        (${id(1)}, 'capacity_gb', '500'::jsonb),
+        (${id(2)}, 'capacity_gb', '1024'::jsonb),
+        (${id(3)}, 'capacity_gb', '1024'::jsonb),
+        (${id(4)}, 'capacity_gb', '32'::jsonb),
+        (${id(5)}, 'capacity_gb', '16'::jsonb)
+    `);
+    await markDuplicates(db);
+    await flagConflictingSpecs(db);
+  }, 60_000);
+
+  afterAll(async () => {
+    await close();
+    await scratch.drop();
+  });
+
+  const dupOf = async (n: number) =>
+    (await db.execute<{ d: string | null }>(sql`select duplicate_of::text as d from parts where id = ${id(n)}`))[0]?.d;
+  const disputed = async (n: number) =>
+    (await db.execute<{ d: boolean }>(sql`select disputed as d from part_specs where part_id = ${id(n)} and key = 'capacity_gb'`))[0]?.d;
+
+  it('★ 용량이 다른 스토리지는 다른 제품이다 — 숨기지 않는다', async () => {
+    expect(await dupOf(1)).toBeNull();
+    expect(await dupOf(2)).toBeNull();
+  });
+
+  it('★ 맞는 용량에 「검증 중」을 붙이지 않는다', async () => {
+    expect(await disputed(1)).toBe(false);
+    expect(await disputed(2)).toBe(false);
+  });
+
+  it('용량까지 같으면 그대로 중복이다', async () => {
+    expect(await dupOf(3)).toBe(id(2));
+  });
+
+  it('스토리지가 아니면 전과 같다 — 메모리 용량 어긋남은 틀린 값의 신호다', async () => {
+    expect(await dupOf(5)).toBe(id(4));
+    expect(await disputed(5)).toBe(true);
+  });
+});
