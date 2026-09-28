@@ -30,12 +30,22 @@ export interface DuplicateResult {
  * 이름(공백 접기·소문자) + 제조사 + 출시연도. 셋이 다 같으면 화면에서 구별할
  * 방법이 없으므로 같은 제품으로 본다. 브랜드·연도를 빼도 그룹 수가 516 → 499로
  * 거의 같지만, **다른 제품을 묶는 쪽이 더 나쁘므로** 좁게 잡는다.
+ *
+ * **스토리지는 용량까지 본다** (이슈 #87). 이 키는 이름이 SKU를 가리킨다고 가정하는데,
+ * `Rocket Q NVMe SSD`는 500GB·1TB·4TB가 한 이름이라 둘이 목록에서 사라지고 맞는 용량에
+ * 「검증 중」이 붙었다. 스토리지 이름에는 대개 용량이 있어 바뀌는 그룹은 그 하나다.
+ *
+ * 연도 결측을 아무 연도와 같다고 보지는 않는다 — 키가 넓어진다. 같은 이름에 연도만
+ * 다른 그룹이 있다(6개).
  */
 const GROUP_KEY = sql`(
   p.category,
   lower(btrim(regexp_replace(p.model_name, '\\s+', ' ', 'g'))),
   coalesce(p.brand, ''),
-  coalesce(p.release_year, -1)
+  coalesce(p.release_year, -1),
+  case when p.category = 'Storage' then (
+    select s.value::text from part_specs s where s.part_id = p.id and s.key = 'capacity_gb'
+  ) end
 )`;
 
 /**
