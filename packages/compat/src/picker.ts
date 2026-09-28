@@ -128,6 +128,39 @@ export function pickerConstraints(build: Build, slot: PartSlot): Constraint[] {
     });
   }
 
+  // --- 규칙 3: 메모리 모듈 수 ≤ 슬롯 수 (이슈 #89) ---
+  // 메모리 칸은 키트를 **더하는** 칸이다. 남은 슬롯 = 보드 슬롯 − 이미 고른 모듈 합.
+  // 고른 키트 중 하나라도 모듈 수를 모르거나 검증 중이면 합을 셀 수 없다 — 좁히지 않는다.
+  const pickedModules = build.ram.every((k) => known(k, 'module_count', k.moduleCount))
+    ? build.ram.reduce((n, k) => n + (k.moduleCount ?? 0), 0)
+    : null;
+  if (slot === 'ram' && motherboard && pickedModules !== null && known(motherboard, 'memory_slots', motherboard.memorySlots)) {
+    const left = motherboard.memorySlots - pickedModules;
+    // 남은 자리가 없으면 좁히지 않는다. 목록이 통째로 비면 거르기가 아니라 막기다 —
+    // 더 담으면 규칙 3이 오류로 말한다.
+    if (left > 0) {
+      out.push({
+        kind: 'atMost',
+        key: 'module_count',
+        value: left,
+        ruleId: 3,
+        because:
+          pickedModules > 0
+            ? `${motherboard.name}의 남은 메모리 슬롯 ${left}개`
+            : `${motherboard.name}의 메모리 슬롯 ${left}개`,
+      });
+    }
+  }
+  if (slot === 'motherboard' && pickedModules !== null && pickedModules > 0) {
+    out.push({
+      kind: 'atLeast',
+      key: 'memory_slots',
+      value: pickedModules,
+      ruleId: 3,
+      because: `고른 메모리 모듈 ${pickedModules}개`,
+    });
+  }
+
   // --- 규칙 4: GPU 길이 ---
   if (slot === 'gpu' && pcCase && known(pcCase, 'max_gpu_length_mm', pcCase.maxGpuLengthMm)) {
     out.push({

@@ -213,12 +213,15 @@ describe('스토리지 좁히기 (규칙 17·19)', () => {
 
 describe('★ 고른 부품의 「검증 중」 값으로는 좁히지 않는다 (이슈 #22)', () => {
   // [고르는 칸, 제약 키, 값이 검증 중인 부품 칸, 그 부품의 스펙 키, 견적 패치]
-  type Row = readonly [PartSlot, string, 'cpu' | 'motherboard' | 'gpu' | 'pcCase' | 'psu' | 'storage', string, Partial<Build>];
+  type Row = readonly [PartSlot, string, 'cpu' | 'motherboard' | 'gpu' | 'pcCase' | 'psu' | 'storage' | 'ram', string, Partial<Build>];
   const m2less = { motherboard: { ...f.motherboard, m2Slots: 0, memoryType: 'DDR4' }, storage: [] };
   const ROWS: readonly Row[] = [
     ['cpu', 'socket', 'motherboard', 'socket', { cpu: null }],
     ['motherboard', 'socket', 'cpu', 'socket', { motherboard: null }],
     ['ram', 'ram_type', 'motherboard', 'memory_type', { ram: [] }],
+    ['ram', 'module_count', 'motherboard', 'memory_slots', { ram: [] }],
+    ['ram', 'module_count', 'ram', 'module_count', {}],
+    ['motherboard', 'memory_slots', 'ram', 'module_count', { motherboard: null }],
     ['gpu', 'length_mm', 'pcCase', 'max_gpu_length_mm', { gpu: null }],
     ['pcCase', 'max_gpu_length_mm', 'gpu', 'length_mm', { pcCase: null }],
     ['gpu', 'total_slot_width', 'pcCase', 'expansion_slots', { gpu: null }],
@@ -233,6 +236,7 @@ describe('★ 고른 부품의 「검증 중」 값으로는 좁히지 않는다
 
   function contest(b: Build, part: Row[2], key: string): Build {
     if (part === 'storage') return { ...b, storage: b.storage.map((d) => ({ ...d, contestedSpecs: [key] })) };
+    if (part === 'ram') return { ...b, ram: b.ram.map((k) => ({ ...k, contestedSpecs: [key] })) };
     const p = b[part];
     return p ? { ...b, [part]: { ...p, contestedSpecs: [key] } } : b;
   }
@@ -260,3 +264,39 @@ describe('★ 고른 부품의 「검증 중」 값으로는 좁히지 않는다
     }
   });
 });
+
+describe('메모리 모듈 수 ≤ 슬롯 수 (규칙 3, 이슈 #89)', () => {
+  const two = { ...f.motherboard, memorySlots: 2 };
+  const modules = (b: Build, slot: PartSlot) =>
+    pickerConstraints(b, slot).find((c) => c.ruleId === 3);
+
+  it('★ 2슬롯 보드면 메모리는 2장 이하만', () => {
+    expect(modules(f.withBuild({ motherboard: two, ram: [] }), 'ram')).toMatchObject({ kind: 'atMost', key: 'module_count', value: 2 });
+  });
+
+  it('★ 이미 고른 키트만큼 남은 슬롯이 준다 — 메모리 칸은 더하는 칸이다', () => {
+    // 4슬롯에 2장 키트가 있다 → 남은 2
+    expect(modules(f.goodBuild, 'ram')).toMatchObject({ value: 2 });
+    expect(modules(f.goodBuild, 'ram')?.because).toContain('남은');
+  });
+
+  it('남은 슬롯이 없으면 좁히지 않는다 — 목록을 통째로 비우지 않는다', () => {
+    expect(modules(f.withBuild({ motherboard: two }), 'ram')).toBeUndefined();
+  });
+
+  it('고른 키트의 모듈 수를 모르면 남은 수를 셀 수 없다 — 좁히지 않는다', () => {
+    const b = f.withBuild({ ram: [{ ...f.ramKit, moduleCount: null }] });
+    expect(modules(b, 'ram')).toBeUndefined();
+    expect(modules({ ...b, motherboard: null }, 'motherboard')).toBeUndefined();
+  });
+
+  it('★ 고른 메모리가 보드 후보를 좁힌다 — 방향이 뒤집힌다', () => {
+    const b = f.withBuild({ motherboard: null, ram: [f.ramKit, f.ramKit] });
+    expect(modules(b, 'motherboard')).toMatchObject({ kind: 'atLeast', key: 'memory_slots', value: 4 });
+  });
+
+  it('메모리를 안 골랐으면 보드를 좁히지 않는다', () => {
+    expect(modules(f.withBuild({ motherboard: null, ram: [] }), 'motherboard')).toBeUndefined();
+  });
+});
+
