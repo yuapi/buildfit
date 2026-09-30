@@ -23,6 +23,7 @@
 
 import type { PartSlot } from './applicability';
 import type { Build } from './parts';
+import { estimatePower } from './power';
 import { bayKind, usesM2Slot } from './storage';
 import { socketAliases } from './sockets';
 
@@ -159,6 +160,46 @@ export function pickerConstraints(build: Build, slot: PartSlot): Constraint[] {
       ruleId: 3,
       because: `고른 메모리 모듈 ${pickedModules}개`,
     });
+  }
+
+  // --- 규칙 7: 파워 정격 < 최소 추정 전력이면 오류 (이슈 #93) ---
+  // 규칙 7과 **같은 함수**(`estimatePower`)로 경계를 잡는다. 두 벌이 되면 거르기와 판정이 어긋난다.
+  // 오류 경계(`minW`)만 쓴다 — 권장 정격 미만은 경고라 빼지 않는다.
+  // CPU를 안 골랐으면 규칙 7이 돌지 않는다. CPU 전력은 규칙처럼 PPT가 있으면 PPT다.
+  const cpuKey = cpu && cpu.ppt !== null && cpu.ppt !== undefined ? 'ppt_w' : 'tdp_w';
+  const cpuW = cpu ? (cpuKey === 'ppt_w' ? cpu.ppt : cpu.tdp) : null;
+  if (cpu && known(cpu, cpuKey, cpuW)) {
+    const minW = (gpuW: number | null) =>
+      estimatePower({
+        cpuW,
+        gpuW,
+        ramModules: build.ram.reduce((n, k) => n + (k.moduleCount ?? 0), 0),
+        storageCount: storage.length,
+        cooler: build.cooler,
+      }).minW;
+    if (slot === 'psu' && (!gpu || known(gpu, 'tdp_w', gpu.tdp))) {
+      const need = minW(gpu?.tdp ?? null);
+      out.push({
+        kind: 'atLeast',
+        key: 'wattage_w',
+        value: need,
+        ruleId: 7,
+        because: `가정을 가장 낮게 잡은 소비전력 ${need}W`,
+      });
+    }
+    if (slot === 'gpu' && psu && known(psu, 'wattage_w', psu.wattage)) {
+      // 공식이 선형이고 가정이 전부 정수라 「정격 − GPU 없는 최소 전력」이 규칙 7의 경계와 같다
+      const room = psu.wattage - minW(null);
+      if (room > 0) {
+        out.push({
+          kind: 'atMost',
+          key: 'tdp_w',
+          value: room,
+          ruleId: 7,
+          because: `${psu.name}의 정격 ${psu.wattage}W에서 나머지 부품 최소 전력을 뺀 ${room}W`,
+        });
+      }
+    }
   }
 
   // --- 규칙 4: GPU 길이 ---

@@ -6,6 +6,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { evaluate } from '../src/engine';
 import { pickerConstraints } from '../src/picker';
 import { emptyBuild, type Build } from '../src/parts';
 import type { PartSlot } from '../src/applicability';
@@ -68,7 +69,8 @@ describe('★ 값이 없으면 좁히지 않는다', () => {
 
   it('빈 배열도 근거로 쓰지 않는다', () => {
     const noFf = f.withBuild({ pcCase: { ...f.pcCase, supportedPsuFormFactors: [] } });
-    expect(pickerConstraints(noFf, 'psu')).toEqual([]);
+    // 규칙 7(전력)의 제약은 따로 선다 — 여기서 보는 것은 규칙 6이다
+    expect(pickerConstraints(noFf, 'psu').filter((c) => c.ruleId === 6)).toEqual([]);
   });
 
   it('칩만 고른 GPU는 케이스를 좁히지 않는다 — 길이를 단정할 수 없다', () => {
@@ -222,6 +224,10 @@ describe('★ 고른 부품의 「검증 중」 값으로는 좁히지 않는다
     ['ram', 'module_count', 'motherboard', 'memory_slots', { ram: [] }],
     ['ram', 'module_count', 'ram', 'module_count', {}],
     ['motherboard', 'memory_slots', 'ram', 'module_count', { motherboard: null }],
+    ['psu', 'wattage_w', 'cpu', 'ppt_w', { psu: null }],
+    ['psu', 'wattage_w', 'gpu', 'tdp_w', { psu: null }],
+    ['gpu', 'tdp_w', 'psu', 'wattage_w', { gpu: null }],
+    ['gpu', 'tdp_w', 'cpu', 'ppt_w', { gpu: null }],
     ['gpu', 'length_mm', 'pcCase', 'max_gpu_length_mm', { gpu: null }],
     ['pcCase', 'max_gpu_length_mm', 'gpu', 'length_mm', { pcCase: null }],
     ['gpu', 'total_slot_width', 'pcCase', 'expansion_slots', { gpu: null }],
@@ -297,6 +303,54 @@ describe('메모리 모듈 수 ≤ 슬롯 수 (규칙 3, 이슈 #89)', () => {
 
   it('메모리를 안 골랐으면 보드를 좁히지 않는다', () => {
     expect(modules(f.withBuild({ motherboard: null, ram: [] }), 'motherboard')).toBeUndefined();
+  });
+});
+
+describe('파워 정격 ≥ 최소 추정 전력 (규칙 7, 이슈 #93)', () => {
+  const power = (b: Build, slot: PartSlot) => pickerConstraints(b, slot).find((c) => c.ruleId === 7);
+  /** 숫자 경계. 규칙 7의 제약은 atLeast·atMost뿐이다 */
+  const bound = (c: ReturnType<typeof power>): number => {
+    if (c?.kind !== 'atLeast' && c?.kind !== 'atMost') throw new Error(`숫자 제약이 아니다: ${JSON.stringify(c)}`);
+    return c.value;
+  };
+  const verdict7 = (b: Build) => evaluate(b).results.find((r) => r.ruleId === 7);
+
+  it('★ 파워 후보의 하한이 규칙 7의 오류 경계와 같다', () => {
+    const c = power(f.withBuild({ psu: null }), 'psu');
+    expect(c).toMatchObject({ kind: 'atLeast', key: 'wattage_w' });
+    const at = f.withBuild({ psu: { ...f.psu, wattage: bound(c) } });
+    const below = f.withBuild({ psu: { ...f.psu, wattage: bound(c) - 1 } });
+    expect(verdict7(at)?.severity === 'error' && verdict7(at)?.verdict === 'fail').toBe(false);
+    expect(verdict7(below)).toMatchObject({ verdict: 'fail', severity: 'error' });
+  });
+
+  it('★ 그래픽카드 후보의 상한도 규칙 7의 오류 경계와 같다 — 방향이 뒤집힌다', () => {
+    const c = power(f.withBuild({ gpu: null }), 'gpu');
+    expect(c).toMatchObject({ kind: 'atMost', key: 'tdp_w' });
+    const at = f.withBuild({ gpu: { ...f.gpu, tdp: bound(c) } });
+    const over = f.withBuild({ gpu: { ...f.gpu, tdp: bound(c) + 1 } });
+    expect(verdict7(at)?.severity === 'error' && verdict7(at)?.verdict === 'fail').toBe(false);
+    expect(verdict7(over)).toMatchObject({ verdict: 'fail', severity: 'error' });
+  });
+
+  it('CPU를 안 골랐으면 좁히지 않는다 — 규칙 7이 돌지 않는다', () => {
+    expect(power(f.withBuild({ cpu: null, psu: null }), 'psu')).toBeUndefined();
+    expect(power(f.withBuild({ cpu: null, gpu: null }), 'gpu')).toBeUndefined();
+  });
+
+  it('CPU 전력을 모르면 좁히지 않는다', () => {
+    const b = f.withBuild({ psu: null, cpu: { ...f.cpu, ppt: null, tdp: null } });
+    expect(power(b, 'psu')).toBeUndefined();
+  });
+
+  it('고른 그래픽카드의 TDP를 모르면 파워를 좁히지 않는다', () => {
+    expect(power(f.withBuild({ psu: null, gpu: { ...f.gpu, tdp: null } }), 'psu')).toBeUndefined();
+  });
+
+  it('그래픽카드를 안 골랐으면 CPU만으로 하한을 잡는다 — 규칙 7도 그렇게 판정한다', () => {
+    const c = power(f.withBuild({ psu: null, gpu: null }), 'psu');
+    const withGpu = power(f.withBuild({ psu: null }), 'psu');
+    expect(bound(c)).toBe(bound(withGpu) - f.gpu.tdp!);
   });
 });
 
