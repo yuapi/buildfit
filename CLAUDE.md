@@ -243,3 +243,21 @@ form_factor로 추론해 통과시키지 않는다 — Mini ITX Tower는 82%가 
 - **규칙 엔진을 Next.js에 의존시키지 않는다.** DB 접근도 프레임워크 API도 쓰지 않는
   순수 함수로 두고, 클라이언트와 서버가 같은 코드를 쓴다. 판정 로직이 두 벌이 되면
   "편집 중엔 통과인데 공유 링크에선 오류"가 난다
+
+## MCP 사용 규칙
+
+레포 루트 `.mcp.json`에 서버 6개가 있다. 설정·검증 기록: `docs/research/mcp-servers.md`.
+**처음 쓰는 세션은 승인이 필요하다** — `claude mcp list`가 「Pending approval」이면 대화형 `claude`에서 승인한다.
+
+| 상황 | 쓰는 서버 | 비고 |
+|---|---|---|
+| 아키텍처·흐름 설명 요청 | (mermaid — **제외됨**) | root로 도는 클라우드 환경에서 렌더링이 안 된다. 대신 문서에 ` ```mermaid ` 코드 블록을 쓴다 (GitHub가 그린다). 로컬(비root)에서는 `claude mcp add --scope local mermaid claude-mermaid`로 붙여 SVG로 저장한다 |
+| 의존성 추가·변경 | `security-audit` | **바뀐 `package.json`의 dependencies·devDependencies 전부를 넘긴다.** 선언된 버전 범위를 보고 락파일은 보지 않는다 |
+| SQL 작성·수정 (마이그레이션 포함) | `sql-analyzer` | `lint_sql`에 `dialect: "postgres"`로 검증한 뒤 반영한다. `transpile_sql`은 서버 버그로 실패한다 — 쓰지 않는다 |
+| 암호·TLS·인증서 관련 코드나 설정 변경 | `quantakrypto` | `scan_path`로 레포를 훑는다. **`probe_endpoint`는 쓰지 않는다** — 외부 호스트에 접속한다 |
+| 보고서·표 산출물 요청 | `excel` 우선 | **`excel`은 수식을 계산하지 않는다** (값이 `null`로 남는다). 수식 결과가 중요하면 `logisheets`로 열어 계산·확인한다 |
+| 인코딩 문제가 있는 파일 편집 (BOM·비UTF-8) | `text-refactor` | 레포 루트 아래만 연다 |
+
+- **기본 파일 편집은 내장 도구(Read·Edit·Write)로 한다.** `text-refactor`는 위의 예외 상황에만 쓴다
+- 산출물(xlsx·svg)은 임시 파일이면 scratchpad에 두고, 레포에 넣을 때만 레포 경로에 쓴다
+- 서버 설정에 절대 경로·API 키·토큰을 넣지 않는다. PATH의 명령어만 쓴다
