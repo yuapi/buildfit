@@ -247,7 +247,11 @@ form_factor로 추론해 통과시키지 않는다 — Mini ITX Tower는 82%가 
 ## MCP 사용 규칙
 
 레포 루트 `.mcp.json`에 서버 6개가 있다. 설정·검증 기록: `docs/research/mcp-servers.md`.
-**처음 쓰는 세션은 승인이 필요하다** — `claude mcp list`가 「Pending approval」이면 대화형 `claude`에서 승인한다.
+- **버전을 고정했다** — npm은 `패키지@버전`, uvx는 `패키지@버전`·`==`, git은 커밋 해시. 올릴 때는 새 버전으로
+  서버를 띄워 도구를 한 번씩 불러 본 뒤 조사 문서의 표와 함께 바꾼다
+- **자동 승인을 켰다** — `.claude/settings.json`의 `enableAllProjectMcpServers: true`. 도구 목록에
+  `mcp__<서버>__…`가 없으면 그 세션은 서버를 못 붙인 것이다. `claude mcp list`의 「Pending approval」 표시는
+  이 설정과 상관없이 나온다 — 판단 근거로 쓰지 않는다
 
 | 상황 | 쓰는 서버 | 비고 |
 |---|---|---|
