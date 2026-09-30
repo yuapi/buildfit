@@ -2,48 +2,31 @@
   "mcpServers": {
     "security-audit": {
       "command": "npx",
-      "args": [
-        "-y",
-        "mcp-security-audit"
-      ]
+      "args": ["-y", "mcp-security-audit@1.0.4"]
     },
     "excel": {
       "command": "uvx",
-      "args": [
-        "excel-mcp-server",
-        "stdio"
-      ]
+      "args": ["excel-mcp-server@1.1.1", "stdio"]
     },
     "logisheets": {
       "command": "npx",
-      "args": [
-        "logisheets-mcp"
-      ]
+      "args": ["-y", "logisheets-mcp@0.6.0"]
     },
     "sql-analyzer": {
       "command": "uvx",
       "args": [
-        "--with",
-        "mcp<2",
-        "--from",
-        "git+https://github.com/j4c0bs/mcp-server-sql-analyzer.git",
+        "--with", "mcp==1.30.0",
+        "--from", "git+https://github.com/j4c0bs/mcp-server-sql-analyzer.git@d6d69c0c55826d6baa5033820078d1c72453ee33",
         "mcp-server-sql-analyzer"
       ]
     },
     "quantakrypto": {
       "command": "npx",
-      "args": [
-        "@quantakrypto/mcp"
-      ]
+      "args": ["-y", "@quantakrypto/mcp@0.12.0"]
     },
     "text-refactor": {
       "command": "uvx",
-      "args": [
-        "--with",
-        "py-cpuinfo",
-        "text-file-read-and-refactor-mcp",
-        "."
-      ]
+      "args": ["--with", "py-cpuinfo==9.0.0", "text-file-read-and-refactor-mcp@1.16.0", "."]
     }
   }
 }
