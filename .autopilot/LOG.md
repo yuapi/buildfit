@@ -12,3 +12,8 @@
 - 검증: typecheck 0 · lint 0 · test 274/439/536 (변화 없음) · build 성공(Next.js 16.3.6) · security-audit 0건
 - 비고: 레포는 `next/og`를 쓰지 않아 취약 경로는 없었다. 취약 범위의 버전이 설치돼 있던 것을 치운다
 - 후속: 없음 (T-2는 발굴 때 이미 있음)
+
+## 2026-10-01T10:55 | T-2 | done
+- 변경: apps/web/test/proxy.test.ts (새 테스트 5), apps/web/vitest.config.ts (`@/*` 별칭 — tsconfig와 같은 매핑, 새 의존성 없음)
+- 검증: typecheck 0 · lint 0 · test 274/439→444/536 · build 성공. 변이 확인 — `cache-control`과 꺼짐 rewrite를 빼면 2건 실패
+- 후속: 없음
