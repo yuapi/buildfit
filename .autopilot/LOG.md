@@ -47,3 +47,9 @@
 - 변이 확인: `summarize`의 `info` 증가를 지우면 새 테스트 2개만 실패, 기존 537개는 전부 통과 — 공백이 실재했다
 - 검증: typecheck 0 · lint 0 · test 275/444/545
 - 후속: 없음 (T-8·T-9는 발굴 때 넣음)
+
+## 2026-10-01T12:40 | T-8 | done | skill 1.3.0
+- 변경: apps/web/test/admin-auth.test.ts (새 파일, 5개) — `server-only`·`next/headers`·`next/navigation`을 mock해 ok·open은 통과, unauthorized(틀린 비밀·비밀 없음)·disabled는 `notFound()`
+- 변이 확인: `disabled`를 통과로 바꾸면 1개, `notFound()`를 지우면 3개 실패 — 기존 444개는 둘 다 전부 통과했다
+- 검증: typecheck 0 · lint 0 · test 275/449/545 · build 성공
+- 후속: 없음
