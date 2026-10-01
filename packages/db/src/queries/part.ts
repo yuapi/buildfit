@@ -4,6 +4,7 @@
 
 import { and, eq, ne, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
+import { socketAliases } from '@buildfit/compat';
 import type { Database } from '../client';
 import { partBenchmarks, partSpecs, parts, specReports } from '../schema';
 import { canonicalOnly, nameWhere, searchTerms } from './search';
@@ -110,6 +111,50 @@ export async function partsMatchingSpec(
     excludePartId: input.excludePartId,
     limit: input.limit,
   });
+}
+
+/**
+ * 소켓이 같은 부품 — 부품 페이지의 호환 목록 (§8).
+ *
+ * **같은 소켓의 다른 표기를 함께 본다** (`TR4`/`sTR4`, 이슈 #16). 문자열로 대조하면
+ * X399 보드 23개와 Threadripper 10개가 서로를 못 찾아 목록이 통째로 사라졌다 —
+ * 규칙 1과 고르기는 같은 소켓으로 보는 조합이다. 표는 `sockets.ts` 하나를 쓴다.
+ */
+export async function partsOnSameSocket(
+  db: Database,
+  input: {
+    category: string;
+    socket: string;
+    excludePartId?: string | undefined;
+    limit?: number | undefined;
+  },
+): Promise<RelatedPart[]> {
+  const names = sql.join(
+    socketAliases(input.socket).map((n) => sql`${n}`),
+    sql`, `,
+  );
+  return db
+    .select({
+      slug: parts.slug,
+      category: parts.category,
+      modelName: parts.modelName,
+      brand: parts.brand,
+    })
+    .from(parts)
+    .where(
+      and(
+        eq(parts.category, input.category),
+        canonicalOnly(),
+        sql`exists (
+          select 1 from ${partSpecs}
+          where ${partSpecs.partId} = ${parts.id}
+            and ${partSpecs.key} = 'socket'
+            and ${partSpecs.value} #>> '{}' in (${names}))`,
+        input.excludePartId ? ne(parts.id, input.excludePartId) : undefined,
+      ),
+    )
+    .orderBy(sql`${parts.releaseYear} desc nulls last`, parts.modelName)
+    .limit(input.limit ?? 12);
 }
 
 /** 스펙 여러 개가 **모두** 같은 부품. 비교 후보가 쓴다 (이슈 #54) */
