@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { missingRequiredFor } from '@buildfit/compat';
-import { benchmarksForPart, comparableParts, partBySlug, partsMatchingSpec, type RelatedPart } from '@buildfit/db/part';
+import { benchmarksForPart, comparableParts, partBySlug, partsOnSameSocket, type RelatedPart } from '@buildfit/db/part';
 import { filledPartColumnKeys } from '@buildfit/db/queries';
 import { BenchmarkBlock } from '@/components/BenchmarkBlock';
 import { Container } from '@/components/SiteShell';
@@ -27,29 +27,21 @@ async function relatedParts(
   specs: readonly { key: string; value: unknown }[],
 ): Promise<{ label: string; note: string; items: RelatedPart[] } | null> {
   const socket = specs.find((s) => s.key === 'socket')?.value;
-  if (!socket) return null;
+  // 같은 소켓의 다른 표기(TR4/sTR4)까지 본다 — 규칙 1과 같은 표 (이슈 #16)
+  if (typeof socket !== 'string' || socket === '') return null;
 
   if (category === 'CPU') {
     return {
       label: `소켓이 같은 메인보드`,
       note: '소켓만 대조한 목록입니다. 메모리 규격 등 나머지는 견적 도구에서 판정합니다.',
-      items: await partsMatchingSpec(getDb(), {
-        category: 'Motherboard',
-        specKey: 'socket',
-        value: socket,
-      }),
+      items: await partsOnSameSocket(getDb(), { category: 'Motherboard', socket }),
     };
   }
   if (category === 'Motherboard') {
     return {
       label: `소켓이 같은 CPU`,
       note: '소켓만 대조한 목록입니다. BIOS 버전 등 나머지는 견적 도구에서 판정합니다.',
-      items: await partsMatchingSpec(getDb(), {
-        category: 'CPU',
-        specKey: 'socket',
-        value: socket,
-        excludePartId: id,
-      }),
+      items: await partsOnSameSocket(getDb(), { category: 'CPU', socket, excludePartId: id }),
     };
   }
   return null;

@@ -143,7 +143,7 @@ git branch -d feature/1-opendb-schema-research   # 로컬 사본만
 - 소켓 표기 등가 ✅ (이슈 #16) — `TR4`/`sTR4`가 같은 소켓인데 문자열로 비교해
   Threadripper+X399 230조합이 전부 오류였다. **확실한 것만 묶는다** — `LGA 2011-3
   Narrow`·듀얼 소켓·`LGA 1151v2`는 칩셋·세대가 받는 CPU를 갈라 묶으면 거짓 통과가
-  된다. 표는 `packages/compat/src/sockets.ts` 하나, 규칙 1과 고르기가 같이 쓴다
+  된다. 표는 `packages/compat/src/sockets.ts` 하나, 규칙 1·고르기·부품 페이지 호환 목록이 같이 쓴다
 - 규칙 20 (쿨러가 CPU 소켓을 지원하는가) ✅ (이슈 #17) — 판정 가능 99.9%, 경고 등급.
   AM5 27% · LGA 1700 28% · LGA 1851 33%가 「목록에 없음」이다. **앞 세대로 묶지 않는다** —
   AM4만 적은 쿨러가 AM5에 맞는다고 알려져 있지만 데이터로 증명되지 않는다.

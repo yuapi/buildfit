@@ -58,3 +58,11 @@
 - 변경: apps/web/src/lib/categories.ts — `metaForSlot` 삭제. Phase 0b(4979505)에서 생긴 뒤 참조 0 (레포 전체 grep: 정의 한 줄뿐). 앱 내부 모듈이라 공개 인터페이스가 아니다
 - 검증: typecheck 0 · lint 0 · test 275/449/545 · build 성공 (베이스라인과 같음)
 - 후속: 없음. BACKLOG에 open 0 — 다음 실행은 재발굴(1.4.0의 제품 축 포함)부터
+
+## 2026-10-01T13:30 | 재발굴 + T-10 | done | skill 1.4.0
+- 재발굴: 1.4.0의 제품 축을 처음 돌림 — ROADMAP에 「제품」 절(기능 지도·빠진 것·약한 것). 유지보수 축은 마커 0 · quantakrypto 0 · 열린 이슈 0. security-audit MCP는 이 세션에서 연결 실패(타임아웃) — 같은 날 직전 사이클 0건, 그 뒤 의존성 변경 없음
+- 큐: T-10(fix) · T-11·T-12(feature, `features/build-backup.md` — 명세 §8A.3 Phase 1의 내보내기·가져오기). 쿨러·메모리 등의 호환 목록은 명세에 대조 축이 없어 설계가 먼저라 넣지 않음
+- 변경: packages/db/src/queries/part.ts에 `partsOnSameSocket` 추가(기존 `partsMatchingSpec`은 그대로), 부품 페이지가 그것을 씀, apps/ingest/test/same-socket-sql.test.ts(5개), CLAUDE.md 소켓 표 사용처 한 줄
+- 실측: 호환 목록이 빈 CPU·보드 217 → 184. 늘어난 33개가 정확히 TR4 보드 23 + sTR4 CPU 10. 남은 184는 등가 표가 일부러 묶지 않는 소켓(듀얼·Narrow 등). 빌드한 앱에서 X399 AORUS PRO 페이지에 Threadripper 7종 확인
+- 검증: typecheck 0 · lint 0 · test 280/449/545 · build 성공
+- 후속: 없음
