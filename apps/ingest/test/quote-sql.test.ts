@@ -61,11 +61,18 @@ describeIfDb('견적서 매칭 SQL (ADR-0018)', () => {
 
   it('이름표가 카테고리를 좁힌다', async () => {
     // 이름표가 없으면 GPU 칩 레코드까지 걸린다 — 있으면 그 카테고리만 본다.
-    const [labelled] = await run('그래픽카드: GIGABYTE RTX 4070 Ti SUPER 에어로 OC 16G');
+    const [labelled] = await run('그래픽카드: GIGABYTE RTX 4070 Ti SUPER 이글 OC 16G');
     expect(labelled!.category).toBe('GPU');
     expect(names(labelled!)).toEqual([
       'GIGABYTE GeForce RTX™ 4070 Ti SUPER EAGLE OC 16G',
     ]);
+  });
+
+  it('★ 제품군이 다르면 확정하지 않는다', async () => {
+    // 「에어로」가 사전에 없을 때는 버려져서 EAGLE 하나로 확정됐다 — 다른 제품이다.
+    // 이 표본에는 AERO가 없으니 못 찾는 것이 맞는 답이다
+    const [row] = await run('그래픽카드: GIGABYTE RTX 4070 Ti SUPER 에어로 OC 16G');
+    expect(names(row!)).toEqual([]);
   });
 
   it('★ GPUChip은 견적에 들어갈 수 없으므로 후보가 되지 않는다', async () => {

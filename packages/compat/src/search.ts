@@ -88,6 +88,36 @@ export const KO_ALIASES: readonly KoAlias[] = [
   { ko: ['타이탄'], en: 'titan' },
   { ko: ['슈퍼'], en: 'super' },
 
+  // --- 제품군 ------------------------------------------------------------
+  // 국내 판매명은 제품군을 한글로 적는다 — 「MSI 지포스 RTX 5070 벤투스 2X OC」.
+  // 사전에 없으면 견적서 줄에서 그 말이 버려져 같은 칩의 다른 제품군이 전부 섞인다.
+  // 영문은 부분 일치라 다른 이름 안에도 걸린다 (`trio` ⊂ `Patriot`). 카테고리와
+  // 나머지 조각이 함께 걸러 오답은 없었다 — `docs/research/korean-search-terms.md` §5.3
+  { ko: ['게이밍'], en: 'gaming' },
+  { ko: ['벤투스'], en: 'ventus' },
+  { ko: ['트리오'], en: 'trio' },
+  { ko: ['슈프림'], en: 'suprim' },
+  { ko: ['이글'], en: 'eagle' },
+  { ko: ['윈드포스'], en: 'windforce' },
+  { ko: ['에어로'], en: 'aero' },
+  { ko: ['어로스'], en: 'aorus' },
+  { ko: ['스트릭스'], en: 'strix' },
+  { ko: ['터프'], en: 'tuf' },
+  { ko: ['듀얼'], en: 'dual' },
+  { ko: ['프라임'], en: 'prime' },
+  { ko: ['프로아트'], en: 'proart' },
+  { ko: ['토마호크'], en: 'tomahawk' },
+  { ko: ['박격포'], en: 'mortar' },
+  { ko: ['챌린저'], en: 'challenger' },
+  { ko: ['스틸레전드'], en: 'steellegend' },
+  { ko: ['타이치'], en: 'taichi' },
+  { ko: ['펄스'], en: 'pulse' },
+  { ko: ['니트로'], en: 'nitro' },
+  { ko: ['헬하운드'], en: 'hellhound' },
+  { ko: ['레드데빌'], en: 'reddevil' },
+  { ko: ['팬텀'], en: 'phantom' },
+  { ko: ['트윈엣지'], en: 'twinedge' },
+
   // --- 제조사 ------------------------------------------------------------
   { ko: ['에이수스', '아수스', '아서스'], en: 'asus' },
   { ko: ['기가바이트'], en: 'gigabyte' },

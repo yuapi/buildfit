@@ -93,9 +93,9 @@ describe('짧은 조각은 바로 앞에만 붙인다', () => {
   });
 
   it('★ 사이에 버린 말이 끼면 붙이지 않는다', () => {
-    // 「RTX 5080 게이밍 트리오 OC」에서 OC를 5080에 붙이면 5080oc가 되는데
+    // 「RTX 5080 한정판 OC」에서 OC를 5080에 붙이면 5080oc가 되는데
     // 그런 이름은 없다. 줄 전체가 못 찾음이 된다.
-    expect(terms('MSI 지포스 RTX 5080 게이밍 트리오 OC 16G')).toEqual([
+    expect(terms('MSI 지포스 RTX 5080 한정판 OC 16G')).toEqual([
       'msi',
       'geforce',
       'rtx',
@@ -139,15 +139,30 @@ describe('검토에서 잡힌 것', () => {
 
   it('★ 뒤로 붙이는 것은 줄 맨 앞에서만 한다', () => {
     // 중간에서 하면 사이에 버린 말이 끼어 있는지 알 수 없다.
-    // 「트리오 OC 16G」의 OC를 16G에 붙이면 `oc16g`가 되는데 그런 이름은 없다.
-    expect(terms('MSI 지포스 RTX 5080 게이밍 트리오 OC 16G')).toEqual([
+    // 「한정판 OC 16G」의 OC를 16G에 붙이면 `oc16g`가 되는데 그런 이름은 없다.
+    expect(terms('MSI 지포스 RTX 5080 한정판 OC 16G')).toEqual([
       'msi',
       'geforce',
       'rtx',
       '5080',
       '16g',
     ]);
-    expect(readQuoteLine('MSI 지포스 RTX 5080 게이밍 트리오 OC 16G').ignored).toContain('OC');
+    expect(readQuoteLine('MSI 지포스 RTX 5080 한정판 OC 16G').ignored).toContain('OC');
+  });
+
+  it('제품군의 한글 이름을 읽는다 — 버리면 같은 칩의 다른 제품군이 섞인다', () => {
+    // 사전에 넣기 전에는 「게이밍 트리오」가 버려져 벤투스·슈프림까지 후보였다.
+    // 트리오가 조각이 되니 OC도 그 뒤에 붙는다 — `GAMING TRIO OC`는 실제 이름이다
+    expect(terms('MSI 지포스 RTX 5080 게이밍 트리오 OC 16G')).toEqual([
+      'msi',
+      'geforce',
+      'rtx',
+      '5080',
+      'gaming',
+      'triooc',
+      '16g',
+    ]);
+    expect(terms('B650M 박격포 WIFI')).toEqual(['b650m', 'mortar', 'wifi']);
   });
 
   it('★ 이름표가 부품을 말하면 부품 줄이다', () => {

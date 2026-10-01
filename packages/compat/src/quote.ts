@@ -216,7 +216,7 @@ export function readQuoteLine(line: string, opts: QuoteOptions = {}): QuoteLine 
    * 바로 앞 덩어리가 조각이 됐는가.
    *
    * **바로 앞에만 붙인다.** 사이에 버린 말이 끼어 있으면 붙이지 않는다 —
-   * 「RTX 5080 게이밍 트리오 OC」에서 `OC`를 `5080`에 붙이면 `5080oc`가 되는데
+   * 「RTX 5080 한정판 OC」에서 `OC`를 `5080`에 붙이면 `5080oc`가 되는데
    * 그런 이름은 없다. 두 번 붙이는 것도 막는다 (`라이젠7-5세대` → `ryzen75`).
    */
   let joinable = false;
@@ -232,7 +232,7 @@ export function readQuoteLine(line: string, opts: QuoteOptions = {}): QuoteLine 
    *
    * **줄 맨 앞에서만 한다.** 뒤로 붙이는 것은 앞에 아무것도 없을 때의 유일한
    * 방향이기 때문이다. 중간에서 하면 사이에 버린 말이 끼어 있는지 알 수 없다 —
-   * 「RTX 5080 게이밍 트리오 OC 16G」의 `OC`를 `16G`에 붙이면 `oc16g`가 되는데
+   * 「RTX 5080 한정판 OC 16G」의 `OC`를 `16G`에 붙이면 `oc16g`가 되는데
    * 그런 이름은 없다. (뒤에서 앞으로 붙이는 규칙도 같은 이유로 바로 앞만 본다.)
    */
   let pending: string | null = null;
