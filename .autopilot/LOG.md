@@ -53,3 +53,8 @@
 - 변이 확인: `disabled`를 통과로 바꾸면 1개, `notFound()`를 지우면 3개 실패 — 기존 444개는 둘 다 전부 통과했다
 - 검증: typecheck 0 · lint 0 · test 275/449/545 · build 성공
 - 후속: 없음
+
+## 2026-10-01T13:00 | T-9 | done | skill 1.4.0
+- 변경: apps/web/src/lib/categories.ts — `metaForSlot` 삭제. Phase 0b(4979505)에서 생긴 뒤 참조 0 (레포 전체 grep: 정의 한 줄뿐). 앱 내부 모듈이라 공개 인터페이스가 아니다
+- 검증: typecheck 0 · lint 0 · test 275/449/545 · build 성공 (베이스라인과 같음)
+- 후속: 없음. BACKLOG에 open 0 — 다음 실행은 재발굴(1.4.0의 제품 축 포함)부터

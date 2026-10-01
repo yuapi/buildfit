@@ -19,10 +19,6 @@ export const SLOT_META = [
 export type SlotName = (typeof SLOT_META)[number]['slot'];
 export type CategoryName = (typeof SLOT_META)[number]['category'];
 
-export function metaForSlot(slot: SlotName) {
-  return SLOT_META.find((m) => m.slot === slot)!;
-}
-
 /**
  * 표시용 카테고리 이름. MVP 6종 외에 Phase 1 대상까지 덮는다.
  *
