@@ -40,3 +40,10 @@
 - 실측: 한글 제품군이 든 56줄 — 확정 71.7% → 73.1%, 여럿일 때 평균 후보 3.8 → 2.8, 단일 오답 0. 견적서 SQL 테스트가 「에어로」로 EAGLE을 기대하던 옛 오답을 바로잡음
 - 검증: lint 0 · typecheck · test 275/444/537
 - 후속: 없음
+
+## 2026-10-01T12:20 | 재발굴 + T-7 | done | skill 1.3.0
+- 재발굴: 베이스라인 typecheck 0 · lint 0 · test 275/444/537 · build 성공. 마커 0 · security-audit 0 · quantakrypto 266파일 0. 실질 작업 3개 — T-7·T-8(test), T-9(cleanup)
+- 변경: packages/compat/test/verdict.test.ts (새 파일, 8개) — `summarize`의 info 분리 집계, 빈 결과, 엔진 수준 규칙 12 Flashback → `counts.info` 1, `unknown`의 빈 notes, 사유 종류, `isFilled`
+- 변이 확인: `summarize`의 `info` 증가를 지우면 새 테스트 2개만 실패, 기존 537개는 전부 통과 — 공백이 실재했다
+- 검증: typecheck 0 · lint 0 · test 275/444/545
+- 후속: 없음 (T-8·T-9는 발굴 때 넣음)
