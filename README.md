@@ -51,14 +51,14 @@ buildfit은 **가격 비교 커머스가 아니다.** 다나와·에누리와 �
 
 | | 상태 |
 |---|---|
-| 부품 카탈로그 | 26,485건 / 스펙 229,675건 / 표기 변형 63,602건 |
+| 부품 카탈로그 | 26,504건 / 스펙 239,779건 / 표기 변형 63,691건 (2026-10-01, 업스트림 재동기 후) |
 | 호환성 규칙 | **20개 동작** (1~9, 12, 15~24) |
 | 전기요금 | ✅ 한전 누진 구간 반영 ([이슈 #2](../../issues/2)) |
 | 스토리지 | ✅ 규칙 17·18·19. 전력은 드라이브당 0~15W (Seasonic 가이드, [이슈 #5](../../issues/5)) |
 | 어드민 접근 제어 | ✅ 공유 비밀 하나 ([ADR-0020](docs/decisions/0020-admin-access-control.md)) |
 | 폐기한 규칙 | 10·11·13·14 — 1차 소스에 필드가 없어 사용 불가 (ADR-0025) |
 | 국내 유통·가격 | ☒ 폐기 ([ADR-0022](docs/decisions/0022-drop-availability-and-price.md)) — 소스가 없다 |
-| 케이스 데이터 | 규칙 6 판정 불가 83% — 사람이 채워야 한다 ([이슈 #3](../../issues/3)) |
+| 케이스 데이터 | 규칙 6·9·24 판정 불가가 크다. 수동 입력은 계획하지 않는다 — 업스트림 OpenDB가 채우는 것을 `npm run sync:opendb`로 받는 것이 유일한 자동 경로다 ([ADR-0025](docs/decisions/0025-unavailable-data.md)). 결측 현황은 `/rules` |
 
 번호가 건너뛴 자리는 메우지 않는다. 명세 §4.2의 번호와 어긋나면 어느 쪽이
 맞는지 매번 확인해야 한다.
@@ -171,7 +171,7 @@ CI는 postgres를 새로 띄우므로 **카탈로그가 비어 있다.** 로컬�
 |---|---|
 | [`CLAUDE.md`](CLAUDE.md) | 세션 컨텍스트, 작업 규칙 |
 | [`docs/pc-builder-spec.md`](docs/pc-builder-spec.md) | 제품 정의서 — 무엇을 만드는가 |
-| [`docs/compat-rules.md`](docs/compat-rules.md) | 규칙 15개의 판정식과 판정 불가 조건 |
+| [`docs/compat-rules.md`](docs/compat-rules.md) | 규칙 20개의 판정식과 판정 불가 조건 |
 | [`docs/deployment.md`](docs/deployment.md) | 배포 준비 — 무엇이 필요하고 무엇을 확인해야 하는가 |
 | [`docs/pipeline-plan.md`](docs/pipeline-plan.md) | 자율 운영 인프라 설계 (구현 보류) |
 | [`docs/handoff-guide.md`](docs/handoff-guide.md) | 세션 이전 가이드, 이슈 순서 |
