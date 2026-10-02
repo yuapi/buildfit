@@ -53,6 +53,11 @@ export interface RecentPart {
   readonly category: string;
   readonly name: string;
   readonly at: string;
+  /**
+   * 부품 페이지 주소의 slug. **나중에 더한 칸이다** (add-only). 없으면 부품 페이지로
+   * 잇지 못하므로 목록에서 링크 없이 둔다.
+   */
+  readonly slug?: string | undefined;
 }
 
 // --- 저장소 접근 ------------------------------------------------------------
@@ -157,6 +162,7 @@ export function migrateRecentPart(raw: unknown): RecentPart | null {
     category,
     name: str(o, 'name') ?? id,
     at: str(o, 'at') ?? new Date(0).toISOString(),
+    slug: str(o, 'slug') ?? undefined,
   };
 }
 
@@ -355,7 +361,12 @@ export function loadRecentParts(): RecentPart[] {
     .filter((p): p is RecentPart => p !== null);
 }
 
-export function recordRecentPart(part: { id: string; category: string; name: string }): boolean {
+export function recordRecentPart(part: {
+  id: string;
+  category: string;
+  name: string;
+  slug?: string | undefined;
+}): boolean {
   const rest = loadRecentParts().filter((p) => p.id !== part.id);
   const next: RecentPart[] = [
     { v: RECORD_VERSION, ...part, at: new Date().toISOString() },
@@ -381,6 +392,8 @@ export interface StorageSnapshot {
   readonly recentBuilds: readonly SavedBuild[];
   /** 전기요금 입력값 등. 서버에서는 기본값이다 */
   readonly prefs: Prefs;
+  /** 최근 본 부품 (§8A.1). 최신순 */
+  readonly recentParts: readonly RecentPart[];
 }
 
 /** 서버에는 저장소가 없다. 항상 같은 참조를 돌려줘야 한다. */
@@ -389,6 +402,7 @@ const SERVER_SNAPSHOT: StorageSnapshot = {
   builds: [],
   recentBuilds: [],
   prefs: DEFAULT_PREFS,
+  recentParts: [],
 };
 
 let snapshot: StorageSnapshot | null = null;
@@ -412,6 +426,7 @@ export function getStorageSnapshot(): StorageSnapshot {
     builds: loadBuilds(),
     recentBuilds: loadRecentBuilds(),
     prefs: loadPrefs(),
+    recentParts: loadRecentParts(),
   };
   return snapshot;
 }

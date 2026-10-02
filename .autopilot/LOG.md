@@ -100,3 +100,10 @@
 - Playwright: CPU + 없는 GPU id + 스토리지 링크 → 「담긴 부품 중 1개를 찾지 못해 빼고 보여줍니다…」, 전부 있는 링크 → 안내 없음, 같은 코드를 작업 중 견적으로 넣고 새로 고침 → 편집기에도 안내, 쿨러 하나 고른 뒤 → 사라짐. 콘솔 오류 0
 - 검증: typecheck 0 · lint 0 · test 280/481/545
 - 후속: 없음. 큐 open 0 → 재발굴
+
+## 2026-10-02T12:00 | 재발굴 + T-16 | done | skill 1.5.0
+- 재발굴: 「저장은 하는데 아무도 안 부르는」 것을 찾았다 — `recordRecentPart`·`loadRecentParts`(명세 §8A.1 `recent_parts`)가 호출 0. `features/recent-parts.md` 두 단계로 설계, T-16·T-17
+- 변경: `RecentPart`에 선택 칸 `slug`(add-only), 저장소 스냅샷에 `recentParts`, `components/RecentParts.tsx`(기록 조각 + 목록), 부품 페이지가 기록, `/part` 첫 화면(검색 안 할 때)에 「최근 본 부품」. storage 테스트 3개 + 서버 스냅샷 모양 갱신
+- Playwright: 처음엔 칸 없음 → 9800X3D·RTX 5080을 본 뒤 `/part`에 최신순 「그래픽카드 | …5080」「CPU | …9800X3D」, 첫 링크가 그 부품 페이지로, 검색 중엔 칸 없음. 콘솔·hydration 오류 0
+- 검증: typecheck 0 · lint 0 · test 280/486/545 · build 성공
+- 후속: T-17 open (고르기 목록, 지금 견적과 안 맞는 것은 거른다)

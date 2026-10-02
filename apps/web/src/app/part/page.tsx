@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { categoryCounts } from '@buildfit/db/part';
 import { searchAcrossCategories, type AcrossCategories } from '@buildfit/db/search';
 import { PartIcon } from '@/components/Icons';
+import { RecentParts } from '@/components/RecentParts';
 import { Container } from '@/components/SiteShell';
 import { INDEXED_CATEGORIES, CATEGORY_LABELS, categoryLabel } from '@/lib/categories';
 import { MAX_QUERY_CHARS } from '@/lib/picker';
@@ -70,6 +71,9 @@ export default async function PartIndex({
       </form>
 
       {found && <SearchResults q={q} found={found} />}
+
+      {/* 방금 본 것을 다시 찾지 않게 — 이 브라우저에만 있다 (§8A.1) */}
+      {!found && <RecentParts />}
 
       <h2 className="mt-10 text-sm font-semibold text-fg-muted">카테고리로 보기</h2>
       <ul className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2">

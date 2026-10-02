@@ -17,6 +17,7 @@ import {
   isStorageAvailable,
   clearDraft,
   loadDraft,
+  migrateRecentPart,
   migrateSavedBuild,
   recordRecentBuild,
   saveDraft,
@@ -256,6 +257,30 @@ describe('최근 기록', () => {
     expect(parts).toHaveLength(2);
     expect(parts[0]?.id).toBe('p1');
   });
+
+  it('slug를 함께 남긴다 — 나중에 더한 칸이다 (add-only)', () => {
+    installStorage();
+    recordRecentPart({ id: 'p1', category: 'CPU', name: 'A', slug: 'amd-a' });
+    expect(loadRecentParts()[0]?.slug).toBe('amd-a');
+  });
+
+  it('★ slug가 없는 옛 레코드도 그대로 읽는다', () => {
+    expect(migrateRecentPart({ v: 1, id: 'p1', category: 'CPU', name: 'A', at: 'x' })).toMatchObject({
+      id: 'p1',
+      slug: undefined,
+    });
+  });
+
+  it('스냅샷에 실리고, 기록하면 화면이 바로 바뀐다', () => {
+    installStorage();
+    const notify = vi.fn();
+    const off = subscribeStorage(notify);
+    recordRecentPart({ id: 'p1', category: 'CPU', name: 'A', slug: 'amd-a' });
+    off();
+    expect(notify).toHaveBeenCalled();
+    expect(getStorageSnapshot().recentParts.map((p) => p.slug)).toEqual(['amd-a']);
+    expect(getServerStorageSnapshot().recentParts).toEqual([]);
+  });
 });
 
 describe('저장 대상 키가 §8A.1과 맞는다', () => {
@@ -290,6 +315,7 @@ describe('React 스냅샷 (useSyncExternalStore)', () => {
       builds: [],
       recentBuilds: [],
       prefs: DEFAULT_PREFS,
+      recentParts: [],
     });
   });
 
