@@ -6,6 +6,7 @@ import { filledPartColumnKeys } from '@buildfit/db/queries';
 import { BenchmarkBlock } from '@/components/BenchmarkBlock';
 import { Container } from '@/components/SiteShell';
 import { startBuildHref } from '@/lib/build-links';
+import { RecentPartRecorder } from '@/components/RecentParts';
 import { categoryLabel } from '@/lib/categories';
 import { getDb } from '@/lib/db';
 import { specLabel, specValueText } from '@/lib/spec-labels';
@@ -115,6 +116,7 @@ export default async function PartPage({
 
   return (
     <Container width="narrow" className="py-10 sm:py-14">
+      <RecentPartRecorder id={part.id} category={part.category} name={part.modelName} slug={part.slug} />
       <nav aria-label="위치" className="text-sm text-fg-subtle">
         <Link href="/part" className="link">
           부품
