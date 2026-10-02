@@ -15,6 +15,7 @@ PC 견적 검증 도구. 부품 조합의 호환성·전력·전기요금을 판
 **새 세션이면 먼저 `docs/handoff-guide.md` §8을 본다.** 클라우드 세션에서는
 `.claude/hooks/session-start.sh`가 DB·원본·적재를 자동으로 세우고 `DATABASE_URL`을
 넘긴다. 훅이 실패했을 때의 수동 절차와 이 환경의 함정이 §8에 있다.
+**OCI 서버의 원격 세션이면** 훅이 돌지 않는다 — `docs/oci-migration.md` §3을 본다 (개발 DB는 5433).
 
 ## 작업 규칙
 

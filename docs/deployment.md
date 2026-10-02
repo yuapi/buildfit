@@ -99,9 +99,11 @@ DATABASE_URL=... npm run ingest:benchmarks -- opendata-latest.zip
 # 3. 빌드. ★ 도메인을 여기서 준다
 NEXT_PUBLIC_SITE_URL=https://<도메인> DATABASE_URL=... npm run build
 
-# 4. 실행
-DATABASE_URL=... ADMIN_TOKEN=... npm start
+# 4. 실행. ★ 루트에는 start 스크립트가 없다 — 웹 워크스페이스를 부른다
+DATABASE_URL=... ADMIN_TOKEN=... npm run start --workspace web
 ```
+
+OCI 인스턴스에 세우는 절차(systemd·Caddy·주간 재동기·개발 세션 이관)는 `docs/oci-migration.md`.
 
 **재동기가 케이스 데이터를 늘리는 유일한 자동 경로다** (ADR-0025). 업스트림이 6시간마다 자동 동기로
 채운다 — 2026-09-21 → 09-25의 커밋 16개로 케이스 PSU 폼팩터 599 → 703, PSU 길이 539 → 654,
