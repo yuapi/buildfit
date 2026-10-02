@@ -262,6 +262,23 @@ export function removeBuild(code: string): boolean {
   return ok;
 }
 
+/**
+ * 저장 목록을 통째로 쓴다 — 백업 파일 가져오기용 (§8A.3).
+ *
+ * 합치는 규칙(지금 것을 밀어내지 않는다)은 `build-backup.ts`의 `mergeBuilds`에 있다.
+ * 여기서는 쓰기 전에 **한 번 더 거른다** — 읽히지 않는 코드와 상한 초과는 어떤
+ * 경로로 들어와도 저장소에 남기지 않는다.
+ */
+export function replaceBuilds(builds: readonly SavedBuild[]): boolean {
+  const clean = builds
+    .map(migrateSavedBuild)
+    .filter((b): b is SavedBuild => b !== null)
+    .slice(0, LIMITS.builds);
+  const ok = writeList(STORAGE_KEYS.builds, clean);
+  invalidate();
+  return ok;
+}
+
 // --- 최근 구성한 견적 (자동) -------------------------------------------------
 
 export function loadRecentBuilds(): SavedBuild[] {

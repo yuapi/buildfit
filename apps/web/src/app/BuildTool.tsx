@@ -38,11 +38,23 @@ import {
   getStorageSnapshot,
   loadDraft,
   recordRecentBuild,
+  LIMITS,
+  type SavedBuild,
   removeBuild,
+  replaceBuilds,
   saveBuild,
   saveDraft,
   subscribeStorage,
 } from "@/lib/storage";
+import {
+  MAX_BACKUP_BYTES,
+  backupFileName,
+  describeImport,
+  describeProblem,
+  exportBuilds,
+  mergeBuilds,
+  parseBackup,
+} from "@/lib/build-backup";
 import { MAX_LIMIT, PAGE } from "@/lib/picker";
 import { fetchBuildParts, searchParts, type PartOption } from "./actions";
 import { QuoteBox, type QuotePick } from "./QuoteBox";
@@ -1280,6 +1292,103 @@ function ShareBox({ code }: { code: string }) {
   );
 }
 
+/**
+ * 저장 목록 내보내기·가져오기 — 명세 §8A.3.
+ *
+ * 저장 목록은 이 브라우저에만 있다. 파일 하나로 다른 브라우저에 옮긴다.
+ * **서버로 보내지 않는다** — 파일은 이 기기에서 만들고 이 기기에서 읽는다.
+ *
+ * 가져오기는 **지금 견적을 하나도 빼지 않는다** (`mergeBuilds`). 결과는 저장 칸의
+ * 같은 안내 줄(`role="status"`)로 말한다 — 화면 읽기 프로그램에도 들린다.
+ */
+function BackupControls({
+  builds,
+  onResult,
+}: {
+  builds: readonly SavedBuild[];
+  onResult: (message: string) => void;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const download = () => {
+    const now = new Date();
+    const blob = new Blob([exportBuilds(builds, now)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = backupFileName(now);
+    // 문서에 붙여서 누른다. 떠 있는 링크는 Chromium이 `download` 이름을 버리고
+    // 「download」로 저장했다 (Playwright로 확인)
+    a.style.display = "none";
+    document.body.append(a);
+    a.click();
+    a.remove();
+    // 내려받기가 URL을 읽은 뒤에 놓는다
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    onResult(`견적 ${builds.length}개를 파일로 내보냈습니다.`);
+  };
+
+  const importFile = async (file: File) => {
+    // 크기는 읽기 전에 본다. 엉뚱한 큰 파일을 통째로 읽으면 탭이 멈춘다
+    if (file.size > MAX_BACKUP_BYTES) {
+      onResult(describeProblem("too-large"));
+      return;
+    }
+    let text: string;
+    try {
+      text = await file.text();
+    } catch {
+      onResult(describeProblem("not-json"));
+      return;
+    }
+    const parsed = parseBackup(text);
+    if (!parsed.ok) {
+      onResult(describeProblem(parsed.problem));
+      return;
+    }
+    const merged = mergeBuilds(builds, parsed.builds, LIMITS.builds);
+    if (merged.added > 0 && !replaceBuilds(merged.builds)) {
+      onResult("가져오지 못했습니다. 저장 공간이 가득 찼을 수 있습니다. 저장 목록은 그대로입니다.");
+      return;
+    }
+    onResult(describeImport(merged, parsed.unreadable, LIMITS.builds));
+  };
+
+  return (
+    <div className="mt-4 flex flex-wrap gap-2">
+      <button
+        type="button"
+        disabled={builds.length === 0}
+        onClick={download}
+        className="btn btn-ghost px-2 py-1 text-xs"
+      >
+        목록 내보내기
+      </button>
+      <button
+        type="button"
+        onClick={() => fileRef.current?.click()}
+        className="btn btn-ghost px-2 py-1 text-xs"
+      >
+        파일에서 가져오기
+      </button>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="application/json,.json"
+        aria-label="견적 목록 파일"
+        className="sr-only"
+        tabIndex={-1}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          // 같은 파일을 다시 골라도 change가 나도록 비운다
+          e.target.value = "";
+          if (file) void importFile(file);
+        }}
+      />
+    </div>
+  );
+}
+
 function SaveBox({
   code,
   defaultLabel,
@@ -1402,6 +1511,8 @@ function SaveBox({
           </ul>
         </>
       )}
+
+      <BackupControls builds={builds} onResult={setMessage} />
 
       {recentBuilds.length > 0 && (
         <>

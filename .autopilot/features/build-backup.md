@@ -11,7 +11,7 @@ Phase 1의 명세 항목인데 구현이 없다 (2026-10-01 발굴, `apps/web/sr
 
 ## 인터페이스
 
-- 저장 목록(`SaveBox`) 아래 「목록 내보내기」 — `buildfit-견적-YYYY-MM-DD.json` 다운로드
+- 저장 목록(`SaveBox`) 아래 「목록 내보내기」 — `buildfit-builds-YYYY-MM-DD.json` 다운로드 (ASCII — Chromium이 한글 이름을 버렸다, T-12)
 - 「가져오기」 — 파일 선택. 결과를 한 줄로 알린다: 「3개를 더했습니다. 1개는 이미 있고, 1개는 읽을 수 없어 건너뛰었습니다.」
 
 ## 파일 형식
@@ -38,4 +38,11 @@ Phase 1의 명세 항목인데 구현이 없다 (2026-10-01 발굴, `apps/web/sr
 | 단계 | 작업 | 완료 기준 |
 |---|---|---|
 | 1/2 ✅ | `apps/web/src/lib/build-backup.ts` — `exportBuilds`·`backupFileName`·`parseBackup`·`mergeBuilds`·`describeImport`·`describeProblem` 순수 함수 | 단위 테스트 20개: 왕복, 깨진 코드 제외, 중복은 기존 유지, 지금 견적을 밀어내지 않음, 형식 오류 6종(1MB 상한 포함)이 아무것도 돌려주지 않음 |
-| 2/2 | `SaveBox`에 내보내기·가져오기 UI + `storage.ts`에 목록 통째 쓰기(`replaceBuilds`, 추가만) | 단위 테스트 + Playwright로 저장 → 내보내기 → 저장소 비움 → 가져오기 → 목록 복원 확인. README 기능 표·명세 §8A.3에 반영 |
+| 2/2 ✅ | `SaveBox`에 내보내기·가져오기 UI + `storage.ts`에 목록 통째 쓰기(`replaceBuilds`, 추가만) | 단위 테스트 + Playwright로 저장 → 내보내기 → 저장소 비움 → 가져오기 → 목록 복원 확인. README 기능 표·명세 §8A.3에 반영 |
+
+## 완료 (2026-10-02)
+
+두 단계 모두 끝났다. Playwright 왕복(브라우저 A 저장·내보내기 → 빈 B 가져오기 → 같은 파일 다시 → 자기 견적이 있는 C에
+엉뚱한 파일·정상 파일)에서 전부 기대대로였고 콘솔 오류 0. 구현 중 바꾼 것 둘:
+- 합치기가 지금 견적을 밀어내지 않는다 (T-11)
+- 파일 이름을 ASCII로 — Chromium이 한글 `download` 이름을 버리고 「download」로 저장했다 (T-12)

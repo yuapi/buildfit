@@ -52,12 +52,15 @@ export function exportBuilds(builds: readonly SavedBuild[], now: Date): string {
 /**
  * 내려받을 파일 이름. **사용자 시계의 날짜**로 짓는다 — UTC로 지으면 한국 오전
  * 9시 전에 받은 파일이 어제 날짜가 된다.
+ *
+ * **ASCII만 쓴다.** 처음엔 `buildfit-견적-…`이었는데 Chromium이 한글이 든 `download`
+ * 이름을 버리고 「download」라는 확장자 없는 파일로 저장했다 (Playwright로 확인).
  */
 export function backupFileName(now: Date): string {
   const y = now.getFullYear();
   const m = String(now.getMonth() + 1).padStart(2, '0');
   const d = String(now.getDate()).padStart(2, '0');
-  return `buildfit-견적-${y}-${m}-${d}.json`;
+  return `buildfit-builds-${y}-${m}-${d}.json`;
 }
 
 export type BackupProblem =
