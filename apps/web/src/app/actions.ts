@@ -2,7 +2,7 @@
 
 import type { Build, Constraint } from '@buildfit/compat';
 import { loadBuild, type BuildSelection } from '@buildfit/db/build';
-import { searchCandidates, type PartOption } from '@buildfit/db/picker';
+import { pickableAmong, searchCandidates, type PartOption } from '@buildfit/db/picker';
 import { matchQuote, type QuoteLineResult } from '@buildfit/db/quote';
 import { SLOT_META, type SlotName } from '@/lib/categories';
 import { getDb } from '@/lib/db';
@@ -97,6 +97,36 @@ export async function searchParts(
       limit: Number.isFinite(limit) ? Math.min(Math.max(PAGE, Math.trunc(limit)), MAX_LIMIT) : PAGE,
     });
     return { ok: true, data: page };
+  } catch {
+    return { ok: false };
+  }
+}
+
+/** 최근 본 부품으로 받을 id 수의 상한. 저장소가 20개까지 남긴다 (§8A.1) */
+const MAX_RECENT_IDS = 20;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * 최근 본 부품 중 이 칸에서 **지금 고를 수 있는 것** (명세 §8A.1, ADR-0016).
+ *
+ * id는 브라우저 저장소에서 온다 — 믿지 않는다. uuid 모양이 아니면 버리고, 수를 자른다.
+ * 거르기는 검색과 같은 제약·같은 SQL이다 (`pickableAmong`).
+ */
+export async function recentCandidates(
+  slot: SlotName,
+  ids: readonly string[],
+  constraints: readonly Constraint[] = [],
+): Promise<QueryResult<PartOption[]>> {
+  const meta = SLOT_META.find((m) => m.slot === slot);
+  const clean = Array.isArray(ids)
+    ? ids.filter((id): id is string => typeof id === 'string' && UUID.test(id)).slice(0, MAX_RECENT_IDS)
+    : [];
+  if (!meta || clean.length === 0) return { ok: true, data: [] };
+  try {
+    return {
+      ok: true,
+      data: await pickableAmong(getDb(), { category: meta.category, ids: clean, constraints: sanitize(constraints) }),
+    };
   } catch {
     return { ok: false };
   }

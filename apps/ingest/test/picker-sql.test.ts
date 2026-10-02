@@ -11,7 +11,7 @@
 
 import type { Constraint } from '@buildfit/compat';
 import { createDb } from '@buildfit/db';
-import { searchCandidates } from '@buildfit/db/picker';
+import { pickableAmong, searchCandidates } from '@buildfit/db/picker';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createScratchDb, type Scratch } from './helpers/scratch-db';
@@ -200,5 +200,36 @@ describeIfDb('후보 좁히기 SQL (ADR-0016)', () => {
       { kind: 'atLeast', key: 'length_mm', value: 200, ruleId: 4, because: 'b' },
     ]);
     expect(r.names).toEqual(['길이 모르는 그래픽카드', '두꺼운 그래픽카드', '두께에 mm를 적은 그래픽카드', '문자열 길이 그래픽카드', '얇은 그래픽카드', '짧은 그래픽카드']);
+  });
+
+  describe('최근 본 부품 중 고를 수 있는 것 — pickableAmong (명세 §8A.1)', () => {
+    const AM5 = '11111111-1111-4111-8111-111111111111';
+    const LGA = '22222222-2222-4222-8222-222222222222';
+    const NONE = '33333333-3333-4333-8333-333333333333';
+    const CASE = '44444444-4444-4444-8444-444444444444';
+    const socketAm5: Constraint = { kind: 'equals', key: 'socket', value: 'AM5', ruleId: 1, because: '보드 소켓' };
+
+    it('★ 검색과 같은 제약으로 거른다 — 소켓이 다른 CPU는 빠지고, 모르는 것은 남는다', async () => {
+      const rows = await pickableAmong(db, { category: 'CPU', ids: [LGA, AM5, NONE], constraints: [socketAm5] });
+      expect(rows.map((r) => r.id)).toEqual([AM5, NONE]);
+    });
+
+    it('넘겨준 순서(최신순)를 지킨다', async () => {
+      const rows = await pickableAmong(db, { category: 'CPU', ids: [NONE, LGA, AM5], constraints: [] });
+      expect(rows.map((r) => r.id)).toEqual([NONE, LGA, AM5]);
+    });
+
+    it('카테고리가 다르거나 없는 id는 뺀다 — 브라우저에서 온 값이다', async () => {
+      const rows = await pickableAmong(db, {
+        category: 'CPU',
+        ids: [CASE, 'ffffffff-ffff-4fff-8fff-ffffffffffff', AM5],
+        constraints: [],
+      });
+      expect(rows.map((r) => r.id)).toEqual([AM5]);
+    });
+
+    it('빈 목록이면 쿼리 없이 빈 결과', async () => {
+      expect(await pickableAmong(db, { category: 'CPU', ids: [], constraints: [socketAm5] })).toEqual([]);
+    });
   });
 });

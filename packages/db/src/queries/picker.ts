@@ -162,3 +162,43 @@ export async function searchCandidates(
     unknown: parsed.unknown,
   };
 }
+
+/**
+ * 주어진 id 중 **지금 고를 수 있는 것**만 — 고르기 목록의 「최근 본 부품」 (명세 §8A.1).
+ *
+ * 최근 본 부품을 그대로 보여주면 고를 때 거르기(ADR-0016)를 비껴간다 — 소켓이 다른
+ * CPU가 맨 위에 뜬다. **검색과 같은 `constraintWhere`를 쓴다.** 거르는 규칙이 두 벌이
+ * 되면 한쪽만 고쳐진다.
+ *
+ * - 카테고리가 다르면 뺀다 (브라우저 저장소에서 온 id다 — 믿지 않는다)
+ * - 대표만 (중복 레코드는 검색에도 안 나온다)
+ * - 순서는 **넘겨준 순서**(최신순) 그대로
+ */
+export async function pickableAmong(
+  db: Database,
+  input: { category: string; ids: readonly string[]; constraints: readonly Constraint[] },
+): Promise<PartOption[]> {
+  if (input.ids.length === 0) return [];
+  const list = sql.join(
+    input.ids.map((id) => sql`${id}::uuid`),
+    sql`, `,
+  );
+  const rows = await db
+    .select({
+      id: parts.id,
+      name: parts.modelName,
+      brand: parts.brand,
+      releaseYear: parts.releaseYear,
+    })
+    .from(parts)
+    .where(
+      and(
+        eq(parts.category, input.category),
+        canonicalOnly(),
+        sql`${parts.id} in (${list})`,
+        ...input.constraints.map(constraintWhere),
+      ),
+    );
+  const order = new Map(input.ids.map((id, i) => [id, i]));
+  return rows.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+}

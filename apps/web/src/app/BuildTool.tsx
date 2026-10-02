@@ -63,7 +63,7 @@ import {
   parseBackup,
 } from "@/lib/build-backup";
 import { MAX_LIMIT, PAGE } from "@/lib/picker";
-import { fetchBuildParts, searchParts, type PartOption } from "./actions";
+import { fetchBuildParts, recentCandidates, searchParts, type PartOption } from "./actions";
 import { QuoteBox, type QuotePick } from "./QuoteBox";
 
 /** Build에서 선택 id만 뽑는다. 공유 코드와 서버 조회의 입력이 된다. */
@@ -697,6 +697,9 @@ function SlotRow({
   );
 }
 
+/** 고르기 목록 위에 보여줄 최근 본 부품 수 */
+const RECENT_IN_PICKER = 5;
+
 function PartPicker({
   slot,
   constraints,
@@ -737,6 +740,7 @@ function PartPicker({
   // 제약을 끄면 빈 배열을 보낸다. 서버가 같은 함수로 처리한다.
   const active = narrow ? constraints : [];
 
+
   /**
    * effect 의존성으로 쓸 안정 키.
    *
@@ -745,6 +749,35 @@ function PartPicker({
    * 내용이 같으면 같은 문자열이 되게 해서 그 고리를 끊는다.
    */
   const key = JSON.stringify(constraints);
+
+  /**
+   * 이 칸 카테고리의 최근 본 부품 (명세 §8A.1) — 검색어가 비었을 때 맨 위에 둔다.
+   *
+   * **그대로 보여주지 않는다.** 서버가 검색과 같은 제약으로 거른다 — 안 그러면
+   * 소켓이 다른 CPU가 맨 위에 떠서 고를 때 거르기(ADR-0016)를 비껴간다.
+   */
+  const { recentParts } = useSyncExternalStore(
+    subscribeStorage,
+    getStorageSnapshot,
+    getServerStorageSnapshot,
+  );
+  const category = SLOT_META.find((m) => m.slot === slot)?.category;
+  const recentKey = JSON.stringify(
+    recentParts.filter((p) => p.category === category).map((p) => p.id),
+  );
+  const [recent, setRecent] = useState<PartOption[]>([]);
+  useEffect(() => {
+    let stale = false;
+    void recentCandidates(slot, JSON.parse(recentKey) as string[], active).then((r) => {
+      // 실패하면 칸을 비운다 — 편의 기능이라 검색은 그대로 쓸 수 있다
+      if (!stale) setRecent(r.ok ? r.data.slice(0, RECENT_IN_PICKER) : []);
+    });
+    return () => {
+      stale = true;
+    };
+    // active는 narrow·key로 정해진다. 배열을 넣으면 렌더마다 다시 묻는다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slot, recentKey, narrow, key]);
 
   /**
    * 요청 번호. **두 경로가 같은 번호를 쓴다.**
@@ -867,6 +900,27 @@ function PartPicker({
         className="field"
         autoFocus
       />
+
+      {query.trim() === "" && recent.length > 0 && (
+        <div className="mt-2">
+          <p id={`picker-recent-${slot}`} className="text-xs text-fg-subtle">
+            최근 본 부품
+          </p>
+          <ul aria-labelledby={`picker-recent-${slot}`} className="mt-1 flex flex-wrap gap-1.5">
+            {recent.map((o) => (
+              <li key={o.id} className="min-w-0 max-w-full">
+                <button
+                  type="button"
+                  onClick={() => onChoose(o.id)}
+                  className="chip max-w-full truncate hover:border-border-strong"
+                >
+                  {o.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/*
         * 한글을 영문으로 바꿔 찾았으면 그렇다고 말한다. 말하지 않으면

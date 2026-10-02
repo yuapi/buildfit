@@ -19,7 +19,7 @@ last_scan: 2026-10-02
 | 한국어 검색 | 완성 | `packages/compat/src/search.ts` |
 | 공유 링크 | 완성 | `/build/[code]`, `apps/web/src/lib/build-code.ts` |
 | 로컬 저장 (저장·최근 구성·작업 중·설정) | 완성 | `apps/web/src/lib/storage.ts` |
-| 최근 본 부품 (`recent_parts`) | **부분** — 저장 함수만, 호출 0 | 명세 §8A.1 → T-16·T-17 (`features/recent-parts.md`) |
+| 최근 본 부품 (`recent_parts`) | 완성 (T-16·T-17) | `components/RecentParts.tsx`, 고르기 목록, `pickableAmong` |
 | 저장 목록 내보내기·가져오기 | 완성 (T-11·T-12) | `apps/web/src/lib/build-backup.ts`, `SaveBox` |
 | 전력·전기요금 | 완성 | `/calc/power`, `packages/compat/src/power.ts` |
 | 부품 상세 + 호환 목록 | **부분** | CPU↔보드 소켓만. 소켓 등가 표를 안 써 Threadripper 33개가 빈다 → T-10 |
