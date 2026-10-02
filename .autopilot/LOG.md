@@ -107,3 +107,10 @@
 - Playwright: 처음엔 칸 없음 → 9800X3D·RTX 5080을 본 뒤 `/part`에 최신순 「그래픽카드 | …5080」「CPU | …9800X3D」, 첫 링크가 그 부품 페이지로, 검색 중엔 칸 없음. 콘솔·hydration 오류 0
 - 검증: typecheck 0 · lint 0 · test 280/486/545 · build 성공
 - 후속: T-17 open (고르기 목록, 지금 견적과 안 맞는 것은 거른다)
+
+## 2026-10-02T12:30 | T-17 | done | skill 1.5.0
+- 변경: `packages/db/src/queries/picker.ts`에 `pickableAmong`(검색과 같은 `constraintWhere`, 대표만, 넘긴 순서), `actions.ts`에 `recentCandidates`(uuid 모양만, 20개 상한), 고르기 목록이 검색어가 비면 그 칸의 최근 본 부품 5개를 버튼으로(listbox 밖). SQL 테스트 4개, README
+- 변이 확인: `pickableAmong`에서 제약을 빼면 ★ 테스트가 실패
+- Playwright: 9800X3D(AM5)·14700KF(LGA 1700)를 본 뒤 — 빈 견적의 CPU 고르기에 둘 다, AM5 보드를 고른 뒤엔 9800X3D만, 「맞는 것만 보기」를 끄면 둘 다, 검색어를 치면 줄이 사라지고, 누르면 CPU 칸에 들어감. 콘솔 오류 0
+- 검증: typecheck 0 · lint 0 · test 284/486/545 · build 성공
+- 후속: 없음. feat:recent-parts 끝. 큐 open 0 → 재발굴
