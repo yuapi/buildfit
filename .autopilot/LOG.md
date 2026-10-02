@@ -80,3 +80,10 @@
 - Playwright 왕복: A 저장 2개 → 내보내기 → 빈 B 가져오기「2개를 더했습니다.」 → 같은 파일 다시「더한 견적이 없습니다. 건너뜀: 이미 있음 2개」 → C(자기 견적 1개)에 엉뚱한 파일「…아닙니다. 저장 목록은 그대로입니다.」, 정상 파일로 3개. 콘솔 오류 0
 - 검증: typecheck 0 · lint 0 · test 280/474/545 · build 성공
 - 후속: 없음. feat:build-backup 끝. 큐에 T-13(lint)만 남음 — 보조 작업이라 다음 실행은 그것을 하거나, 실질 작업이 없으면 재발굴
+
+## 2026-10-02T10:30 | T-13 | done | skill 1.5.0
+- 모드: 세션 연속 (클라우드 세션, `AUTOPILOT_DRIVER` 없음)
+- **Stop 훅을 설치하지 않았다.** 1.5.0의 훅은 `.autopilot/STOP`이 없으면 **모든** 세션 종료를 막는다. 레포 `.claude/settings.json`에 커밋하면 이 레포의 이후 세션 전부(자율 개발과 무관한 사람의 작업 포함)가 autopilot으로 끌려간다 — 레포 전체의 동작을 바꾸는 바깥 영향이라 보수적으로 뺐다. 스킬이 허용하는 「훅 없이 규칙만으로 이어간다」로 진행
+- 변경: apps/web/vitest.config.ts → vitest.config.mts (내용 그대로). tsconfig가 `**/*.mts`를 이미 포함
+- 검증: ESM/CommonJS 경고 0회(전엔 매 실행), typecheck 0 · lint 0 · test 280/474/545 · build 성공
+- 후속: 없음. 큐 open 0 → 재발굴
