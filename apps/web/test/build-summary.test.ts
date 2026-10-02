@@ -155,3 +155,27 @@ describe('판정 수 한 줄 — 요약 막대와 미리보기가 같이 쓴다'
     expect(countsText({ pass: 20, fail: 0, info: 0, unknown: 0 })).toBe('통과 20');
   });
 });
+
+describe('부품 수는 pickedCount 하나로 센다', () => {
+  it('스토리지만 담아도 0이 아니다 — 공유 링크가 「부품을 찾지 못했습니다」를 내던 경우', () => {
+    expect(pickedCount({ ...emptyBuild, storage: [drive] })).toBe(1);
+  });
+
+  it('★ 앱 코드가 슬롯을 따로 늘어놓고 세지 않는다', async () => {
+    // `/build/[code]`가 슬롯 여섯 개 + 메모리를 따로 셌다. 공유 코드 v3에서 스토리지가
+    // 늘 때 그 셈만 안 바뀌었다. 셈이 두 벌이면 다음 슬롯에서 또 어긋난다
+    const { readFileSync, readdirSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const src = join(import.meta.dirname, '../src');
+    const walk = (d: string): string[] =>
+      readdirSync(d, { withFileTypes: true }).flatMap((e) =>
+        e.isDirectory() ? walk(join(d, e.name)) : /\.tsx?$/.test(e.name) ? [join(d, e.name)] : [],
+      );
+    const inline = /\[build\.cpu, build\.motherboard, build\.gpu, build\.pcCase, build\.psu, build\.cooler\]/;
+    const offenders = walk(src)
+      .filter((f) => !f.endsWith(join('lib', 'build-summary.ts')))
+      .filter((f) => inline.test(readFileSync(f, 'utf8')))
+      .map((f) => f.slice(src.length + 1));
+    expect(offenders).toEqual([]);
+  });
+});
