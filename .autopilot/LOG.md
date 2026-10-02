@@ -66,3 +66,10 @@
 - 실측: 호환 목록이 빈 CPU·보드 217 → 184. 늘어난 33개가 정확히 TR4 보드 23 + sTR4 CPU 10. 남은 184는 등가 표가 일부러 묶지 않는 소켓(듀얼·Narrow 등). 빌드한 앱에서 X399 AORUS PRO 페이지에 Threadripper 7종 확인
 - 검증: typecheck 0 · lint 0 · test 280/449/545 · build 성공
 - 후속: 없음
+
+## 2026-10-02T09:00 | T-11 | done | skill 1.4.0
+- 변경: apps/web/src/lib/build-backup.ts (새 파일 — `exportBuilds`·`backupFileName`·`parseBackup`·`mergeBuilds`·`describeImport`·`describeProblem`), apps/web/test/build-backup.test.ts (20개), `features/build-backup.md` 1/2 완료 표시
+- 설계 변경: 합치기가 「전체를 최신순으로 잘라 20개」면 파일 쪽이 더 최신일 때 가져오기가 **이 브라우저의 견적을 지운다.** 지금 것은 전부 두고 남은 자리만 채우게 바꿨다 (보수적 선택). 설계 문서에 사유 기록
+- 변이 확인: 옛 합치기로 되돌리면 2개 실패. 처음 쓴 ★ 테스트는 그 변이를 못 잡아(파일 쪽 최신이 1개뿐) 강화했다
+- 검증: typecheck 0 · lint 0 · test 280/469/545 · build 성공
+- 후속: T-12 open (2/2 UI). T-13(lint) 추가 — vitest.config.ts의 ESM/CommonJS 경고, 기존부터 있었다
