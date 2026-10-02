@@ -1,6 +1,6 @@
 # BACKLOG (autopilot 작업 큐)
 
-next_id: 14
+next_id: 16
 
 상태: open | in_progress | done | blocked | waiting(앞 단계 대기)
 유형: fix | security | test | lint | todo | cleanup | docs | refactor
@@ -20,3 +20,5 @@ next_id: 14
 | T-11 | feature | done | 1 | [feat:build-backup 1/2] 저장 견적 백업 파일 순수 함수 — `exportBuilds`·`parseBackup`·`mergeBuilds` (`.autopilot/features/build-backup.md`) | 설계 문서 1/2의 완료 기준 | 제품 — 빠진 기능 (명세 §8A.3 Phase 1) | 2026-10-02 |
 | T-12 | feature | done | 1 | [feat:build-backup 2/2] `SaveBox` 내보내기·가져오기 UI | 설계 문서 2/2의 완료 기준 (Playwright 왕복 + README·명세 반영) | 제품 — 빠진 기능 | 2026-10-02 |
 | T-13 | lint | done | 1 | `apps/web/vitest.config.ts` → `.mts` — Vite가 「ESM syntax in a file loaded as CommonJS」 경고를 매 실행 낸다(다음 메이저에서 기본이 될 native 로더 비호환). T-2에서 들어온 파일 | 경고가 사라지고 web 테스트 수 그대로 | 린트 (T-11 중 발견) | 2026-10-02 |
+| T-14 | fix | done | 1 | `/build/[code]`의 「담긴 부품을 찾지 못했습니다」 판정이 스토리지를 세지 않는다 — 스토리지만 담은 링크가 오류 화면이 된다 (공유 코드 v3에서 스토리지가 늘 때 이 셈이 안 바뀌었다) | 스토리지만 담은 링크가 견적을 보여준다(빌드한 앱에서 확인), 셈을 `pickedCount`로 바꾸고 테스트 | 제품 — 약한 기능 (공유 링크) | 2026-10-02 |
+| T-15 | enhance | open | 0 | 링크·저장 견적에 담긴 부품 중 DB에서 사라진 것이 있으면 **몇 개인지 알린다** — 지금은 `/build`도 편집기도 조용히 빼고, 편집기는 그 상태로 작업 중 견적·최근 구성을 다시 써서 원래 참조가 사라진다 | 순수 함수(선택 vs 읽힌 부품 수) 테스트 + `/build`·편집기 안내, 없는 UUID를 넣은 링크로 Playwright 확인 | 제품 — 약한 기능 (공유 링크·저장) | |

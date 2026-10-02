@@ -87,3 +87,10 @@
 - 변경: apps/web/vitest.config.ts → vitest.config.mts (내용 그대로). tsconfig가 `**/*.mts`를 이미 포함
 - 검증: ESM/CommonJS 경고 0회(전엔 매 실행), typecheck 0 · lint 0 · test 280/474/545 · build 성공
 - 후속: 없음. 큐 open 0 → 재발굴
+
+## 2026-10-02T11:00 | 재발굴 + T-14 | done | skill 1.5.0
+- 재발굴: 제품 축 — 입력 경로(검색·견적서·고르기)는 상한이 이미 있다. 공유 링크 경로에서 T-14(fix)·T-15(enhance). 유지보수 축 — 마커 0, 열린 이슈 0, security-audit 연결 실패(의존성 변경 없음)
+- 재현: 스토리지 하나만 담은 링크 `/build/A4AB1iM8kPq4Qj643YRUIJN-dg`가 「담긴 부품을 찾지 못했습니다」
+- 변경: `/build/[code]` 페이지가 따로 세던 셈을 `pickedCount`로. build-summary 테스트 2개 — 스토리지만의 셈, 그리고 **앱 코드가 슬롯을 따로 늘어놓고 세지 않는다**는 소스 검사(고치기 전 페이지에서 실패 확인)
+- 검증: 같은 링크가 「공유된 견적」·제목 「Micron M600 1TB …」, typecheck 0 · lint 0 · test 280/476/545 · build 성공
+- 후속: 없음 (T-15는 발굴 때 넣음)

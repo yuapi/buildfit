@@ -4,7 +4,7 @@ import { loadBuild } from '@buildfit/db/build';
 import { BuildTool } from '@/app/BuildTool';
 import { Container } from '@/components/SiteShell';
 import { decodeBuildCode } from '@/lib/build-code';
-import { buildLabel, buildSummary, nameOf } from '@/lib/build-summary';
+import { buildLabel, buildSummary, nameOf, pickedCount } from '@/lib/build-summary';
 import { SLOT_META } from '@/lib/categories';
 import { getDb } from '@/lib/db';
 
@@ -89,11 +89,9 @@ export default async function SharedBuild({ params }: { params: Promise<{ code: 
   }
 
   // 링크는 읽었는데 부품이 하나도 없으면 DB 쪽 문제다. 위와 구분해 안내한다.
-  const found =
-    [build.cpu, build.motherboard, build.gpu, build.pcCase, build.psu, build.cooler].filter(Boolean)
-      .length + build.ram.length;
-
-  if (found === 0) {
+  // 셈은 `pickedCount` 하나로 한다 — 여기서 따로 세던 때는 공유 코드 v3에서 스토리지가
+  // 늘어도 이 셈이 안 바뀌어, 스토리지만 담은 링크가 이 오류 화면이 됐다
+  if (pickedCount(build) === 0) {
     return (
       <Problem
         title="담긴 부품을 찾지 못했습니다"
