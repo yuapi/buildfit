@@ -19,7 +19,10 @@ import {
   countsText,
   filledSlotCount,
   nameOf,
+  missingCount,
+  missingNotice,
   pickedCount,
+  selectionCount,
 } from '../src/lib/build-summary';
 
 describe('알아볼 이름', () => {
@@ -177,5 +180,35 @@ describe('부품 수는 pickedCount 하나로 센다', () => {
       .filter((f) => inline.test(readFileSync(f, 'utf8')))
       .map((f) => f.slice(src.length + 1));
     expect(offenders).toEqual([]);
+  });
+});
+
+describe('담겼는데 읽히지 않은 부품', () => {
+  const id = (n: number) => `c0000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+
+  it('담긴 수는 메모리·스토리지를 하나하나 센다', () => {
+    expect(selectionCount({ cpu: id(1), ram: [id(2), id(2)], storage: [id(3)] })).toBe(4);
+    expect(selectionCount({})).toBe(0);
+  });
+
+  it('★ 그래픽카드가 DB에서 사라졌으면 1개가 빠졌다', () => {
+    const sel = { cpu: id(1), gpu: id(9), ram: [id(2)] };
+    expect(missingCount(sel, { ...emptyBuild, cpu, ram: [ramKit] })).toBe(1);
+  });
+
+  it('전부 읽혔으면 0이고 안내가 없다', () => {
+    const sel = { cpu: id(1), gpu: id(2) };
+    expect(missingCount(sel, { ...emptyBuild, cpu, gpu })).toBe(0);
+    expect(missingNotice(0)).toBeNull();
+  });
+
+  it('같은 메모리 두 개 중 둘 다 사라지면 2개다', () => {
+    expect(missingCount({ ram: [id(2), id(2)] }, emptyBuild)).toBe(2);
+  });
+
+  it('안내는 몇 개인지와 이유를 말한다', () => {
+    expect(missingNotice(2)).toBe(
+      '담긴 부품 중 2개를 찾지 못해 빼고 보여줍니다. 데이터가 갱신되면서 사라졌을 수 있습니다.',
+    );
   });
 });

@@ -10,6 +10,7 @@
  */
 
 import { type Build, type BuildVerdict, estimatePower } from '@buildfit/compat';
+import type { BuildSelection } from './build-code';
 import { SLOT_META, type SlotName } from './categories';
 
 /** 한 칸에 들어 있는 부품들. 메모리·스토리지는 여럿일 수 있다. */
@@ -114,4 +115,30 @@ export function buildSummary(build: Build, verdict: BuildVerdict): string {
 
   bits.push(`부품 ${pickedCount(build)}개`);
   return bits.join(' · ');
+}
+
+/** 링크·저장 견적에 **담긴** 부품 수. 메모리·스토리지는 하나하나 센다 */
+export function selectionCount(sel: BuildSelection): number {
+  const single = [sel.cpu, sel.motherboard, sel.gpu, sel.pcCase, sel.psu, sel.cooler].filter(
+    (id) => typeof id === 'string' && id !== '',
+  ).length;
+  return single + (sel.ram?.length ?? 0) + (sel.storage?.length ?? 0);
+}
+
+/**
+ * 담겼는데 읽히지 않은 부품 수.
+ *
+ * DB에서 사라졌거나(원본이 레코드를 지웠다) 다른 카테고리의 id다. 읽는 쪽은 그런
+ * 부품을 `null`로 빼고 나머지로 판정한다 — 그 자체는 맞지만, **아무 말이 없으면**
+ * 사용자는 그래픽카드가 빠진 견적을 원래 견적으로 믿는다. 편집기는 그 상태로
+ * 작업 중 견적을 다시 써서 원래 참조까지 잃는다.
+ */
+export function missingCount(sel: BuildSelection, build: Build): number {
+  return Math.max(0, selectionCount(sel) - pickedCount(build));
+}
+
+/** 빠진 부품 안내 한 줄. 없으면 `null` */
+export function missingNotice(missing: number): string | null {
+  if (missing <= 0) return null;
+  return `담긴 부품 중 ${missing}개를 찾지 못해 빼고 보여줍니다. 데이터가 갱신되면서 사라졌을 수 있습니다.`;
 }
