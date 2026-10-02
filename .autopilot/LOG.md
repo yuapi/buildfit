@@ -73,3 +73,10 @@
 - 변이 확인: 옛 합치기로 되돌리면 2개 실패. 처음 쓴 ★ 테스트는 그 변이를 못 잡아(파일 쪽 최신이 1개뿐) 강화했다
 - 검증: typecheck 0 · lint 0 · test 280/469/545 · build 성공
 - 후속: T-12 open (2/2 UI). T-13(lint) 추가 — vitest.config.ts의 ESM/CommonJS 경고, 기존부터 있었다
+
+## 2026-10-02T10:00 | T-12 | done | skill 1.4.0
+- 변경: apps/web/src/app/BuildTool.tsx (`BackupControls` — 「목록 내보내기」·「파일에서 가져오기」, 결과는 저장 칸의 `role="status"` 줄), apps/web/src/lib/storage.ts (`replaceBuilds` 추가 — 쓰기 전에 한 번 더 거른다), storage 테스트 4개, README 기능 목록, 명세 §8A.3 ✅
+- 발견·수정: 내려받은 파일이 「download」라는 이름으로 저장됐다. 원인 둘 — 떠 있는 링크, 그리고 **Chromium이 한글이 든 download 이름을 버린다**(ASCII 이름은 그대로, 따로 재현). 링크를 문서에 붙여 누르고 이름을 `buildfit-builds-YYYY-MM-DD.json`으로. 테스트로 ASCII를 고정
+- Playwright 왕복: A 저장 2개 → 내보내기 → 빈 B 가져오기「2개를 더했습니다.」 → 같은 파일 다시「더한 견적이 없습니다. 건너뜀: 이미 있음 2개」 → C(자기 견적 1개)에 엉뚱한 파일「…아닙니다. 저장 목록은 그대로입니다.」, 정상 파일로 3개. 콘솔 오류 0
+- 검증: typecheck 0 · lint 0 · test 280/474/545 · build 성공
+- 후속: 없음. feat:build-backup 끝. 큐에 T-13(lint)만 남음 — 보조 작업이라 다음 실행은 그것을 하거나, 실질 작업이 없으면 재발굴

@@ -19,7 +19,7 @@ last_scan: 2026-10-01
 | 한국어 검색 | 완성 | `packages/compat/src/search.ts` |
 | 공유 링크 | 완성 | `/build/[code]`, `apps/web/src/lib/build-code.ts` |
 | 로컬 저장 (저장·최근·작업 중·설정) | 완성 | `apps/web/src/lib/storage.ts` |
-| 저장 목록 내보내기·가져오기 | **없음** | 명세 §8A.3 Phase 1 → T-11·T-12 |
+| 저장 목록 내보내기·가져오기 | 완성 (T-11·T-12) | `apps/web/src/lib/build-backup.ts`, `SaveBox` |
 | 전력·전기요금 | 완성 | `/calc/power`, `packages/compat/src/power.ts` |
 | 부품 상세 + 호환 목록 | **부분** | CPU↔보드 소켓만. 소켓 등가 표를 안 써 Threadripper 33개가 빈다 → T-10 |
 | 두 부품 비교 + 렌더링 측정값 | 완성 | `/compare/[a]/vs/[b]` |
@@ -28,7 +28,7 @@ last_scan: 2026-10-01
 | `/guide/:topic` | 비워 둠 (의도) | 명세 §8 — 사람이 쓰는 글, 지어내지 않는다 |
 
 ### 빠진 것
-- 저장 견적 목록 백업 (명세 §8A.3이 Phase 1로 적었다) → T-11·T-12
+- ~~저장 견적 목록 백업~~ → T-11·T-12 완료
 
 ### 약한 것
 - 부품 페이지 호환 목록이 공유 소켓 표를 우회한다 → T-10

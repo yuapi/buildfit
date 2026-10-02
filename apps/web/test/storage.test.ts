@@ -22,6 +22,7 @@ import {
   saveDraft,
   recordRecentPart,
   removeBuild,
+  replaceBuilds,
   saveBuild,
   getServerStorageSnapshot,
   getStorageSnapshot,
@@ -32,6 +33,8 @@ import {
   migratePrefs,
   savePrefs,
 } from '../src/lib/storage';
+import { exportBuilds, mergeBuilds, parseBackup } from '../src/lib/build-backup';
+import { encodeBuildCode } from '../src/lib/build-code';
 
 const CODE = 'AQMRERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg';
 
@@ -429,5 +432,57 @@ describe('설정 (prefs) — 전기요금 입력값', () => {
     expect(before.prefs.householdKwh).toBeNull();
     savePrefs({ householdKwh: 250 });
     expect(getStorageSnapshot().prefs.householdKwh).toBe(250);
+  });
+});
+
+describe('백업 파일 가져오기 — replaceBuilds (§8A.3)', () => {
+  const other = (n: number) =>
+    encodeBuildCode({ cpu: `b0000000-0000-4000-8000-${String(n).padStart(12, '0')}` });
+
+  it('★ 다른 브라우저에서 내보낸 파일을 들여오면 두 목록이 다 남는다', () => {
+    // 브라우저 A
+    installStorage();
+    saveBuild(other(1), 'A의 견적');
+    const file = exportBuilds(loadBuilds(), new Date());
+
+    // 브라우저 B — 이미 자기 견적이 있다
+    vi.unstubAllGlobals();
+    resetStorageSnapshot();
+    installStorage();
+    saveBuild(CODE, 'B의 견적');
+
+    const parsed = parseBackup(file);
+    if (!parsed.ok) throw new Error(parsed.problem);
+    const merged = mergeBuilds(loadBuilds(), parsed.builds, LIMITS.builds);
+    expect(replaceBuilds(merged.builds)).toBe(true);
+    expect(loadBuilds().map((b) => b.label).sort()).toEqual(['A의 견적', 'B의 견적']);
+  });
+
+  it('쓰기 전에 한 번 더 거른다 — 깨진 코드와 상한 초과는 남기지 않는다', () => {
+    installStorage();
+    const many = Array.from({ length: LIMITS.builds + 3 }, (_, i) => ({
+      v: 1,
+      code: other(i + 10),
+      label: `견적 ${i}`,
+      savedAt: '2026-10-01T00:00:00.000Z',
+    }));
+    replaceBuilds([{ v: 1, code: '깨진', label: 'x', savedAt: 'x' }, ...many]);
+    const list = loadBuilds();
+    expect(list).toHaveLength(LIMITS.builds);
+    expect(list.map((b) => b.code)).not.toContain('깨진');
+  });
+
+  it('구독자에게 알린다 — 화면 목록이 바로 바뀐다', () => {
+    installStorage();
+    const notify = vi.fn();
+    const off = subscribeStorage(notify);
+    replaceBuilds([]);
+    off();
+    expect(notify).toHaveBeenCalled();
+  });
+
+  it('쓰기가 실패하면 false — 정상 경로로 처리한다', () => {
+    installStorage({ failWrites: true });
+    expect(replaceBuilds([])).toBe(false);
   });
 });

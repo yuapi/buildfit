@@ -49,7 +49,11 @@ describe('내보내기·읽기 왕복', () => {
   });
 
   it('파일 이름은 사용자 시계의 날짜다', () => {
-    expect(backupFileName(NOW)).toBe('buildfit-견적-2026-10-02.json');
+    expect(backupFileName(NOW)).toBe('buildfit-builds-2026-10-02.json');
+  });
+
+  it('★ 파일 이름은 ASCII다 — Chromium이 한글 이름을 버리고 「download」로 저장했다', () => {
+    expect(backupFileName(NOW)).toMatch(/^[\x20-\x7e]+$/);
   });
 });
 
