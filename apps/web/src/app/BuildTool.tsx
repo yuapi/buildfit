@@ -25,7 +25,14 @@ import {
 import { decodeBuildCode, encodeBuildCode } from "@/lib/build-code";
 import { FitBar } from "@/components/FitBar";
 import { PartIcon } from "@/components/Icons";
-import { buildLabel, countsText, filledSlotCount, pickedCount } from "@/lib/build-summary";
+import {
+  buildLabel,
+  countsText,
+  filledSlotCount,
+  missingCount,
+  missingNotice,
+  pickedCount,
+} from "@/lib/build-summary";
 import { addToSlot, isMultiSlot, maxForSlot, removeFromSlot } from "@/lib/multi-slot";
 import { SLOT_META, type SlotName } from "@/lib/categories";
 import { ElectricityPanel } from "./ElectricityPanel";
@@ -128,6 +135,15 @@ export function BuildTool({ initial }: { initial?: Build }) {
 
   const [loadError, setLoadError] = useState(false);
   /**
+   * 불러온 견적에서 DB에 없어 뺀 부품 수.
+   *
+   * 저장한 견적·작업 중 견적·공유 코드의 부품이 원본 갱신으로 사라지면, 읽는 쪽은
+   * 그것을 빼고 나머지로 판정한다. **아무 말이 없으면** 빠진 견적을 원래 것으로
+   * 믿고, 작업 중 견적은 그 상태로 다시 적혀 원래 참조를 잃는다. 다음 편집에서
+   * 다시 계산되므로 0으로 돌아간다.
+   */
+  const [missing, setMissing] = useState(0);
+  /**
    * 지난번 하던 것을 불러왔는가.
    *
    * 말없이 채우면 사용자는 부품이 왜 들어 있는지 모른다. 불러왔다고 적고
@@ -154,6 +170,7 @@ export function BuildTool({ initial }: { initial?: Build }) {
         if (result.ok) {
           setBuild(result.data);
           setLoadError(false);
+          setMissing(missingCount(next, result.data));
           if (opts.restored === true) setRestored(true);
         } else {
           setLoadError(true);
@@ -186,6 +203,7 @@ export function BuildTool({ initial }: { initial?: Build }) {
   const startOver = useCallback(() => {
     clearDraft();
     setRestored(false);
+    setMissing(0);
     setBuild(EMPTY);
     setOpenSlot(null);
   }, []);
@@ -319,6 +337,12 @@ export function BuildTool({ initial }: { initial?: Build }) {
         <p role="alert" className="verdict-bar verdict-warning text-sm">
           부품 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요. 고른
           구성은 그대로 있습니다.
+        </p>
+      )}
+
+      {missing > 0 && (
+        <p role="status" className="verdict-bar verdict-warning text-sm">
+          {missingNotice(missing)}
         </p>
       )}
 

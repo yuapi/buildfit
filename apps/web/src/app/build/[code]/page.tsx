@@ -4,7 +4,7 @@ import { loadBuild } from '@buildfit/db/build';
 import { BuildTool } from '@/app/BuildTool';
 import { Container } from '@/components/SiteShell';
 import { decodeBuildCode } from '@/lib/build-code';
-import { buildLabel, buildSummary, nameOf, pickedCount } from '@/lib/build-summary';
+import { buildLabel, buildSummary, missingCount, missingNotice, nameOf, pickedCount } from '@/lib/build-summary';
 import { SLOT_META } from '@/lib/categories';
 import { getDb } from '@/lib/db';
 
@@ -127,6 +127,12 @@ export default async function SharedBuild({ params }: { params: Promise<{ code: 
             </li>
           ))}
         </ul>
+        {/* 일부만 사라졌으면 그렇다고 말한다 — 빠진 견적을 원래 것으로 믿지 않게 */}
+        {missingCount(selection, build) > 0 && (
+          <p className="verdict-bar verdict-warning mt-4 text-sm">
+            {missingNotice(missingCount(selection, build))}
+          </p>
+        )}
         <p className="mt-3 text-sm text-fg-subtle">
           이어서 고치면 내 견적이 됩니다. 원본 링크는 그대로 남습니다.
         </p>

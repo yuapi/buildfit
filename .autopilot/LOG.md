@@ -94,3 +94,9 @@
 - 변경: `/build/[code]` 페이지가 따로 세던 셈을 `pickedCount`로. build-summary 테스트 2개 — 스토리지만의 셈, 그리고 **앱 코드가 슬롯을 따로 늘어놓고 세지 않는다**는 소스 검사(고치기 전 페이지에서 실패 확인)
 - 검증: 같은 링크가 「공유된 견적」·제목 「Micron M600 1TB …」, typecheck 0 · lint 0 · test 280/476/545 · build 성공
 - 후속: 없음 (T-15는 발굴 때 넣음)
+
+## 2026-10-02T11:30 | T-15 | done | skill 1.5.0
+- 변경: apps/web/src/lib/build-summary.ts (`selectionCount`·`missingCount`·`missingNotice` 추가), `/build/[code]` 머리에 안내, 편집기 `apply`가 매번 계산해 안내(다음 편집에서 0으로, 「처음부터」에서 지움), build-summary 테스트 5개
+- Playwright: CPU + 없는 GPU id + 스토리지 링크 → 「담긴 부품 중 1개를 찾지 못해 빼고 보여줍니다…」, 전부 있는 링크 → 안내 없음, 같은 코드를 작업 중 견적으로 넣고 새로 고침 → 편집기에도 안내, 쿨러 하나 고른 뒤 → 사라짐. 콘솔 오류 0
+- 검증: typecheck 0 · lint 0 · test 280/481/545
+- 후속: 없음. 큐 open 0 → 재발굴
