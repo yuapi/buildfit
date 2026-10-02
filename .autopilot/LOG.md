@@ -114,3 +114,8 @@
 - Playwright: 9800X3D(AM5)·14700KF(LGA 1700)를 본 뒤 — 빈 견적의 CPU 고르기에 둘 다, AM5 보드를 고른 뒤엔 9800X3D만, 「맞는 것만 보기」를 끄면 둘 다, 검색어를 치면 줄이 사라지고, 누르면 CPU 칸에 들어감. 콘솔 오류 0
 - 검증: typecheck 0 · lint 0 · test 284/486/545 · build 성공
 - 후속: 없음. feat:recent-parts 끝. 큐 open 0 → 재발굴
+
+## 2026-10-02T13:00 | 재발굴 → 최종 중단 | stop | skill 1.5.0
+- 유지보수 축: typecheck 0 · lint 0 · test 284/486/545 · build 성공, 마커 0, quantakrypto 274파일 0, 열린 이슈 0. security-audit 연결 실패(의존성 변경 없음)
+- 제품 축: 명세 Phase 1 항목 전부 구현, 호출 없던 저장 기능 해소, 입력 검증 있음 → 빠진 것·약한 것 없음. 쿨러·메모리·케이스 호환 목록은 「하지 않기로 한 것」으로(사유 ROADMAP)
+- 실질 작업 0 → `.autopilot/STOP` 생성. 완료 17개, blocked 0
