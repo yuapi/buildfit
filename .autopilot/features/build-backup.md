@@ -27,12 +27,15 @@ Phase 1의 명세 항목인데 구현이 없다 (2026-10-01 발굴, `apps/web/sr
 
 1. 항목마다 `migrateSavedBuild`를 거친다 — 코드가 안 읽히면 버린다 (기존 읽기 규칙과 같다)
 2. 같은 `code`가 이미 있으면 **기존 것을 둔다** (이름을 덮지 않는다 — 사용자가 이 브라우저에서 고친 이름일 수 있다)
-3. 합친 목록을 `savedAt` 최신순으로 정렬하고 `LIMITS.builds`(20)로 자른다. **잘린 수를 알린다** — 조용히 버리지 않는다
+3. **지금 있는 견적은 하나도 빼지 않는다.** 남은 자리(`LIMITS.builds` − 지금 수)만큼 파일의 것을 최신순으로 넣고,
+   못 넣은 수를 알린다 — 조용히 버리지 않는다. 결과 목록은 `savedAt` 최신순
+   - (T-11에서 바꿈) 처음 설계는 「합친 전체를 최신순으로 잘라 20개」였다. 그러면 파일 쪽이 더 최신일 때
+     **가져오기가 이 브라우저의 견적을 지운다.** 변이 시험으로 확인했다
 4. 파일이 형식에 안 맞으면(JSON 아님, `app`·`kind` 다름, `builds`가 배열 아님) 아무것도 바꾸지 않고 그렇다고 말한다
 
 ## 단계
 
 | 단계 | 작업 | 완료 기준 |
 |---|---|---|
-| 1/2 | `apps/web/src/lib/build-backup.ts` — `exportBuilds(builds, now)`·`parseBackup(text)`·`mergeBuilds(current, incoming, limit)` 순수 함수 | 단위 테스트: 왕복, 깨진 코드 제외, 중복은 기존 유지, 상한 초과 시 잘린 수, 형식 오류 4종이 아무것도 바꾸지 않음 |
+| 1/2 ✅ | `apps/web/src/lib/build-backup.ts` — `exportBuilds`·`backupFileName`·`parseBackup`·`mergeBuilds`·`describeImport`·`describeProblem` 순수 함수 | 단위 테스트 20개: 왕복, 깨진 코드 제외, 중복은 기존 유지, 지금 견적을 밀어내지 않음, 형식 오류 6종(1MB 상한 포함)이 아무것도 돌려주지 않음 |
 | 2/2 | `SaveBox`에 내보내기·가져오기 UI + `storage.ts`에 목록 통째 쓰기(`replaceBuilds`, 추가만) | 단위 테스트 + Playwright로 저장 → 내보내기 → 저장소 비움 → 가져오기 → 목록 복원 확인. README 기능 표·명세 §8A.3에 반영 |
