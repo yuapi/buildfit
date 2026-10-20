@@ -178,3 +178,12 @@
 ## 2026-10-20T15:30 | T-21 | done | skill 1.10.0
 - 변경: apps/web/src/lib/server-log.ts (logServerError — drizzle 의 cause 를 앞에, 비밀번호 가림, Next 404·redirect 무시), DB 를 부르는 서버 파일 13곳의 catch, sitemap·어드민 저장(모르는 오류만), test/server-log.test.ts, deployment.md §3
 - 검증: typecheck 0 · lint 0 · test 286 / 522→539 / 545 · build 성공. DB 를 닫은 채 띄운 앱: /part·/healthz 에서 「[buildfit] /part: [ECONNREFUSED] …」, 비밀번호 노출 0
+
+## 2026-10-20T15:45 | 재발굴 | discover | skill 1.10.0
+- 성능(입력 10배): 견적서 4,000자 52ms, 검색어 200자 8~22ms — 문제없음
+- README 의 npm 스크립트 전부 존재. 열린 이슈 0, P-1 결정 대기
+- 새 시나리오 「운영자가 배포 결과 확인」: 지금 버전·자동 배포 실패를 사이트에서 알 수 없다 → T-22(enhance)
+
+## 2026-10-20T16:00 | T-22 | done | skill 1.10.0
+- 변경: apps/web/src/lib/deploy-status.ts, /admin 머리에 「배포 버전 …」·「최근 자동 배포 실패」, deploy.sh 가 .release-label 도 쓴다, test/deploy-status.test.ts
+- 검증: typecheck 0 · lint 0 · test 286 / 539→543 / 545 · build 성공. 개발 환경에서는 칸이 숨는다(단위 테스트). 운영 화면은 어드민 비밀이 없어 직접 못 봤다 — 릴리스 뒤 서버의 .release-label 생성만 확인한다

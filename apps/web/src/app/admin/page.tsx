@@ -11,6 +11,7 @@ import { specLabel, specValueText } from '@/lib/spec-labels';
 import { Container } from '@/components/SiteShell';
 import { getDb } from '@/lib/db';
 import { requireAdmin } from '@/lib/admin-auth';
+import { deployStatus } from '@/lib/deploy-status';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,6 +31,8 @@ export default async function AdminHome() {
   ]);
   const open = gaps.filter((g) => g.missingParts > 0);
   const totalMissing = open.reduce((n, g) => n + g.missingParts, 0);
+  // 지금 도는 배포 (T-22). 개발 환경이면 없다
+  const deployed = deployStatus(process.cwd());
 
   return (
     <Container className="py-10">
@@ -38,6 +41,17 @@ export default async function AdminHome() {
         호환성 판정에 필요한데 아직 비어 있는 필드다. 채우면 그만큼 &ldquo;판정 불가&rdquo;가 줄어든다.
         결측이 많은 순으로 보여준다.
       </p>
+
+      {deployed && (
+        <p className="mt-3 text-xs text-fg-subtle">
+          배포 버전 <span className="font-medium text-fg">{deployed.label}</span> ({deployed.sha.slice(0, 7)})
+          {deployed.failedSha && (
+            <span className="ml-2 text-danger">
+              최근 자동 배포 실패: {deployed.failedSha.slice(0, 7)} — 서버에서 journalctl -u buildfit-deploy 로 확인
+            </span>
+          )}
+        </p>
+      )}
 
       <div className="mt-6 flex gap-6 text-sm">
         <div>
