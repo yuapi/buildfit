@@ -252,6 +252,46 @@ export async function createSpecReport(
     .where(and(eq(partSpecs.partId, input.partId), eq(partSpecs.key, input.specKey)));
 }
 
+/**
+ * 신고를 거절한다 — 신고한 값이 틀렸다고 사람이 확인했을 때 (§5.5, T-18).
+ *
+ * 같은 (부품, 항목)에 **다른 열린 신고가 없으면** 「검증 중」을 내린다. 남아 있으면 그대로 둔다 —
+ * 그 신고는 아직 아무도 보지 않았다.
+ *
+ * 적재가 스스로 세운 신호(중복 불일치·자기 검사)까지 함께 내려갈 수 있다. 다음 적재가 그 신호를
+ * 다시 계산해 세운다 (`apps/ingest/src/duplicates.ts`·`plausibility.ts`는 `disputed = false`인 행에 선다).
+ *
+ * @returns 열린 신고였고 이번에 닫혔으면 `true`
+ */
+export async function rejectSpecReport(db: Database, reportId: string): Promise<boolean> {
+  return db.transaction(async (tx) => {
+    const [closed] = await tx
+      .update(specReports)
+      .set({ status: 'rejected' })
+      .where(and(eq(specReports.id, reportId), eq(specReports.status, 'open')))
+      .returning({ partId: specReports.partId, specKey: specReports.specKey });
+    if (!closed) return false;
+    const [other] = await tx
+      .select({ id: specReports.id })
+      .from(specReports)
+      .where(
+        and(
+          eq(specReports.partId, closed.partId),
+          eq(specReports.specKey, closed.specKey),
+          eq(specReports.status, 'open'),
+        ),
+      )
+      .limit(1);
+    if (!other) {
+      await tx
+        .update(partSpecs)
+        .set({ disputed: false })
+        .where(and(eq(partSpecs.partId, closed.partId), eq(partSpecs.key, closed.specKey)));
+    }
+    return true;
+  });
+}
+
 export interface OpenReport {
   readonly id: string;
   readonly partId: string;

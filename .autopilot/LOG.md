@@ -126,3 +126,34 @@
 - 업스트림 OpenDB 재동기: f30cdc0c → 3024815d (11커밋). 부품 26,504 → 26,511, 스펙 239,779 → 240,059, 중복 536 → 533, disputed 287 → 286. parts.id 26,228건 전부 동일
 - 무작위 견적 1,500개: 규칙 6·9·24 판정 불가 80~82%(케이스 데이터, 알려진 수준), 문제는 알려진 유형(규칙 3 실제 불일치, 규칙 8 변환 케이블). 새 데이터 문제 없음
 - 실질 작업 0 → STOP 유지. 문서 수치 갱신은 보조 작업이라 STOP의 「보류한 보조 작업」에 적었다
+
+## 2026-10-20T12:25 | 재개 | discover | skill 1.10.0
+- 사람이 다시 불렀다 (STOP 있음 → 재개). 직전 STOP 내용:
+  > 최종 중단: 실질 작업 없음
+  > - 사이클: 재발굴 7회 (2026-10-01 ~ 2026-10-02). 7회차는 사람이 다시 불러서 돌렸다
+  > - 완료: 작업 17개 — feature 4 (T-11·T-12 백업, T-16·T-17 최근 본 부품) · fix 3 (T-6 견적서 제품군 사전, T-10 호환 목록 소켓 등가, T-14 스토리지만 담은 공유 링크) · test 3 (T-2·T-7·T-8) · docs 3 (T-3·T-4·T-5) · enhance 1 (T-15 사라진 부품 안내) · security 1 (T-1 next 패치) · cleanup 1 (T-9) · lint 1 (T-13)
+  > - blocked: 0개
+  > - 마지막 스캔: typecheck 0 · lint 0 · test 284/486/545 전부 통과 · build 성공, TODO·FIXME 0건, quantakrypto 274파일 0건, 열린 GitHub 이슈 0. security-audit MCP는 연결 실패(마지막 감사 2026-10-01 0건, 그 뒤 의존성 변경 없음). 제품 축 — 빠진 것·약한 것 없음 (ROADMAP 「제품」)
+  > - 7회차 추가 스캔: security-audit 재연결 → 0건. 새 화면(백업·최근 본 부품·빠진 부품 안내·고르기 최근 줄) axe 접근성 검사 라이트/다크 0건.
+  >   업스트림 OpenDB 11커밋 재동기(부품 +7, 스펙 +280, id 26,228건 전부 유지) 뒤 무작위 견적 1,500개 — 규칙별 비율이 알려진 수준, 새 유형의 데이터 문제 없음
+  > - 보류한 보조 작업: README·CLAUDE.md의 카탈로그 수치가 재동기로 조금 낡았다 (부품 26,504 → 26,511, 중복 536 → 533건, disputed 287 → 286행). 문서만 바뀌는 보조 작업이라 넣지 않았다 — 원하면 큐에 넣는다
+  > - 하지 않기로 한 것에 더한 것: 쿨러·메모리·케이스 호환 목록 (사유는 ROADMAP)
+- 그 사이(사람 작업): 보안 점검 #115(ADR-0026), 같은 서버 3200 배포 #117(ADR-0027), v0.2.0 운영 시작 https://buildfit.duckdns.org
+- 모드: 세션 연속. CONFIG 없음 → local (작업 브랜치 autopilot/20261020-1224, push 안 함)
+- Stop 훅: `.claude/settings.local.json` 에만 설치 (레포 규칙 — oci-migration §3.6, 커밋하지 않는다). 훅 스크립트는 RUN 이 있을 때만 동작
+
+## 2026-10-20T12:50 | 재발굴 | discover | skill 1.10.0
+- 베이스라인: typecheck 0 · lint 0 · test 284/506/545 · build 성공 · audit 0 · 마커 0 · 정적 보안 0 · 열린 이슈 0
+- 탐색 실행(로컬 프로덕션 3399): 경계 입력 14개 — 결함 없음 (ROADMAP 「관찰」)
+- 새 시나리오 「운영자가 신고 처리」: 신고를 닫을 방법이 없다 → T-18(enhance). 배포 스크립트 검사 0 → T-19(test). 보류했던 수치 갱신 → T-20(docs)
+- 회고: T-1~T-17 실패 0 — 배울 실패 없음, last_retro 기록
+
+## 2026-10-20T13:10 | T-18 | in_progress | skill 1.10.0
+- 사용량 한도로 중단. 브랜치 feature/autopilot-T-18-close-reports 에 커밋하지 않은 변경이 있다 (git add 만 함)
+- 구현: rejectSpecReport(part.ts), saveSpec 이 열린 신고를 resolved 로(gaps.ts), /admin 거절 버튼·rejectReportAction, DB 테스트 report-close.test.ts
+- 검증됨: typecheck 0 · lint 0 · test 286/507/545. 남은 완료 기준: 빌드한 앱에서 /admin 목록에서 사라지는 것 확인 → 그 뒤 커밋·PR
+
+## 2026-10-20T14:00 | T-18 | done | skill 1.10.0
+- 변경: packages/db/src/queries/part.ts (rejectSpecReport), gaps.ts (saveSpec 가 열린 신고를 resolved), apps/web/src/app/admin/actions.ts·page.tsx (거절 버튼), apps/ingest/test/report-close.test.ts
+- 검증: typecheck 0 · lint 0 · test 284→286 / 506→507 / 545 · build 성공. 빌드한 앱에서 신고 → /admin 에 보임 → 거절 → 사라짐, 콘솔 오류 0
+- 후속: 없음

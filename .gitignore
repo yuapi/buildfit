@@ -104,3 +104,8 @@ venv/
 /buildcores-open-db/
 *.sqlite
 *.db
+.autopilot/STOP
+.autopilot/RUN
+.autopilot/.hook-state
+.autopilot/driver-logs/
+.claude/settings.local.json
