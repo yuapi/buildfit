@@ -1,0 +1,9 @@
+[Unit]
+Description=buildfit OpenDB 재동기 (매주 월요일)
+
+[Timer]
+OnCalendar=Mon *-*-* 05:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
