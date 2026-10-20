@@ -1,0 +1,128 @@
+# LOG (autopilot 실행 기록, append only)
+
+## 2026-10-01T10:20 | 발굴 | 상태 파일 생성
+- 베이스라인: typecheck 0 · lint 0 · test 274/439/536 · build 성공. 마커 0, quantakrypto 0
+- 발굴: T-1(security, next GHSA-vcvr-r3jv-pc5j), T-2(test, proxy.ts 응답 매핑)
+- **레포 규칙과 맞춘 것:** CLAUDE.md가 develop 직접 커밋을 막고 PR 머지를 요구한다. 그래서 작업마다 feature 브랜치에서
+  커밋하고, 브랜치를 push해 PR로 머지한다(CI 녹색일 때). 스킬의 「push하지 않는다」보다 레포 규칙을 따른다 —
+  클라우드 컨테이너는 사라지므로 push하지 않은 커밋은 남지 않는다
+
+## 2026-10-01T10:35 | T-1 | done
+- 변경: apps/web/package.json, package-lock.json (next·eslint-config-next 16.3.5 → 16.3.6, lockfile은 next 계열 12개만)
+- 검증: typecheck 0 · lint 0 · test 274/439/536 (변화 없음) · build 성공(Next.js 16.3.6) · security-audit 0건
+- 비고: 레포는 `next/og`를 쓰지 않아 취약 경로는 없었다. 취약 범위의 버전이 설치돼 있던 것을 치운다
+- 후속: 없음 (T-2는 발굴 때 이미 있음)
+
+## 2026-10-01T10:55 | T-2 | done
+- 변경: apps/web/test/proxy.test.ts (새 테스트 5), apps/web/vitest.config.ts (`@/*` 별칭 — tsconfig와 같은 매핑, 새 의존성 없음)
+- 검증: typecheck 0 · lint 0 · test 274/439→444/536 · build 성공. 변이 확인 — `cache-control`과 꺼짐 rewrite를 빼면 2건 실패
+- 후속: 없음
+
+## 2026-10-01T11:10 | 재발굴 + T-3 | done
+- 재발굴: 기계적 소스(실패·린트·마커·보안)는 0. 도메인 문서를 훑어 T-3·T-4(docs) 추가. 고를 때 거르기의 규칙 8·18은 ROADMAP 「하지 않기로」에 사유와 함께
+- 변경: README.md — 카탈로그 수치(26,504 / 239,779 / 63,691, 재동기 후), 케이스 데이터 행(이슈 #3 「사람이 채워야」 → ADR-0025 업스트림 동기), 「규칙 15개」 → 20개
+- 검증: lint 0 · test 274/444/536 (변화 없음)
+- 후속: 없음
+
+## 2026-10-01T11:25 | T-4 | done
+- 변경: docs/handoff-guide.md §8.1 — 날짜(09-24 → 10-01), 닫은 이슈 #62~#93 추가, `main`과의 거리(316 → 457 커밋), 「도구」 행(MCP 서버·autopilot 상태 파일·레포 규칙 우선)
+- 검증: lint 0 · test 274/444/536 (변화 없음)
+- 후속: 없음. BACKLOG에 open이 0 — 다음 실행은 발굴부터
+
+## 2026-10-01T11:40 | 재발굴 + T-5 | done
+- 재발굴: 무작위 견적 1,500개 — 새 데이터 문제 없음 (규칙 3·17 오류는 실재 불일치, 규칙 8 경고는 변환 케이블 경우). T-5(docs) 추가
+- 변경: CLAUDE.md — 견적서 확정 72.6% → 73.1%(n=435, #85), 중복 537건(2.03%) → 536건(2.02%, 재동기·#87 후), disputed 272행 → 「처음 272, 지금 총계 287」
+- 검증: lint 0 · test 274/444/536 (변화 없음)
+- 후속: 없음
+
+## 2026-10-01T12:00 | T-6 | done
+- 변경: packages/compat/src/search.ts `KO_ALIASES`에 제품군 24개, quote 테스트 예시(버려지는 말 → 「한정판」), 견적서 SQL 테스트, docs/research/korean-search-terms.md §5.3
+- 실측: 한글 제품군이 든 56줄 — 확정 71.7% → 73.1%, 여럿일 때 평균 후보 3.8 → 2.8, 단일 오답 0. 견적서 SQL 테스트가 「에어로」로 EAGLE을 기대하던 옛 오답을 바로잡음
+- 검증: lint 0 · typecheck · test 275/444/537
+- 후속: 없음
+
+## 2026-10-01T12:20 | 재발굴 + T-7 | done | skill 1.3.0
+- 재발굴: 베이스라인 typecheck 0 · lint 0 · test 275/444/537 · build 성공. 마커 0 · security-audit 0 · quantakrypto 266파일 0. 실질 작업 3개 — T-7·T-8(test), T-9(cleanup)
+- 변경: packages/compat/test/verdict.test.ts (새 파일, 8개) — `summarize`의 info 분리 집계, 빈 결과, 엔진 수준 규칙 12 Flashback → `counts.info` 1, `unknown`의 빈 notes, 사유 종류, `isFilled`
+- 변이 확인: `summarize`의 `info` 증가를 지우면 새 테스트 2개만 실패, 기존 537개는 전부 통과 — 공백이 실재했다
+- 검증: typecheck 0 · lint 0 · test 275/444/545
+- 후속: 없음 (T-8·T-9는 발굴 때 넣음)
+
+## 2026-10-01T12:40 | T-8 | done | skill 1.3.0
+- 변경: apps/web/test/admin-auth.test.ts (새 파일, 5개) — `server-only`·`next/headers`·`next/navigation`을 mock해 ok·open은 통과, unauthorized(틀린 비밀·비밀 없음)·disabled는 `notFound()`
+- 변이 확인: `disabled`를 통과로 바꾸면 1개, `notFound()`를 지우면 3개 실패 — 기존 444개는 둘 다 전부 통과했다
+- 검증: typecheck 0 · lint 0 · test 275/449/545 · build 성공
+- 후속: 없음
+
+## 2026-10-01T13:00 | T-9 | done | skill 1.4.0
+- 변경: apps/web/src/lib/categories.ts — `metaForSlot` 삭제. Phase 0b(4979505)에서 생긴 뒤 참조 0 (레포 전체 grep: 정의 한 줄뿐). 앱 내부 모듈이라 공개 인터페이스가 아니다
+- 검증: typecheck 0 · lint 0 · test 275/449/545 · build 성공 (베이스라인과 같음)
+- 후속: 없음. BACKLOG에 open 0 — 다음 실행은 재발굴(1.4.0의 제품 축 포함)부터
+
+## 2026-10-01T13:30 | 재발굴 + T-10 | done | skill 1.4.0
+- 재발굴: 1.4.0의 제품 축을 처음 돌림 — ROADMAP에 「제품」 절(기능 지도·빠진 것·약한 것). 유지보수 축은 마커 0 · quantakrypto 0 · 열린 이슈 0. security-audit MCP는 이 세션에서 연결 실패(타임아웃) — 같은 날 직전 사이클 0건, 그 뒤 의존성 변경 없음
+- 큐: T-10(fix) · T-11·T-12(feature, `features/build-backup.md` — 명세 §8A.3 Phase 1의 내보내기·가져오기). 쿨러·메모리 등의 호환 목록은 명세에 대조 축이 없어 설계가 먼저라 넣지 않음
+- 변경: packages/db/src/queries/part.ts에 `partsOnSameSocket` 추가(기존 `partsMatchingSpec`은 그대로), 부품 페이지가 그것을 씀, apps/ingest/test/same-socket-sql.test.ts(5개), CLAUDE.md 소켓 표 사용처 한 줄
+- 실측: 호환 목록이 빈 CPU·보드 217 → 184. 늘어난 33개가 정확히 TR4 보드 23 + sTR4 CPU 10. 남은 184는 등가 표가 일부러 묶지 않는 소켓(듀얼·Narrow 등). 빌드한 앱에서 X399 AORUS PRO 페이지에 Threadripper 7종 확인
+- 검증: typecheck 0 · lint 0 · test 280/449/545 · build 성공
+- 후속: 없음
+
+## 2026-10-02T09:00 | T-11 | done | skill 1.4.0
+- 변경: apps/web/src/lib/build-backup.ts (새 파일 — `exportBuilds`·`backupFileName`·`parseBackup`·`mergeBuilds`·`describeImport`·`describeProblem`), apps/web/test/build-backup.test.ts (20개), `features/build-backup.md` 1/2 완료 표시
+- 설계 변경: 합치기가 「전체를 최신순으로 잘라 20개」면 파일 쪽이 더 최신일 때 가져오기가 **이 브라우저의 견적을 지운다.** 지금 것은 전부 두고 남은 자리만 채우게 바꿨다 (보수적 선택). 설계 문서에 사유 기록
+- 변이 확인: 옛 합치기로 되돌리면 2개 실패. 처음 쓴 ★ 테스트는 그 변이를 못 잡아(파일 쪽 최신이 1개뿐) 강화했다
+- 검증: typecheck 0 · lint 0 · test 280/469/545 · build 성공
+- 후속: T-12 open (2/2 UI). T-13(lint) 추가 — vitest.config.ts의 ESM/CommonJS 경고, 기존부터 있었다
+
+## 2026-10-02T10:00 | T-12 | done | skill 1.4.0
+- 변경: apps/web/src/app/BuildTool.tsx (`BackupControls` — 「목록 내보내기」·「파일에서 가져오기」, 결과는 저장 칸의 `role="status"` 줄), apps/web/src/lib/storage.ts (`replaceBuilds` 추가 — 쓰기 전에 한 번 더 거른다), storage 테스트 4개, README 기능 목록, 명세 §8A.3 ✅
+- 발견·수정: 내려받은 파일이 「download」라는 이름으로 저장됐다. 원인 둘 — 떠 있는 링크, 그리고 **Chromium이 한글이 든 download 이름을 버린다**(ASCII 이름은 그대로, 따로 재현). 링크를 문서에 붙여 누르고 이름을 `buildfit-builds-YYYY-MM-DD.json`으로. 테스트로 ASCII를 고정
+- Playwright 왕복: A 저장 2개 → 내보내기 → 빈 B 가져오기「2개를 더했습니다.」 → 같은 파일 다시「더한 견적이 없습니다. 건너뜀: 이미 있음 2개」 → C(자기 견적 1개)에 엉뚱한 파일「…아닙니다. 저장 목록은 그대로입니다.」, 정상 파일로 3개. 콘솔 오류 0
+- 검증: typecheck 0 · lint 0 · test 280/474/545 · build 성공
+- 후속: 없음. feat:build-backup 끝. 큐에 T-13(lint)만 남음 — 보조 작업이라 다음 실행은 그것을 하거나, 실질 작업이 없으면 재발굴
+
+## 2026-10-02T10:30 | T-13 | done | skill 1.5.0
+- 모드: 세션 연속 (클라우드 세션, `AUTOPILOT_DRIVER` 없음)
+- **Stop 훅을 설치하지 않았다.** 1.5.0의 훅은 `.autopilot/STOP`이 없으면 **모든** 세션 종료를 막는다. 레포 `.claude/settings.json`에 커밋하면 이 레포의 이후 세션 전부(자율 개발과 무관한 사람의 작업 포함)가 autopilot으로 끌려간다 — 레포 전체의 동작을 바꾸는 바깥 영향이라 보수적으로 뺐다. 스킬이 허용하는 「훅 없이 규칙만으로 이어간다」로 진행
+- 변경: apps/web/vitest.config.ts → vitest.config.mts (내용 그대로). tsconfig가 `**/*.mts`를 이미 포함
+- 검증: ESM/CommonJS 경고 0회(전엔 매 실행), typecheck 0 · lint 0 · test 280/474/545 · build 성공
+- 후속: 없음. 큐 open 0 → 재발굴
+
+## 2026-10-02T11:00 | 재발굴 + T-14 | done | skill 1.5.0
+- 재발굴: 제품 축 — 입력 경로(검색·견적서·고르기)는 상한이 이미 있다. 공유 링크 경로에서 T-14(fix)·T-15(enhance). 유지보수 축 — 마커 0, 열린 이슈 0, security-audit 연결 실패(의존성 변경 없음)
+- 재현: 스토리지 하나만 담은 링크 `/build/A4AB1iM8kPq4Qj643YRUIJN-dg`가 「담긴 부품을 찾지 못했습니다」
+- 변경: `/build/[code]` 페이지가 따로 세던 셈을 `pickedCount`로. build-summary 테스트 2개 — 스토리지만의 셈, 그리고 **앱 코드가 슬롯을 따로 늘어놓고 세지 않는다**는 소스 검사(고치기 전 페이지에서 실패 확인)
+- 검증: 같은 링크가 「공유된 견적」·제목 「Micron M600 1TB …」, typecheck 0 · lint 0 · test 280/476/545 · build 성공
+- 후속: 없음 (T-15는 발굴 때 넣음)
+
+## 2026-10-02T11:30 | T-15 | done | skill 1.5.0
+- 변경: apps/web/src/lib/build-summary.ts (`selectionCount`·`missingCount`·`missingNotice` 추가), `/build/[code]` 머리에 안내, 편집기 `apply`가 매번 계산해 안내(다음 편집에서 0으로, 「처음부터」에서 지움), build-summary 테스트 5개
+- Playwright: CPU + 없는 GPU id + 스토리지 링크 → 「담긴 부품 중 1개를 찾지 못해 빼고 보여줍니다…」, 전부 있는 링크 → 안내 없음, 같은 코드를 작업 중 견적으로 넣고 새로 고침 → 편집기에도 안내, 쿨러 하나 고른 뒤 → 사라짐. 콘솔 오류 0
+- 검증: typecheck 0 · lint 0 · test 280/481/545
+- 후속: 없음. 큐 open 0 → 재발굴
+
+## 2026-10-02T12:00 | 재발굴 + T-16 | done | skill 1.5.0
+- 재발굴: 「저장은 하는데 아무도 안 부르는」 것을 찾았다 — `recordRecentPart`·`loadRecentParts`(명세 §8A.1 `recent_parts`)가 호출 0. `features/recent-parts.md` 두 단계로 설계, T-16·T-17
+- 변경: `RecentPart`에 선택 칸 `slug`(add-only), 저장소 스냅샷에 `recentParts`, `components/RecentParts.tsx`(기록 조각 + 목록), 부품 페이지가 기록, `/part` 첫 화면(검색 안 할 때)에 「최근 본 부품」. storage 테스트 3개 + 서버 스냅샷 모양 갱신
+- Playwright: 처음엔 칸 없음 → 9800X3D·RTX 5080을 본 뒤 `/part`에 최신순 「그래픽카드 | …5080」「CPU | …9800X3D」, 첫 링크가 그 부품 페이지로, 검색 중엔 칸 없음. 콘솔·hydration 오류 0
+- 검증: typecheck 0 · lint 0 · test 280/486/545 · build 성공
+- 후속: T-17 open (고르기 목록, 지금 견적과 안 맞는 것은 거른다)
+
+## 2026-10-02T12:30 | T-17 | done | skill 1.5.0
+- 변경: `packages/db/src/queries/picker.ts`에 `pickableAmong`(검색과 같은 `constraintWhere`, 대표만, 넘긴 순서), `actions.ts`에 `recentCandidates`(uuid 모양만, 20개 상한), 고르기 목록이 검색어가 비면 그 칸의 최근 본 부품 5개를 버튼으로(listbox 밖). SQL 테스트 4개, README
+- 변이 확인: `pickableAmong`에서 제약을 빼면 ★ 테스트가 실패
+- Playwright: 9800X3D(AM5)·14700KF(LGA 1700)를 본 뒤 — 빈 견적의 CPU 고르기에 둘 다, AM5 보드를 고른 뒤엔 9800X3D만, 「맞는 것만 보기」를 끄면 둘 다, 검색어를 치면 줄이 사라지고, 누르면 CPU 칸에 들어감. 콘솔 오류 0
+- 검증: typecheck 0 · lint 0 · test 284/486/545 · build 성공
+- 후속: 없음. feat:recent-parts 끝. 큐 open 0 → 재발굴
+
+## 2026-10-02T13:00 | 재발굴 → 최종 중단 | stop | skill 1.5.0
+- 유지보수 축: typecheck 0 · lint 0 · test 284/486/545 · build 성공, 마커 0, quantakrypto 274파일 0, 열린 이슈 0. security-audit 연결 실패(의존성 변경 없음)
+- 제품 축: 명세 Phase 1 항목 전부 구현, 호출 없던 저장 기능 해소, 입력 검증 있음 → 빠진 것·약한 것 없음. 쿨러·메모리·케이스 호환 목록은 「하지 않기로 한 것」으로(사유 ROADMAP)
+- 실질 작업 0 → `.autopilot/STOP` 생성. 완료 17개, blocked 0
+
+## 2026-10-02T13:30 | 재발굴 7회차 → 최종 중단 유지 | stop | skill 1.5.0
+- 사람이 다시 불렀다. STOP이 있었지만 지난 회차에 못 돌린 소스를 채우려고 한 번 더 훑었다
+- security-audit(재연결) 0건. axe 라이트/다크 — `/part`+최근 본 부품, `/build` 빠진 부품 안내, `/` 저장·가져오기 안내·빠진 부품 안내, 고르기+최근 줄 — 0건
+- 업스트림 OpenDB 재동기: f30cdc0c → 3024815d (11커밋). 부품 26,504 → 26,511, 스펙 239,779 → 240,059, 중복 536 → 533, disputed 287 → 286. parts.id 26,228건 전부 동일
+- 무작위 견적 1,500개: 규칙 6·9·24 판정 불가 80~82%(케이스 데이터, 알려진 수준), 문제는 알려진 유형(규칙 3 실제 불일치, 규칙 8 변환 케이블). 새 데이터 문제 없음
+- 실질 작업 0 → STOP 유지. 문서 수치 갱신은 보조 작업이라 STOP의 「보류한 보조 작업」에 적었다

@@ -1,0 +1,6 @@
+{
+  "schema_version": "1",
+  "builds": "[{\"v\":1,\"code\":\"AQMRERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg\",\"label\":\"첫 견적\",\"savedAt\":\"2026-09-19T00:00:00.000Z\"}]",
+  "recent_builds": "[{\"v\":1,\"code\":\"AQMRERERERFBEYERERERERERIiIiIiIiQiKCIiIiIiIiIg\",\"label\":\"최근 구성\",\"savedAt\":\"2026-09-19T00:00:00.000Z\"}]",
+  "recent_parts": "[{\"v\":1,\"id\":\"11111111-1111-4111-8111-111111111111\",\"category\":\"CPU\",\"name\":\"AMD Ryzen 7 9800X3D\",\"at\":\"2026-09-19T00:00:00.000Z\"}]"
+}

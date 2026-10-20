@@ -1,0 +1,27 @@
+# /etc/systemd/system/buildfit.service  (deploy/setup-server.sh 가 설치한다)
+[Unit]
+Description=buildfit (PC 견적 검증, Next.js)
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=buildfit
+Group=buildfit
+# current 는 지금 릴리스 폴더를 가리키는 링크다. 시작할 때 따라간다 (deploy/deploy.sh)
+WorkingDirectory=/opt/buildfit/current/apps/web
+EnvironmentFile=/etc/buildfit/buildfit.env
+Environment=NODE_ENV=production
+# 127.0.0.1 에만 연다. 밖에서는 Caddy 를 거친다 — 요청 제한이 Caddy 가 채운 IP를 센다 (ADR-0026)
+ExecStart=/usr/bin/node /opt/buildfit/current/node_modules/next/dist/bin/next start -H 127.0.0.1 -p ${PORT}
+Restart=always
+RestartSec=5
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/buildfit/releases
+
+[Install]
+WantedBy=multi-user.target

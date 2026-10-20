@@ -1,0 +1,185 @@
+/**
+ * 견적서 줄 매칭 실측 — ADR-0018의 근거.
+ *
+ * 카탈로그의 **진짜 이름**을 국내 판매 표기처럼 흐트러뜨린 뒤, 원래 부품을
+ * 다시 찾아내는지 센다. 지어낸 견적서가 아니라 실제 이름이 출발점이다.
+ *
+ * 이 환경에서는 실제 쇼핑몰 견적서를 볼 수 없다 (도메인 차단). 그래서 대신
+ * **우리가 아는 변형만** 가한다 — 사전에 있는 표기를 한글로 바꾸고, ™를 지우고,
+ * 유통사·포장 표기를 붙이고, 하이픈 주변 띄어쓰기를 흔든다.
+ *
+ * **확정률은 상한으로 읽는다.** 출발점이 카탈로그의 전체 이름이고, 전체 이름은
+ * 그 자체로 SKU 하나를 가리킨다. 실제 견적서 줄은 대개 그보다 짧아
+ * (「쿨러: 녹투아 NH-D15」) 계열 여럿을 동시에 가리킨다 — 그건 매칭의 실패가
+ * 아니라 줄의 성질이지만, 확정률은 그 둘을 한 수치로 섞는다.
+ * 근거: `docs/research/quote-line-matching.md` §2.1
+ *
+ * **단일 오답은 하한으로 읽는다.** 변형이 더하면 오답도 더 날 수 있다.
+ *
+ *     npm run measure:quote --workspace @buildfit/ingest
+ */
+
+import { KO_ALIASES, readQuoteLine, squash } from '@buildfit/compat';
+import postgres from 'postgres';
+
+/** 한 카테고리에서 뽑을 표본 수 */
+const PER_CATEGORY = 60;
+/** 이보다 오래된 것은 견적서에 잘 오르지 않는다 */
+const SINCE = 2023;
+
+const CATEGORIES = ['CPU', 'GPU', 'Motherboard', 'RAM', 'PSU', 'PCCase', 'CPUCooler', 'Storage'];
+
+/** 표 형식 견적서의 분류 칸. 이름표 사전(`QUOTE_LABELS`)에 있는 말로만 */
+const TABLE_LABEL: Record<string, string> = {
+  CPU: 'CPU', GPU: '그래픽카드', Motherboard: '메인보드', RAM: '메모리',
+  PSU: '파워', PCCase: '케이스', CPUCooler: '쿨러', Storage: 'SSD',
+};
+
+/**
+ * 견적서 표 한 줄 — `분류 ⇥ 상품명 ⇥ 수량 ⇥ 가격` (이슈 #85).
+ *
+ * 쇼핑몰 견적서를 복사하면 칸이 탭으로 붙어 온다. 수량·가격은 부품 이름이 아닌데,
+ * 수량 `1`이 앞 낱말에 붙어 `AK400` → `ak4001`이 되어 줄이 통째로 0건이었다.
+ * 가격은 지어낸 값이 아니라 **형식만** 흉내 낸 숫자다 — 매칭에 쓰이지 않아야 한다.
+ */
+function tableRow(category: string, line: string, seed: number): string {
+  const price = `${((seed * 37) % 900) + 50},000`;
+  const [qty, won] = [['1', price], ['2', price], ['1개', `${price}원`]][seed % 3]!;
+  return `${TABLE_LABEL[category]}\t${line}\t${qty}\t${won}`;
+}
+
+/** 영문 → 한글. 사전을 뒤집어 쓴다 — **우리가 아는 표기로만** 흐트러뜨린다 */
+const TO_KO = new Map<string, string>();
+for (const a of KO_ALIASES) if (a.ko[0]) TO_KO.set(a.en, a.ko[0]);
+
+const NOISE = ['(정품)', '멀티팩', '병행수입', '벌크', '대원씨티에스', '(신제품)'];
+
+function mangle(name: string, brand: string | null, seed: number): string {
+  // 1) ™·®는 판매 페이지에서 사라진다
+  let out = name.replace(/[™®]/g, '');
+  // 2) 제품군·제조사 이름을 한글로 바꾼다 (사전에 있는 것만, 낱말 단위로)
+  for (const [en, ko] of TO_KO) {
+    const re = new RegExp(`\\b${en.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+    if (re.test(out) && (seed + en.length) % 2 === 0) out = out.replace(re, ko);
+  }
+  // 3) 국내 목록은 제조사를 앞에 붙인다
+  if (brand !== null && !out.toLowerCase().startsWith(brand.toLowerCase().slice(0, 4))) {
+    out = `${TO_KO.get(squash(brand)) ?? brand} ${out}`;
+  }
+  // 4) 유통·포장 표기
+  out = `${out} ${NOISE[seed % NOISE.length]}`;
+  // 5) 하이픈 주변 띄어쓰기가 제각각이다
+  if (seed % 3 === 0) out = out.replace(/-/g, ' ');
+  if (seed % 5 === 0) out = out.replace(/ - /g, '-');
+  return out;
+}
+
+interface Tally {
+  exact: number;
+  /** 여럿인데 정답이 그 안에 있다 */
+  among: number;
+  none: number;
+  /** ★ 하나로 확정했는데 그게 아니었다. 이 수가 0이 아니면 기능을 내지 않는다 */
+  wrongSingle: number;
+  /** 여럿인데 정답이 없다 */
+  wrongMany: number;
+  listSum: number;
+  total: number;
+}
+
+interface Knobs {
+  readonly mergeShort: boolean;
+  /**
+   * 중복 레코드를 후보에서 뺀다 (이슈 #11).
+   *
+   * 뺄 때는 **정답도 대표로 옮겨 센다.** 표본이 중복 레코드일 때 대표를 찾아낸
+   * 것을 오답으로 세면, 이 필터가 손해처럼 보인다 — 실제로는 같은 제품이다.
+   */
+  readonly canonicalOnly: boolean;
+  /** 견적서 표 형식으로 붙인다 (이슈 #85) */
+  readonly table?: boolean;
+}
+
+async function measure(url: string, knobs: Knobs): Promise<Tally> {
+  const { mergeShort } = knobs;
+  const sql = postgres(url, { max: 4 });
+  const t: Tally = { exact: 0, among: 0, none: 0, wrongSingle: 0, wrongMany: 0, listSum: 0, total: 0 };
+  try {
+    for (const category of CATEGORIES) {
+      const rows = await sql<
+        { id: string; canon: string; model_name: string; brand: string | null }[]
+      >`
+        select id, coalesce(duplicate_of, id) as canon, model_name, brand from parts
+        where category = ${category} and release_year >= ${SINCE}
+        -- 무작위지만 되풀이해도 같은 표본이 나와야 비교가 된다
+        order by md5(id::text) limit ${PER_CATEGORY}`;
+
+      let seed = 0;
+      for (const row of rows) {
+        t.total++;
+        const mangled = mangle(row.model_name, row.brand, seed);
+        const line = knobs.table ? tableRow(category, mangled, seed) : mangled;
+        seed++;
+        const parsed = readQuoteLine(line, { mergeShort });
+        if (!parsed.isPart) {
+          t.none++;
+          continue;
+        }
+        const conds = parsed.terms.map(
+          (term) => sql`(${term.any
+            .map((v) => sql`search_text like ${`%${v}%`}`)
+            .reduce((a, b) => sql`${a} or ${b}`)})`,
+        );
+        const hits = await sql<{ id: string }[]>`
+          select id from parts
+          where category = ${category}
+            and ${knobs.canonicalOnly ? sql`duplicate_of is null` : sql`true`}
+            and ${conds.length === 0 ? sql`false` : conds.reduce((a, c) => sql`${a} and ${c}`)}
+          limit 40`;
+        const want = knobs.canonicalOnly ? row.canon : row.id;
+
+        if (hits.length === 0) t.none++;
+        else if (hits.length === 1) {
+          if (hits[0]?.id === want) t.exact++;
+          else t.wrongSingle++;
+        } else if (hits.some((h) => h.id === want)) {
+          t.among++;
+          t.listSum += hits.length;
+        } else t.wrongMany++;
+      }
+    }
+  } finally {
+    await sql.end();
+  }
+  return t;
+}
+
+function report(label: string, t: Tally): void {
+  const pct = (n: number) => `${((n / t.total) * 100).toFixed(1)}%`;
+  console.log(`\n=== ${label} (n=${t.total}) ===`);
+  console.log(`  하나로 확정      ${t.exact} (${pct(t.exact)})`);
+  console.log(`  여럿, 정답 포함  ${t.among} (${pct(t.among)})  평균 ${(t.listSum / Math.max(1, t.among)).toFixed(1)}개`);
+  console.log(`  못 찾음          ${t.none} (${pct(t.none)})`);
+  console.log(`  ★ 단일 오답      ${t.wrongSingle} (${pct(t.wrongSingle)})`);
+  console.log(`  여럿, 정답 없음  ${t.wrongMany} (${pct(t.wrongMany)})`);
+}
+
+async function main(): Promise<void> {
+  const url = process.env['DATABASE_URL'];
+  if (url === undefined) throw new Error('DATABASE_URL이 필요합니다.');
+  report('짧은 조각 붙이지 않음', await measure(url, { mergeShort: false, canonicalOnly: false }));
+  report('짧은 조각 붙임', await measure(url, { mergeShort: true, canonicalOnly: false }));
+  report(
+    '짧은 조각 붙임 + 중복 제외 (현재 기본값)',
+    await measure(url, { mergeShort: true, canonicalOnly: true }),
+  );
+  report(
+    '견적서 표 형식 — 분류·수량·가격 칸 (이슈 #85)',
+    await measure(url, { mergeShort: true, canonicalOnly: true, table: true }),
+  );
+}
+
+main().catch((err: unknown) => {
+  console.error(err);
+  process.exitCode = 1;
+});

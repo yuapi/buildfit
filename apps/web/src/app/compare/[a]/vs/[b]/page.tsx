@@ -1,0 +1,223 @@
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { benchmarksForPart, partBySlug, type PartBenchmark } from '@buildfit/db/part';
+import { BenchmarkBlock } from '@/components/BenchmarkBlock';
+import { axisLabel, backendLabel, feltDifference } from '@/lib/perf';
+import { Container } from '@/components/SiteShell';
+import { startBuildHref } from '@/lib/build-links';
+import { alignSpecs } from '@/lib/compare';
+import { categoryLabel } from '@/lib/categories';
+import { getDb } from '@/lib/db';
+import { specLabel, specValueText } from '@/lib/spec-labels';
+
+export const dynamic = 'force-dynamic';
+
+export async function generateMetadata({ params }: { params: Promise<{ a: string; b: string }> }) {
+  const { a, b } = await params;
+  try {
+    const db = getDb();
+    const [left, right] = await Promise.all([partBySlug(db, a), partBySlug(db, b)]);
+    if (!left || !right) return { title: { absolute: 'buildfit' } };
+    return {
+      title: `${left.modelName} vs ${right.modelName}`,
+      description: `${left.modelName} · ${right.modelName} — 두 부품의 스펙을 나란히 비교합니다.`,
+    };
+  } catch {
+    return { title: { absolute: 'buildfit' } };
+  }
+}
+
+export default async function ComparePage({
+  params,
+}: {
+  params: Promise<{ a: string; b: string }>;
+}) {
+  const { a, b } = await params;
+
+  let left, right;
+  try {
+    const db = getDb();
+    [left, right] = await Promise.all([partBySlug(db, a), partBySlug(db, b)]);
+  } catch {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-16">
+        <h1 className="text-xl font-semibold">지금은 비교할 수 없습니다</h1>
+        <p className="mt-2 text-sm text-fg-muted">
+          잠시 후 다시 시도해 주세요.
+        </p>
+      </div>
+    );
+  }
+
+  if (!left || !right) notFound();
+  // 카테고리가 다르면 비교가 성립하지 않는다. §8의 "의미 있는 조합만"이다.
+  if (left.category !== right.category) notFound();
+  if (left.slug === right.slug) notFound();
+
+  // 성능 측정값 — ADR-0023. 테이블이 없는 DB(적재 전)에서도 페이지는 떠야 한다
+  const measurable = left.category === 'CPU' || left.category === 'GPU';
+  const [leftBench, rightBench]: PartBenchmark[][] = measurable
+    ? await Promise.all([
+        benchmarksForPart(getDb(), left.id).catch(() => []),
+        benchmarksForPart(getDb(), right.id).catch(() => []),
+      ])
+    : [[], []];
+  const axes = [...new Set([...leftBench, ...rightBench].map((x) => x.axis))];
+
+  const rows = alignSpecs(left.specs, right.specs, (r) => specValueText(r.value, r.unit, r.key));
+  const differing = rows.filter((r) => r.differs).length;
+  // 한쪽 값이 없는 항목은 다른 것이 아니라 모르는 것이다 — 따로 센다 (이슈 #81)
+  const oneSided = rows.filter((r) => r.oneSided).length;
+  const catPath = left.category.toLowerCase();
+  const leftBuild = startBuildHref(left.category, left.id);
+  const rightBuild = startBuildHref(right.category, right.id);
+
+  return (
+    <Container className="py-10 sm:py-14">
+      <nav aria-label="위치" className="text-sm text-fg-subtle">
+        <Link href="/part" className="link">
+          부품
+        </Link>
+        <span className="mx-1.5">/</span>
+        <Link href={`/part/${catPath}`} className="link">
+          {categoryLabel(left.category)}
+        </Link>
+      </nav>
+
+      <h1 className="mt-3 text-xl font-semibold tracking-tight sm:text-2xl">
+        {left.modelName} <span className="font-normal text-fg-subtle">vs</span> {right.modelName}
+      </h1>
+      <p className="mt-2 text-sm text-fg-muted">
+        {differing > 0 ? (
+          <>
+            스펙 {rows.length}개 중 <strong className="font-medium text-fg tnum">{differing}개</strong>가
+            다릅니다.
+          </>
+        ) : oneSided > 0 ? (
+          <>두 쪽 모두 값이 있는 스펙은 전부 같습니다.</>
+        ) : (
+          <>스펙 {rows.length}개가 모두 같습니다.</>
+        )}
+        {oneSided > 0 && <> {oneSided}개는 한쪽 값이 없어 비교하지 않았습니다.</>} 조합의 호환성은{' '}
+        <Link href="/" className="link">
+          견적 구성
+        </Link>
+        에서 판정합니다.
+      </p>
+
+      <div className="card mt-6 overflow-x-auto">
+        <table className="w-full min-w-[34rem] text-sm">
+          <thead>
+            <tr className="border-b border-border text-left">
+              <th className="w-36 px-4 py-3 font-medium text-fg-subtle">항목</th>
+              <th className="px-3 py-3 font-medium">
+                <Link href={`/part/${catPath}/${left.slug}`} className="link">
+                  {left.modelName}
+                </Link>
+              </th>
+              <th className="px-4 py-3 font-medium">
+                <Link href={`/part/${catPath}/${right.slug}`} className="link">
+                  {right.modelName}
+                </Link>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr
+                key={row.key}
+                className={`border-b border-border last:border-0 ${
+                  row.differs ? '' : 'text-fg-muted'
+                }`}
+              >
+                <th scope="row" className="px-4 py-2.5 text-left align-top font-normal text-fg-subtle">
+                  {specLabel(row.key)}
+                  {/* 굵은 글씨만으로 차이를 표시하면 훑을 때 놓친다. 글자로 적는다 */}
+                  {row.differs && <span className="chip mt-1 block w-fit">다름</span>}
+                  {/* 모르는 것을 차이처럼 보이지 않는다 (이슈 #81) */}
+                  {row.oneSided && <span className="chip mt-1 block w-fit">비교 불가</span>}
+                </th>
+                <td className={`px-3 py-2.5 align-top break-words ${row.differs ? 'font-medium text-fg' : ''}`}>
+                  {/* 한쪽에만 있는 항목은 "없음"이 아니라 "정보 없음"이다.
+                      값이 0이라는 뜻으로 읽히면 안 된다. */}
+                  {row.lText ?? <span className="text-fg-subtle">정보 없음</span>}
+                  {/* 부품 페이지와 같은 표시다. 비교는 값을 나란히 믿게 만드는 화면이라
+                      다투어지는 값을 여기서 숨기면 가장 크게 오해한다 (ADR-0021) */}
+                  {row.l?.disputed === true && <span className="chip ml-2">검증 중</span>}
+                </td>
+                <td className={`px-4 py-2.5 align-top break-words ${row.differs ? 'font-medium text-fg' : ''}`}>
+                  {row.rText ?? <span className="text-fg-subtle">정보 없음</span>}
+                  {row.r?.disputed === true && <span className="chip ml-2">검증 중</span>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {axes.length > 0 && (
+        <section className="mt-10">
+          <h2 className="text-lg font-semibold">성능 측정값</h2>
+          {axes.map((axis) => {
+            const l = leftBench.find((x) => x.axis === axis);
+            const r = rightBench.find((x) => x.axis === axis);
+            const felt = l && r ? feltDifference(l.value, r.value) : null;
+            const faster = felt?.faster === 'a' ? left.modelName : felt?.faster === 'b' ? right.modelName : null;
+            return (
+              <div key={axis} className="mt-3">
+                {/* 차이는 체감 언어로 말한다 — 숫자만 주면 3%를 크게 읽는다 (ADR-0004) */}
+                <p className="text-sm text-fg-muted">
+                  {felt && faster ? (
+                    <>
+                      {axisLabel(axis)} — 빠른 쪽: <strong className="font-medium text-fg">{faster}</strong>{' '}
+                      · 느린 쪽보다 약 <span className="tnum">{felt.percent}</span>% 높음 ·{' '}
+                      <strong className="font-medium text-fg">{felt.label}</strong>
+                    </>
+                  ) : felt ? (
+                    <>{axisLabel(axis)} — 두 측정값이 같습니다.</>
+                  ) : (
+                    <>{axisLabel(axis)} — 한쪽 측정값이 없어 비교하지 않습니다.</>
+                  )}
+                </p>
+                {l && r && l.backend !== r.backend && (
+                  <p className="mt-1 text-xs text-fg-subtle">
+                    두 장치의 연산 방식이 다릅니다 ({backendLabel(l.backend)} · {backendLabel(r.backend)}). 각 장치에서
+                    가장 많이 쓰인 방식의 측정값이라, 실제로 쓰는 방식끼리의 비교입니다.
+                  </p>
+                )}
+                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {[l, r].map((bench, i) =>
+                    bench ? (
+                      <BenchmarkBlock key={i} bench={bench} />
+                    ) : (
+                      <p key={i} className="card p-4 text-sm text-fg-muted">
+                        측정값이 없습니다.
+                      </p>
+                    ),
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </section>
+      )}
+
+      {/*
+        * 비교만 하고 떠나게 두지 않는다. 이 도구가 하는 일은 판정이고,
+        * 비교는 그 앞 단계다. 부품 상세 페이지와 같은 길을 여기도 둔다.
+        */}
+      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {leftBuild && (
+          <Link href={leftBuild} className="btn btn-secondary justify-start">
+            <span className="truncate">견적 시작: {left.modelName}</span>
+          </Link>
+        )}
+        {rightBuild && (
+          <Link href={rightBuild} className="btn btn-secondary justify-start">
+            <span className="truncate">견적 시작: {right.modelName}</span>
+          </Link>
+        )}
+      </div>
+    </Container>
+  );
+}

@@ -1,0 +1,21 @@
+# 로컬 개발용 PostgreSQL.
+# 개인정보를 다루지 않으므로(ADR-0001) 여기 있는 자격증명은 로컬 전용이며 비밀이 아니다.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: buildfit
+      POSTGRES_PASSWORD: buildfit
+      POSTGRES_DB: buildfit
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U buildfit -d buildfit"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:

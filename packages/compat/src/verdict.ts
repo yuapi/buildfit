@@ -1,0 +1,174 @@
+/**
+ * 판정 결과 계약.
+ *
+ * ADR-0009: 규칙 평가 결과는 boolean이 아니라 3값이다.
+ * 결측을 통과로 처리하면 사용자가 "호환 확인됨"을 보고 안 맞는 부품을 산다.
+ *
+ * 명세: docs/compat-rules.md §0
+ */
+
+/** 규칙 하나의 평가 결과. */
+export type Verdict = 'pass' | 'fail' | 'unknown';
+
+/** `fail`일 때의 표시 등급. `pc-builder-spec.md` §4.3 */
+export type Severity = 'error' | 'warning' | 'info';
+
+/** 판정하지 못한 필드. 사용자에게 그대로 보여준다. */
+export interface FieldRef {
+  /** 부품 표시명. 예: "NZXT H5 Flow" */
+  readonly part: string;
+  /** 사람이 읽는 필드 이름. 예: "케이스 지원 PSU 폼팩터" */
+  readonly field: string;
+  /**
+   * 부품 slug. 화면이 상세 페이지로 안내할 때 쓴다.
+   *
+   * 판정 불가를 만난 사용자가 그 값을 아는 경우가 있다. 거기서 제보로 이어지는
+   * 것이 가장 값싼 보강 경로다 (§5.5).
+   */
+  readonly slug?: string | undefined;
+}
+
+/**
+ * `unknown`의 사유. docs/compat-rules.md §0.2의 세 유형.
+ *
+ * `inconsistent`가 특히 중요하다. OpenDB에는 미입력을 0으로 채운 레코드가 실재하며
+ * (RTX 40/50 중 166건), 0은 결측 검사를 통과해 거짓 pass를 만든다.
+ */
+export type UnknownReason =
+  | { readonly kind: 'missing'; readonly fields: readonly FieldRef[] }
+  | { readonly kind: 'inconsistent'; readonly detail: string; readonly fields: readonly FieldRef[] }
+  | { readonly kind: 'out-of-range'; readonly detail: string; readonly fields: readonly FieldRef[] };
+
+export interface RuleResult {
+  /** `pc-builder-spec.md` §4.1 / §4.2의 규칙 번호. 표시 순서도 이 순서다. */
+  readonly ruleId: number;
+  readonly verdict: Verdict;
+  /** `fail`일 때 적용할 등급. `pass`/`unknown`에서는 표시에 쓰지 않는다. */
+  readonly severity: Severity;
+  /** 사용자에게 보여줄 한국어 문장. */
+  readonly message: string;
+  /** `unknown`일 때만 채운다. */
+  readonly reason?: UnknownReason;
+  /**
+   * 결과와 함께 보여줄 부연. 예: 규칙 7의 가정 범위와 출처 (docs/compat-rules.md §7.4).
+   * 판정을 바꾸지는 않지만 사용자가 왜 그 판정이 나왔는지 알려면 필요하다.
+   */
+  readonly notes?: readonly string[];
+  /**
+   * 보조 검사를 건너뛴 경우 그 사유.
+   * 규칙 2에서 CPU 쪽 결측이 전체를 unknown으로 만들지 않되,
+   * 건너뛰었다는 사실은 남긴다. docs/compat-rules.md §2
+   */
+  readonly skipped?: readonly string[];
+  /**
+   * 이 판정이 쓴 값 중 **검증 중인 것** (이슈 #13).
+   *
+   * 규칙이 채우지 않는다. 판정이 끝난 뒤 `evaluate()`가 `SPEC_REQUIREMENTS`의
+   * 규칙↔필드 대응으로 붙인다 — 규칙 14개를 건드리지 않고 한 곳에서 붙기 때문에
+   * 새 규칙이 늘어도 빠질 수 없다.
+   *
+   * **판정을 바꾸지 않는다.** 값은 있고 규칙은 답을 낼 수 있다. 다만 우리가
+   * 스스로 의심한다고 표시해 둔 값이라는 사실을 함께 보여준다.
+   */
+  readonly contested?: readonly FieldRef[];
+}
+
+/** 견적 하나에 대한 전체 판정. */
+export interface BuildVerdict {
+  readonly results: readonly RuleResult[];
+  readonly counts: {
+    readonly pass: number;
+    /** 등급을 가리지 않은 `fail` 수 */
+    readonly fail: number;
+    /**
+     * `fail` 중 **정보** 등급의 수 (이슈 #83). 「문제」가 아니다 — 규칙 12의 「Flashback으로
+     * CPU 없이 올릴 수 있다」가 그렇다. 화면은 `fail - info`를 문제로 센다.
+     */
+    readonly info: number;
+    readonly unknown: number;
+  };
+}
+
+// --- 생성 헬퍼 -------------------------------------------------------------
+
+export function pass(ruleId: number, message: string): RuleResult {
+  return { ruleId, verdict: 'pass', severity: 'info', message };
+}
+
+export function fail(ruleId: number, severity: Severity, message: string): RuleResult {
+  return { ruleId, verdict: 'fail', severity, message };
+}
+
+export function unknown(
+  ruleId: number,
+  message: string,
+  reason: UnknownReason,
+  notes?: readonly string[],
+): RuleResult {
+  const base: RuleResult = { ruleId, verdict: 'unknown', severity: 'info', message, reason };
+  return notes && notes.length > 0 ? { ...base, notes } : base;
+}
+
+/** 필요한 필드가 비어 있어 판정하지 못한 경우. */
+export function missing(
+  ruleId: number,
+  message: string,
+  fields: readonly FieldRef[],
+  notes?: readonly string[],
+): RuleResult {
+  return unknown(ruleId, message, { kind: 'missing', fields }, notes);
+}
+
+/**
+ * 값이 그 필드에 있을 수 없는 크기인 경우. docs/compat-rules.md §15.2
+ *
+ * `inconsistent`와 다르다. 저쪽은 두 필드를 맞대 보고 알아내지만, 이쪽은 값 하나만
+ * 보고도 안다 — 슬롯 수 칸에 120이 들어 있으면 그것은 mm다.
+ */
+export function outOfRange(
+  ruleId: number,
+  message: string,
+  detail: string,
+  fields: readonly FieldRef[],
+): RuleResult {
+  return unknown(ruleId, message, { kind: 'out-of-range', detail, fields });
+}
+
+/** 값은 있으나 다른 필드와 물리적으로 양립 불가한 경우. docs/compat-rules.md §8.4 */
+export function inconsistent(
+  ruleId: number,
+  message: string,
+  detail: string,
+  fields: readonly FieldRef[],
+): RuleResult {
+  return unknown(ruleId, message, { kind: 'inconsistent', detail, fields });
+}
+
+/**
+ * 결과 집계.
+ *
+ * 요약에서 "모든 검사 통과"라고 쓰지 않는다. 통과 n / 판정 불가 m으로 나눈다.
+ * ADR-0009
+ */
+export function summarize(results: readonly RuleResult[]): BuildVerdict {
+  let p = 0;
+  let f = 0;
+  let i = 0;
+  let u = 0;
+  for (const r of results) {
+    if (r.verdict === 'pass') p += 1;
+    else if (r.verdict === 'fail') {
+      f += 1;
+      if (r.severity === 'info') i += 1;
+    } else u += 1;
+  }
+  return { results, counts: { pass: p, fail: f, info: i, unknown: u } };
+}
+
+/** 값이 판정에 쓸 수 있는 상태인가. `null`·`undefined`·빈 배열·빈 문자열은 결측이다. */
+export function isFilled(v: unknown): boolean {
+  if (v === null || v === undefined) return false;
+  if (typeof v === 'string') return v.trim() !== '';
+  if (Array.isArray(v)) return v.length > 0;
+  return true;
+}

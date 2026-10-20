@@ -1,0 +1,9 @@
+[Unit]
+Description=buildfit 자동 배포 확인 (2분마다)
+
+[Timer]
+OnCalendar=*:0/2
+RandomizedDelaySec=15
+
+[Install]
+WantedBy=timers.target

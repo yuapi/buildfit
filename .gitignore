@@ -1,5 +1,4 @@
-# 기술 스택 미정 — 언어·프레임워크별 항목은 스택 확정 후 추가한다.
-# 지금은 OS·에디터가 만드는 파일만 제외한다.
+# 스택: Next.js (TypeScript) + PostgreSQL — ADR-0010
 
 # --- macOS ---
 .DS_Store
@@ -57,3 +56,51 @@ tags
 .env
 .env.local
 .env.*.local
+
+# --- Node / Next.js ---
+node_modules/
+.next/
+out/
+build/
+dist/
+# ★ 위의 `build/`는 산출물 폴더를 겨냥한 것인데 **라우트 폴더까지 삼켰다.**
+# `/build/[code]`는 공유 링크 화면이고 이 프로젝트의 핵심이다 (ADR-0012) —
+# 그런데도 한동안 커밋되지 않고 있었다. CI는 파일이 없는 것을 모른다.
+# `apps/web/test/routes-tracked.test.ts`가 이제 그것을 잡는다.
+!apps/web/src/app/build/
+*.tsbuildinfo
+next-env.d.ts
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# --- 테스트 / 커버리지 ---
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+blob-report/
+.playwright/
+
+# --- Python (Phase 2 정규화 워커) ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# --- 로컬 데이터 ---
+# OpenDB clone은 레포에 넣지 않는다 (ADR-0002: git clone으로 별도 취득)
+/buildcores-open-db/
+*.sqlite
+*.db

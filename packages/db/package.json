@@ -1,0 +1,31 @@
+{
+  "name": "@buildfit/db",
+  "version": "0.0.0",
+  "private": true,
+  "description": "PostgreSQL 스키마와 접근 계층 (ADR-0011)",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema.ts",
+    "./queries": "./src/queries/gaps.ts",
+    "./build": "./src/queries/build.ts",
+    "./part": "./src/queries/part.ts",
+    "./picker": "./src/queries/picker.ts",
+    "./search": "./src/queries/search.ts",
+    "./quote": "./src/queries/quote.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "generate": "drizzle-kit generate",
+    "migrate": "drizzle-kit migrate"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.2",
+    "postgres": "^3.4.7",
+    "@buildfit/compat": "*"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.10",
+    "typescript": "^5"
+  }
+}

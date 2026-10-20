@@ -1,0 +1,356 @@
+/**
+ * 후보 좁히기 — ADR-0016.
+ *
+ * 판정과 기준이 다르다는 것이 이 테스트의 핵심이다.
+ * 판정은 결측을 `unknown`으로 남기고, 좁히기는 결측을 **남긴다.**
+ */
+
+import { describe, expect, it } from 'vitest';
+import { evaluate } from '../src/engine';
+import { pickerConstraints } from '../src/picker';
+import { emptyBuild, type Build } from '../src/parts';
+import type { PartSlot } from '../src/applicability';
+import { STORAGE_FORM_FACTORS } from '../src/requirements';
+import * as f from './fixtures';
+
+describe('이미 고른 부품이 후보를 좁힌다', () => {
+  it('보드를 골랐으면 CPU는 같은 소켓만', () => {
+    const c = pickerConstraints(f.withBuild({ cpu: null }), 'cpu');
+    expect(c).toEqual([
+      expect.objectContaining({ kind: 'equals', key: 'socket', value: 'AM5', ruleId: 1 }),
+    ]);
+  });
+
+  it('CPU를 골랐으면 보드도 같은 소켓만', () => {
+    const c = pickerConstraints(f.withBuild({ motherboard: null }), 'motherboard');
+    expect(c.some((x) => x.kind === 'equals' && x.key === 'socket' && x.value === 'AM5')).toBe(true);
+  });
+
+  it('보드의 메모리 규격이 메모리 후보를 좁힌다', () => {
+    const c = pickerConstraints(f.withBuild({ ram: [] }), 'ram');
+    expect(c).toContainEqual(
+      expect.objectContaining({ kind: 'equals', key: 'ram_type', value: 'DDR5', ruleId: 2 }),
+    );
+  });
+
+  it('케이스가 GPU 길이 상한을 만든다', () => {
+    const c = pickerConstraints(f.withBuild({ gpu: null }), 'gpu');
+    expect(c).toContainEqual(
+      expect.objectContaining({ kind: 'atMost', key: 'length_mm', value: 420, ruleId: 4 }),
+    );
+  });
+
+  it('GPU가 케이스 하한을 만든다 — 방향이 뒤집힌다', () => {
+    const c = pickerConstraints(f.withBuild({ pcCase: null }), 'pcCase');
+    expect(c).toContainEqual(
+      expect.objectContaining({ kind: 'atLeast', key: 'max_gpu_length_mm', value: 337, ruleId: 4 }),
+    );
+  });
+
+  it('파워 규격은 케이스가 지원하는 것 중에서만', () => {
+    const c = pickerConstraints(f.withBuild({ psu: null }), 'psu');
+    expect(c).toContainEqual(
+      expect.objectContaining({ kind: 'oneOf', key: 'form_factor', ruleId: 6 }),
+    );
+  });
+});
+
+describe('★ 값이 없으면 좁히지 않는다', () => {
+  it('빈 견적은 제약이 없다', () => {
+    for (const slot of ['cpu', 'motherboard', 'ram', 'gpu', 'pcCase', 'psu', 'cooler'] as const) {
+      expect(pickerConstraints(emptyBuild, slot), slot).toEqual([]);
+    }
+  });
+
+  it('고른 부품의 스펙이 비어 있으면 제약을 만들지 않는다', () => {
+    const noSocket = f.withBuild({ motherboard: { ...f.motherboard, socket: null } });
+    expect(pickerConstraints(noSocket, 'cpu')).toEqual([]);
+  });
+
+  it('빈 배열도 근거로 쓰지 않는다', () => {
+    const noFf = f.withBuild({ pcCase: { ...f.pcCase, supportedPsuFormFactors: [] } });
+    // 규칙 7(전력)의 제약은 따로 선다 — 여기서 보는 것은 규칙 6이다
+    expect(pickerConstraints(noFf, 'psu').filter((c) => c.ruleId === 6)).toEqual([]);
+  });
+
+  it('칩만 고른 GPU는 케이스를 좁히지 않는다 — 길이를 단정할 수 없다', () => {
+    const chip = f.withBuild({
+      pcCase: null,
+      gpu: { ...f.gpu, chipOnly: true, lengthMm: 337 },
+    });
+    expect(chip && pickerConstraints(chip, 'pcCase').some((c) => c.key === 'max_gpu_length_mm')).toBe(
+      false,
+    );
+  });
+
+  it('쿨러는 어느 방향으로도 좁히지 않는다 — 규칙 9는 경고까지만 낸다', () => {
+    // 목록에서 빼는 것은 "오류로 단정"보다 강하다. 규칙 9는 오류를 내지 않는다.
+    // 실제로 한계 45mm 케이스에서 수랭 쿨러 대부분이 사라졌었다 —
+    // 저장된 height_mm가 라디에이터 높이라 그렇다 (ADR-0016).
+    expect(pickerConstraints(f.goodBuild, 'cooler')).toEqual([]);
+    expect(
+      pickerConstraints(f.withBuild({ pcCase: null }), 'pcCase').some(
+        (c) => c.key === 'max_cpu_cooler_height_mm',
+      ),
+    ).toBe(false);
+  });
+});
+
+describe('★ 오류를 내는 규칙에서만 제약을 유도한다', () => {
+  /**
+   * 경고까지만 내는 규칙으로 목록을 빼면, 규칙이 "확인이 필요하다"고 말한 것을
+   * 화면이 "없다"로 바꾼다. 사용자는 경고를 볼 기회조차 없어진다.
+   *
+   * - 규칙 9(쿨러 높이): 경고만. 오류 경계가 없다 (§9.1)
+   * - 규칙 12(BIOS): 경고·정보만
+   * - 규칙 4: 오류 경계(한계 초과)만 쓰고 빠듯함 경고 구간은 쓰지 않는다 (§4)
+   * - 규칙 15(GPU 두께): 오류만. 경고 구간이 없다 (§15)
+   * - 규칙 16(메모리 용량): 경고만 (§16.3)
+   * - 규칙 19: 3.5"의 오류 경계만 쓴다. 2.5"는 경고라 빼지 않는다 (§19.2)
+   * - 규칙 18(SATA): 포트 수가 두 키에 나뉘어 있어 제약 하나로 못 옮긴다
+   */
+  const ERROR_CAPABLE = new Set([1, 2, 3, 4, 5, 6, 7, 8, 15, 17, 19]);
+
+  it('제약의 ruleId가 전부 오류를 낼 수 있는 규칙이다', () => {
+    const slots = ['cpu', 'motherboard', 'ram', 'gpu', 'pcCase', 'psu', 'cooler'] as const;
+    const ids = new Set(slots.flatMap((s) => pickerConstraints(f.goodBuild, s)).map((c) => c.ruleId));
+    expect(ids.size).toBeGreaterThan(0);
+    for (const id of ids) {
+      expect(ERROR_CAPABLE.has(id), `규칙 ${id}은 경고까지만 내는데 목록을 빼고 있다`).toBe(true);
+    }
+  });
+
+  it('규칙 4는 오류 경계만 쓴다 — 빠듯함(95%)으로 빼지 않는다', () => {
+    const c = pickerConstraints(f.withBuild({ gpu: null }), 'gpu');
+    const len = c.find((x) => x.key === 'length_mm');
+    // 케이스 한계 420mm 그대로. 420×0.95 = 399가 아니다.
+    expect(len).toMatchObject({ kind: 'atMost', value: 420 });
+  });
+});
+
+describe('제약에 근거가 달려 있다', () => {
+  it('모든 제약이 어느 규칙에서 왔는지와 이유를 말한다', () => {
+    const all = (['cpu', 'motherboard', 'ram', 'gpu', 'pcCase', 'psu', 'cooler'] as const).flatMap(
+      (slot) => pickerConstraints(f.goodBuild, slot),
+    );
+    expect(all.length).toBeGreaterThan(0);
+    for (const c of all) {
+      expect(c.ruleId, JSON.stringify(c)).toBeGreaterThan(0);
+      expect(c.because, JSON.stringify(c)).toBeTruthy();
+    }
+  });
+});
+
+describe('스토리지 좁히기 (규칙 17·19)', () => {
+  it('★ 개수로는 좁히지 않는다 — 행 수가 슬롯 수가 아니다 (§17.4)', () => {
+    // M.2를 슬롯 수보다 많이 담아도 목록을 줄이지 않는다. 그 「슬롯 수」를 못 믿는다
+    const full = f.withBuild({
+      storage: [f.drive, { ...f.drive, id: 'b' }, { ...f.drive, id: 'c' }, { ...f.drive, id: 'd' }],
+    });
+    expect(pickerConstraints(full, 'storage').find((x) => x.key === 'form_factor')).toBeUndefined();
+    // 보드 후보도 개수로 좁히지 않는다
+    expect(pickerConstraints(full, 'motherboard').find((x) => x.key === 'm2_slots')).toBeUndefined();
+  });
+
+  it('M.2 슬롯이 없는 보드에서는 M.2를 뺀다 — 이것만 셀 수 있다', () => {
+    const b = f.withBuild({
+      storage: [],
+      motherboard: { ...f.motherboard, m2Slots: 0, memoryType: 'DDR4' },
+    });
+    const c = pickerConstraints(b, 'storage').find((x) => x.key === 'form_factor');
+    expect(c).toMatchObject({ kind: 'oneOf', ruleId: 17 });
+    const values = c?.kind === 'oneOf' ? c.values : [];
+    expect(values).not.toContain('M.2-2280');
+    expect(values).toContain('2.5"');
+  });
+
+  it('★ DDR5 보드의 M.2 0개로는 목록을 줄이지 않는다 (§17.2)', () => {
+    const b = f.withBuild({
+      storage: [],
+      motherboard: { ...f.motherboard, m2Slots: 0, memoryType: 'DDR5' },
+    });
+    expect(pickerConstraints(b, 'storage').find((x) => x.key === 'form_factor')).toBeUndefined();
+  });
+
+  it('★ PCIe 목록까지 빈 보드의 M.2 0개로도 줄이지 않는다 (§17.6)', () => {
+    // ASRock X570 Taichi가 이렇게 들어 있다. 줄이면 NVMe 드라이브가 목록에서 사라진다
+    const b = f.withBuild({
+      storage: [],
+      motherboard: { ...f.motherboard, m2Slots: 0, pcieSlots: 0, memoryType: 'DDR4' },
+    });
+    expect(pickerConstraints(b, 'storage').find((x) => x.key === 'form_factor')).toBeUndefined();
+    // PCIe 수를 모르면 지금처럼 0을 믿는다
+    const unknownPcie = f.withBuild({
+      storage: [],
+      motherboard: { ...f.motherboard, m2Slots: 0, pcieSlots: null, memoryType: 'DDR4' },
+    });
+    expect(pickerConstraints(unknownPcie, 'storage').find((x) => x.key === 'form_factor')).toBeDefined();
+  });
+
+  it('고른 3.5" 드라이브가 케이스 후보를 좁힌다', () => {
+    const b = f.withBuild({ storage: [f.drive, f.sataDrive] });
+    expect(
+      pickerConstraints(b, 'pcCase').find((x) => x.key === 'internal_3_5_bays'),
+    ).toMatchObject({ kind: 'atLeast', value: 1, ruleId: 19 });
+  });
+
+  it('2.5"로는 케이스를 좁히지 않는다 — 경고라서다 (§19.2)', () => {
+    const b = f.withBuild({ storage: [{ ...f.sataDrive, formFactor: '2.5"' }] });
+    expect(
+      pickerConstraints(b, 'pcCase').find((x) => x.key === 'internal_2_5_bays'),
+    ).toBeUndefined();
+  });
+
+  it('NON_M2_FORM_FACTORS가 선언 목록과 어긋나지 않는다', () => {
+    const full = f.withBuild({
+      storage: [],
+      motherboard: { ...f.motherboard, m2Slots: 0, memoryType: 'DDR4' },
+    });
+    const c = pickerConstraints(full, 'storage').find((x) => x.key === 'form_factor');
+    const values = c?.kind === 'oneOf' ? c.values : [];
+    const declared = STORAGE_FORM_FACTORS.filter((v) => !v.startsWith('M.2'));
+    expect([...values].sort()).toEqual([...declared].sort());
+  });
+});
+
+describe('★ 고른 부품의 「검증 중」 값으로는 좁히지 않는다 (이슈 #22)', () => {
+  // [고르는 칸, 제약 키, 값이 검증 중인 부품 칸, 그 부품의 스펙 키, 견적 패치]
+  type Row = readonly [PartSlot, string, 'cpu' | 'motherboard' | 'gpu' | 'pcCase' | 'psu' | 'storage' | 'ram', string, Partial<Build>];
+  const m2less = { motherboard: { ...f.motherboard, m2Slots: 0, memoryType: 'DDR4' }, storage: [] };
+  const ROWS: readonly Row[] = [
+    ['cpu', 'socket', 'motherboard', 'socket', { cpu: null }],
+    ['motherboard', 'socket', 'cpu', 'socket', { motherboard: null }],
+    ['ram', 'ram_type', 'motherboard', 'memory_type', { ram: [] }],
+    ['ram', 'module_count', 'motherboard', 'memory_slots', { ram: [] }],
+    ['ram', 'module_count', 'ram', 'module_count', {}],
+    ['motherboard', 'memory_slots', 'ram', 'module_count', { motherboard: null }],
+    ['psu', 'wattage_w', 'cpu', 'ppt_w', { psu: null }],
+    ['psu', 'wattage_w', 'gpu', 'tdp_w', { psu: null }],
+    ['gpu', 'tdp_w', 'psu', 'wattage_w', { gpu: null }],
+    ['gpu', 'tdp_w', 'cpu', 'ppt_w', { gpu: null }],
+    ['gpu', 'length_mm', 'pcCase', 'max_gpu_length_mm', { gpu: null }],
+    ['pcCase', 'max_gpu_length_mm', 'gpu', 'length_mm', { pcCase: null }],
+    ['gpu', 'total_slot_width', 'pcCase', 'expansion_slots', { gpu: null }],
+    ['pcCase', 'expansion_slots', 'gpu', 'total_slot_width', { pcCase: null }],
+    ['storage', 'form_factor', 'motherboard', 'm2_slots', m2less],
+    ['pcCase', 'supported_mobo_form_factors', 'motherboard', 'form_factor', { pcCase: null }],
+    ['motherboard', 'form_factor', 'pcCase', 'supported_mobo_form_factors', { motherboard: null }],
+    ['psu', 'form_factor', 'pcCase', 'supported_psu_form_factors', { psu: null }],
+    ['pcCase', 'supported_psu_form_factors', 'psu', 'form_factor', { pcCase: null }],
+    ['pcCase', 'internal_3_5_bays', 'storage', 'form_factor', { pcCase: null, storage: [f.sataDrive] }],
+  ];
+
+  function contest(b: Build, part: Row[2], key: string): Build {
+    if (part === 'storage') return { ...b, storage: b.storage.map((d) => ({ ...d, contestedSpecs: [key] })) };
+    if (part === 'ram') return { ...b, ram: b.ram.map((k) => ({ ...k, contestedSpecs: [key] })) };
+    const p = b[part];
+    return p ? { ...b, [part]: { ...p, contestedSpecs: [key] } } : b;
+  }
+
+  it.each(ROWS)('%s 후보의 %s 제약 — %s.%s가 검증 중이면 만들지 않는다', (slot, key, part, spec, patch) => {
+    const base = f.withBuild(patch);
+    expect(pickerConstraints(base, slot).some((c) => c.key === key), '표가 낡았다 — 기준 견적에서 제약이 안 나온다').toBe(true);
+    expect(pickerConstraints(contest(base, part, spec), slot).some((c) => c.key === key)).toBe(false);
+  });
+
+  it('다른 키가 검증 중인 것은 상관없다 — 과하게 멈추지 않는다', () => {
+    const b = contest(f.withBuild({ cpu: null }), 'motherboard', 'bios_flashback');
+    expect(pickerConstraints(b, 'cpu').some((c) => c.key === 'socket')).toBe(true);
+  });
+
+  it('★ 표가 모든 제약을 덮는다 — 새 제약이 검증 중 확인 없이 들어오면 잡는다', () => {
+    const covered = new Set(ROWS.map(([slot, key]) => `${slot}.${key}`));
+    for (const [, , , , patch] of ROWS) {
+      const b = f.withBuild(patch);
+      for (const slot of ['cpu', 'motherboard', 'ram', 'gpu', 'pcCase', 'psu', 'cooler', 'storage'] as const) {
+        for (const c of pickerConstraints(b, slot)) {
+          expect(covered, `${slot}.${c.key} 제약이 이 표에 없다`).toContain(`${slot}.${c.key}`);
+        }
+      }
+    }
+  });
+});
+
+describe('메모리 모듈 수 ≤ 슬롯 수 (규칙 3, 이슈 #89)', () => {
+  const two = { ...f.motherboard, memorySlots: 2 };
+  const modules = (b: Build, slot: PartSlot) =>
+    pickerConstraints(b, slot).find((c) => c.ruleId === 3);
+
+  it('★ 2슬롯 보드면 메모리는 2장 이하만', () => {
+    expect(modules(f.withBuild({ motherboard: two, ram: [] }), 'ram')).toMatchObject({ kind: 'atMost', key: 'module_count', value: 2 });
+  });
+
+  it('★ 이미 고른 키트만큼 남은 슬롯이 준다 — 메모리 칸은 더하는 칸이다', () => {
+    // 4슬롯에 2장 키트가 있다 → 남은 2
+    expect(modules(f.goodBuild, 'ram')).toMatchObject({ value: 2 });
+    expect(modules(f.goodBuild, 'ram')?.because).toContain('남은');
+  });
+
+  it('남은 슬롯이 없으면 좁히지 않는다 — 목록을 통째로 비우지 않는다', () => {
+    expect(modules(f.withBuild({ motherboard: two }), 'ram')).toBeUndefined();
+  });
+
+  it('고른 키트의 모듈 수를 모르면 남은 수를 셀 수 없다 — 좁히지 않는다', () => {
+    const b = f.withBuild({ ram: [{ ...f.ramKit, moduleCount: null }] });
+    expect(modules(b, 'ram')).toBeUndefined();
+    expect(modules({ ...b, motherboard: null }, 'motherboard')).toBeUndefined();
+  });
+
+  it('★ 고른 메모리가 보드 후보를 좁힌다 — 방향이 뒤집힌다', () => {
+    const b = f.withBuild({ motherboard: null, ram: [f.ramKit, f.ramKit] });
+    expect(modules(b, 'motherboard')).toMatchObject({ kind: 'atLeast', key: 'memory_slots', value: 4 });
+  });
+
+  it('메모리를 안 골랐으면 보드를 좁히지 않는다', () => {
+    expect(modules(f.withBuild({ motherboard: null, ram: [] }), 'motherboard')).toBeUndefined();
+  });
+});
+
+describe('파워 정격 ≥ 최소 추정 전력 (규칙 7, 이슈 #93)', () => {
+  const power = (b: Build, slot: PartSlot) => pickerConstraints(b, slot).find((c) => c.ruleId === 7);
+  /** 숫자 경계. 규칙 7의 제약은 atLeast·atMost뿐이다 */
+  const bound = (c: ReturnType<typeof power>): number => {
+    if (c?.kind !== 'atLeast' && c?.kind !== 'atMost') throw new Error(`숫자 제약이 아니다: ${JSON.stringify(c)}`);
+    return c.value;
+  };
+  const verdict7 = (b: Build) => evaluate(b).results.find((r) => r.ruleId === 7);
+
+  it('★ 파워 후보의 하한이 규칙 7의 오류 경계와 같다', () => {
+    const c = power(f.withBuild({ psu: null }), 'psu');
+    expect(c).toMatchObject({ kind: 'atLeast', key: 'wattage_w' });
+    const at = f.withBuild({ psu: { ...f.psu, wattage: bound(c) } });
+    const below = f.withBuild({ psu: { ...f.psu, wattage: bound(c) - 1 } });
+    expect(verdict7(at)?.severity === 'error' && verdict7(at)?.verdict === 'fail').toBe(false);
+    expect(verdict7(below)).toMatchObject({ verdict: 'fail', severity: 'error' });
+  });
+
+  it('★ 그래픽카드 후보의 상한도 규칙 7의 오류 경계와 같다 — 방향이 뒤집힌다', () => {
+    const c = power(f.withBuild({ gpu: null }), 'gpu');
+    expect(c).toMatchObject({ kind: 'atMost', key: 'tdp_w' });
+    const at = f.withBuild({ gpu: { ...f.gpu, tdp: bound(c) } });
+    const over = f.withBuild({ gpu: { ...f.gpu, tdp: bound(c) + 1 } });
+    expect(verdict7(at)?.severity === 'error' && verdict7(at)?.verdict === 'fail').toBe(false);
+    expect(verdict7(over)).toMatchObject({ verdict: 'fail', severity: 'error' });
+  });
+
+  it('CPU를 안 골랐으면 좁히지 않는다 — 규칙 7이 돌지 않는다', () => {
+    expect(power(f.withBuild({ cpu: null, psu: null }), 'psu')).toBeUndefined();
+    expect(power(f.withBuild({ cpu: null, gpu: null }), 'gpu')).toBeUndefined();
+  });
+
+  it('CPU 전력을 모르면 좁히지 않는다', () => {
+    const b = f.withBuild({ psu: null, cpu: { ...f.cpu, ppt: null, tdp: null } });
+    expect(power(b, 'psu')).toBeUndefined();
+  });
+
+  it('고른 그래픽카드의 TDP를 모르면 파워를 좁히지 않는다', () => {
+    expect(power(f.withBuild({ psu: null, gpu: { ...f.gpu, tdp: null } }), 'psu')).toBeUndefined();
+  });
+
+  it('그래픽카드를 안 골랐으면 CPU만으로 하한을 잡는다 — 규칙 7도 그렇게 판정한다', () => {
+    const c = power(f.withBuild({ psu: null, gpu: null }), 'psu');
+    const withGpu = power(f.withBuild({ psu: null }), 'psu');
+    expect(bound(c)).toBe(bound(withGpu) - f.gpu.tdp!);
+  });
+});
+
