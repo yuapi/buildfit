@@ -13,7 +13,7 @@ import { Container } from '@/components/SiteShell';
 export default function GlobalError({ reset }: { error: Error; reset: () => void }) {
   return (
     <Container width="narrow" className="py-20">
-      <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">문제가 생겼습니다</h1>
+      <h1 className="text-3xl font-extrabold tracking-[-0.03em] sm:text-4xl">문제가 생겼습니다</h1>
       <p className="mt-2 text-fg-muted">
         이 화면을 그리는 중에 오류가 났습니다. 다시 시도해 보시고, 계속 같으면 잠시 후에 열어
         주세요.

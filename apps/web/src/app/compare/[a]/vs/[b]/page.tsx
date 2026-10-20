@@ -44,7 +44,7 @@ export default async function ComparePage({
     logServerError('/compare', err);
     return (
       <div className="mx-auto max-w-3xl px-4 py-16">
-        <h1 className="text-xl font-semibold">지금은 비교할 수 없습니다</h1>
+        <h1 className="text-2xl font-extrabold tracking-[-0.03em]">지금은 비교할 수 없습니다</h1>
         <p className="mt-2 text-sm text-fg-muted">
           잠시 후 다시 시도해 주세요.
         </p>
@@ -87,7 +87,7 @@ export default async function ComparePage({
         </Link>
       </nav>
 
-      <h1 className="mt-3 text-xl font-semibold tracking-tight sm:text-2xl">
+      <h1 className="mt-3 text-2xl font-extrabold tracking-[-0.03em] sm:text-3xl">
         {left.modelName} <span className="font-normal text-fg-subtle">vs</span> {right.modelName}
       </h1>
       <p className="mt-2 text-sm text-fg-muted">

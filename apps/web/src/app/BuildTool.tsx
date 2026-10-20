@@ -304,7 +304,7 @@ export function BuildTool({ initial }: { initial?: Build }) {
   const picked = pickedCount(build);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* 판정을 맨 위 띠로 올린다. 이 도구가 하는 일이 판정이다 (ADR-0015) */}
       <VerdictBar verdict={verdict} build={build} pending={pending} />
 
@@ -346,63 +346,67 @@ export function BuildTool({ initial }: { initial?: Build }) {
         </p>
       )}
 
-      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_21rem] lg:gap-6">
-        <section
-          aria-labelledby="slots-heading"
-          className="card overflow-hidden"
-        >
-          <div className="flex items-baseline justify-between gap-3 border-b border-border px-4 py-2.5">
-            <h2 id="slots-heading" className="text-sm font-semibold">
-              부품 선택
-            </h2>
-            {/* 칸 수를 센다. 부품 수를 쓰면 메모리 여러 묶음에서 분자가 분모를 넘는다 */}
-            <span className="text-xs text-fg-subtle tnum">
-              {filledSlotCount(build)} / {SLOT_META.length}
-            </span>
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_21rem] lg:gap-0 lg:[&>aside]:-ml-px">
+        {/*
+          왼쪽 열: 부품 표 밑에 보관·공유를 붙인다. 옆 칸이 길어도 왼쪽 아래가 비지 않는다.
+          좁은 화면에서는 열을 풀고(contents) 보관·공유를 맨 끝으로 보낸다 — 판정 내역이 먼저다
+        */}
+        <div className="flex min-w-0 flex-col max-lg:contents lg:[&>*+*]:-mt-px">
+          <section
+            aria-labelledby="slots-heading"
+            className="card overflow-hidden"
+          >
+            <div className="panel-head">
+              <h2 id="slots-heading" className="panel-title">
+                <span className="idx">BOM</span>부품 선택
+              </h2>
+              {/* 칸 수를 센다. 부품 수를 쓰면 메모리 여러 묶음에서 분자가 분모를 넘는다 */}
+              <span className="text-xs text-fg-subtle tnum">
+                {filledSlotCount(build)} / {SLOT_META.length}
+              </span>
+            </div>
+
+            <ul className="divide-y divide-border">
+              {SLOT_META.map((meta) => (
+                <SlotRow
+                  key={meta.slot}
+                  slot={meta.slot}
+                  category={meta.category}
+                  label={meta.label}
+                  picked={pickedIn(build, meta)}
+                  constraints={pickerConstraints(build, meta.slot)}
+                  full={
+                    isMultiSlot(meta.slot) &&
+                    partsInSlot(build, meta.slot).length >= maxForSlot(meta.slot)
+                  }
+                  open={openSlot === meta.slot}
+                  onToggle={() =>
+                    setOpenSlot(openSlot === meta.slot ? null : meta.slot)
+                  }
+                  onChoose={(id) => choose(meta.slot, id)}
+                  onClear={(id) => clear(meta.slot, id)}
+                />
+              ))}
+            </ul>
+          </section>
+          <div className="grid grid-cols-1 max-lg:order-last sm:grid-cols-2 [&>*+*]:-mt-px sm:[&>*+*]:mt-0 sm:[&>*+*]:-ml-px">
+            {anySelected && <ShareBox code={code} />}
+            <SaveBox
+              code={code}
+              defaultLabel={buildLabel(build)}
+              canSave={picked > 0}
+              onLoad={loadCode}
+            />
           </div>
+        </div>
 
-          <ul className="divide-y divide-border">
-            {SLOT_META.map((meta) => (
-              <SlotRow
-                key={meta.slot}
-                slot={meta.slot}
-                category={meta.category}
-                label={meta.label}
-                picked={pickedIn(build, meta)}
-                constraints={pickerConstraints(build, meta.slot)}
-                full={
-                  isMultiSlot(meta.slot) &&
-                  partsInSlot(build, meta.slot).length >= maxForSlot(meta.slot)
-                }
-                open={openSlot === meta.slot}
-                onToggle={() =>
-                  setOpenSlot(openSlot === meta.slot ? null : meta.slot)
-                }
-                onChoose={(id) => choose(meta.slot, id)}
-                onClear={(id) => clear(meta.slot, id)}
-              />
-            ))}
-          </ul>
-        </section>
-
-        {/* 판정에 딸린 것만 옆에 둔다. 보관·공유는 아래로 내려 왼쪽 아래가
-            비지 않게 한다 — 빈 칸이 크면 화면이 미완성으로 보인다 (ADR-0015) */}
-        <aside className="space-y-4 lg:sticky lg:top-20">
+        {/* 판정에 딸린 것만 옆에 둔다. 옆 칸들은 괘선을 겹쳐 한 장으로 잇는다 (ADR-0028) */}
+        <aside className="flex flex-col lg:sticky lg:top-16 [&>*+*]:-mt-px">
           <PowerPanel build={build} />
           <ElectricityPanel build={build} />
           <FitPanel build={build} />
           <VerdictPanel verdict={verdict} build={build} />
         </aside>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {anySelected && <ShareBox code={code} />}
-        <SaveBox
-          code={code}
-          defaultLabel={buildLabel(build)}
-          canSave={picked > 0}
-          onLoad={loadCode}
-        />
       </div>
     </div>
   );
@@ -450,8 +454,8 @@ function FitPanel({ build }: { build: Build }) {
 
   return (
     <section className="card p-4 sm:p-5" aria-labelledby="fit-heading">
-      <h2 id="fit-heading" className="text-sm font-semibold">
-        케이스 여유
+      <h2 id="fit-heading" className="panel-title card-head">
+        <span className="idx">FIT</span>케이스 여유
       </h2>
       <div className="mt-3 space-y-4">
         {rows.map((r) => (
@@ -488,8 +492,8 @@ function PowerPanel({ build }: { build: Build }) {
 
   return (
     <section className="card p-4 sm:p-5" aria-labelledby="power-heading">
-      <h2 id="power-heading" className="text-sm font-semibold">
-        소비전력
+      <h2 id="power-heading" className="panel-title card-head">
+        <span className="idx">PWR</span>소비전력
       </h2>
       <p className="mt-2 flex items-baseline gap-1.5">
         <span className="stat text-3xl">{est.minW}</span>
@@ -1168,9 +1172,10 @@ function VerdictBar({
 
   if (results.length === 0) {
     return (
-      <div className="verdict-bar verdict-unknown flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <span className="text-sm font-semibold">판정 대기</span>
-        <span className="text-sm">
+      <div className="verdict-bar verdict-unknown flex flex-wrap items-baseline gap-x-4 gap-y-1">
+        <span className="eyebrow text-current">Verdict</span>
+        <span className="text-xl font-extrabold tracking-tight sm:text-2xl">판정 대기</span>
+        <span className="verdict-aside text-sm">
           부품을 두 개 이상 고르면 검사를 시작합니다.
         </span>
       </div>
@@ -1184,8 +1189,9 @@ function VerdictBar({
       aria-live="polite"
       className={`verdict-bar verdict-${tone} flex flex-wrap items-baseline gap-x-4 gap-y-1.5`}
     >
-      <span className="text-base font-semibold">{HEADLINE[tone].text}</span>
-      <span className="text-sm tnum">{countsText(counts)}</span>
+      <span className="eyebrow text-current">Verdict</span>
+      <span className="text-xl font-extrabold tracking-tight sm:text-2xl">{HEADLINE[tone].text}</span>
+      <span className="font-mono text-sm tnum">{countsText(counts)}</span>
       {waiting.length > 0 && (
         <span className="verdict-aside text-xs">
           {listWithJosa(
@@ -1219,8 +1225,8 @@ export function VerdictPanel({
 
   return (
     <section className="card p-4 sm:p-5" aria-labelledby="verdict-heading">
-      <h2 id="verdict-heading" className="text-sm font-semibold">
-        검사 항목{" "}
+      <h2 id="verdict-heading" className="panel-title card-head">
+        <span className="idx">CHK</span>검사 항목{" "}
         {results.length > 0 && (
           <span className="text-fg-subtle tnum">{results.length}</span>
         )}
@@ -1264,7 +1270,7 @@ export function VerdictPanel({
               return (
                 <li key={r.ruleId} className="flex gap-2.5 text-sm">
                   <span
-                    className={`mt-[0.45rem] h-1.5 w-1.5 shrink-0 rounded-full ${s.dot}`}
+                    className={`mt-[0.5rem] h-1.5 w-1.5 shrink-0 ${s.dot}`}
                     aria-hidden
                   />
                   <div className="min-w-0 flex-1">
@@ -1342,7 +1348,7 @@ function ShareBox({ code }: { code: string }) {
 
   return (
     <section className="card p-4 sm:p-5">
-      <h3 className="font-semibold">공유 링크</h3>
+      <h3 className="panel-title card-head">공유 링크</h3>
       <p className="mt-1 text-xs leading-relaxed text-fg-subtle">
         이 링크에 견적 내용이 전부 담겨 있습니다. 브라우저 데이터를 지워도
         링크만 있으면 복원됩니다.
@@ -1507,7 +1513,7 @@ function SaveBox({
   if (!available) {
     return (
       <section className="card p-4 sm:p-5">
-        <h3 className="font-semibold">저장</h3>
+        <h3 className="panel-title card-head">저장</h3>
         <p className="mt-1 text-xs leading-relaxed text-fg-subtle">
           이 브라우저에서는 저장할 수 없습니다. 시크릿 모드이거나 저장이 차단된
           것 같습니다. 위의 공유 링크를 복사해 두면 나중에 그대로 복원됩니다.
@@ -1518,7 +1524,7 @@ function SaveBox({
 
   return (
     <section className="card p-4 sm:p-5">
-      <h3 className="font-semibold">저장</h3>
+      <h3 className="panel-title card-head">저장</h3>
       <p className="mt-1 text-xs leading-relaxed text-fg-subtle">
         이 브라우저에만 저장됩니다. 브라우저 데이터를 지우면 사라지니 공유
         링크도 함께 보관해 두세요.

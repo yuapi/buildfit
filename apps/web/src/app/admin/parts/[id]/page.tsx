@@ -45,7 +45,7 @@ export default async function PartEditor({
         ← 빈 필드 목록
       </Link>
 
-      <h1 className="mt-4 text-2xl font-semibold">{part.modelName}</h1>
+      <h1 className="mt-4 text-3xl font-extrabold tracking-[-0.03em]">{part.modelName}</h1>
       <p className="mt-1 text-sm text-fg-subtle">
         {part.category}
         {part.brand ? ` · ${part.brand}` : ''}

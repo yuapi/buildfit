@@ -36,7 +36,7 @@ export default async function AdminHome() {
 
   return (
     <Container className="py-10">
-      <h1 className="text-2xl font-semibold">빈 필드 보강</h1>
+      <h1 className="text-3xl font-extrabold tracking-[-0.03em]">빈 필드 보강</h1>
       <p className="mt-2 text-sm text-fg-muted">
         호환성 판정에 필요한데 아직 비어 있는 필드다. 채우면 그만큼 &ldquo;판정 불가&rdquo;가 줄어든다.
         결측이 많은 순으로 보여준다.

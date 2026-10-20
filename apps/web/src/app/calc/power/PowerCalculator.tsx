@@ -103,8 +103,8 @@ export function PowerCalculator() {
 
   return (
     <section className="card p-4 sm:p-5" aria-labelledby="calc-heading">
-      <h2 id="calc-heading" className="text-sm font-semibold">
-        계산
+      <h2 id="calc-heading" className="panel-title card-head">
+        <span className="idx">KWH</span>계산
       </h2>
 
       <div className="mt-3">
@@ -169,16 +169,13 @@ export function PowerCalculator() {
 
       <fieldset className="mt-3">
         <legend className="text-xs text-fg-muted">계절</legend>
-        <div className="mt-1 flex flex-wrap gap-1.5">
+        <div className="seg mt-1">
           {(["other", "summer", "winter"] as const).map((s) => (
             <button
               key={s}
               type="button"
               aria-pressed={season === s}
               onClick={() => setSeason(s)}
-              className={`chip ${
-                season === s ? "border-border-strong bg-surface-2 font-medium text-fg" : ""
-              }`}
             >
               {SEASON_LABEL[s]}
             </button>

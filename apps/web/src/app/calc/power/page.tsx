@@ -17,7 +17,8 @@ export const metadata = {
 export default function PowerCalcPage() {
   return (
     <Container width="narrow" className="py-10 sm:py-14">
-      <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">전기요금 계산기</h1>
+      <p className="eyebrow">Electricity Bill</p>
+      <h1 className="mt-2 text-3xl font-extrabold tracking-[-0.03em] sm:text-4xl">전기요금 계산기</h1>
       <p className="mt-2.5 text-fg-muted">
         <strong className="font-medium text-fg">PC 전력만 따로 곱하면 의미가 없습니다.</strong>{' '}
         주택용 전기요금은 누진 구간이 있어서, 같은 사용량이 붙어도 가구가 평소 얼마를

@@ -57,7 +57,7 @@ export default async function CategoryIndex({
     logServerError('/part/[category]', err);
     return (
       <Container width="narrow" className="py-20">
-        <h1 className="text-2xl font-semibold tracking-tight">지금은 목록을 불러올 수 없습니다</h1>
+        <h1 className="text-3xl font-extrabold tracking-[-0.03em]">지금은 목록을 불러올 수 없습니다</h1>
         <p className="mt-2 text-fg-muted">잠시 후 다시 시도해 주세요.</p>
       </Container>
     );
@@ -77,7 +77,7 @@ export default async function CategoryIndex({
         <span className="text-fg-muted">{categoryLabel(resolved)}</span>
       </nav>
 
-      <h1 className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
+      <h1 className="mt-3 text-3xl font-extrabold tracking-[-0.03em] sm:text-4xl">
         {categoryLabel(resolved)}
       </h1>
       <p className="mt-1 text-sm text-fg-subtle tnum">
@@ -116,23 +116,38 @@ export default async function CategoryIndex({
           {q && ' 검색어를 줄여 보세요.'}
         </p>
       ) : (
-        <ul className="mt-6 divide-y divide-border">
-          {result.items.map((p) => (
-            <li key={p.slug}>
-              <Link
-                href={`/part/${category.toLowerCase()}/${p.slug}`}
-                className="-mx-2 flex flex-wrap items-baseline gap-x-2 rounded-(--radius-control) px-2 py-2.5 transition-colors hover:bg-surface-2"
-              >
-                <span className="text-sm font-medium">{p.modelName}</span>
-                <span className="text-xs text-fg-subtle">
-                  {p.brand ?? ''}
-                  {p.releaseYear ? ` · ${p.releaseYear}년` : ''}
-                </span>
-                {p.discontinued && <span className="chip">단종</span>}
-              </Link>
-            </li>
-          ))}
-        </ul>
+        /* 목록은 표다 — 모델 · 제조사 · 출시 칸이 세로로 맞는다 (ADR-0028) */
+        <div className="card mt-6">
+          <div
+            aria-hidden
+            className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 border-b border-border bg-surface-2 px-4 py-1.5 text-xs font-medium text-fg-subtle sm:grid-cols-[minmax(0,1fr)_8rem_4rem]"
+          >
+            <span>모델</span>
+            <span className="hidden sm:block">제조사</span>
+            <span className="text-right">출시</span>
+          </div>
+          <ul className="divide-y divide-border">
+            {result.items.map((p) => (
+              <li key={p.slug}>
+                <Link
+                  href={`/part/${category.toLowerCase()}/${p.slug}`}
+                  className="sheet-row grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-3 px-4 py-2 sm:grid-cols-[minmax(0,1fr)_8rem_4rem]"
+                >
+                  <span className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+                    <span className="text-sm font-semibold">{p.modelName}</span>
+                    {/* 좁은 화면에는 제조사 칸이 없다. 이름 밑에 붙인다 */}
+                    {p.brand && <span className="text-xs text-fg-subtle sm:hidden">{p.brand}</span>}
+                    {p.discontinued && <span className="chip">단종</span>}
+                  </span>
+                  <span className="hidden truncate text-xs text-fg-muted sm:block">{p.brand ?? '—'}</span>
+                  <span className="text-right font-mono text-xs text-fg-muted tnum">
+                    {p.releaseYear ?? '—'}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       {lastPage > 1 && (
