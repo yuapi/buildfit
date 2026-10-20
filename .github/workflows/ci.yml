@@ -60,6 +60,11 @@ jobs:
 
       - run: npm ci
 
+      # 배포되는 의존성에 알려진 취약점이 있으면 멈춘다 (이슈 #115). 개발 도구는 보지 않는다 —
+      # 상위에 고친 버전이 없는 경고가 남아 있다 (deployment.md §7)
+      - name: 의존성 취약점
+        run: npm audit --omit=dev --audit-level=high
+
       # 마이그레이션이 빈 DB에 적용되는지도 여기서 확인된다.
       - name: 마이그레이션
         run: npm run migrate

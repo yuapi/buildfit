@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { SiteFooter, SiteHeader } from '@/components/SiteShell';
 import { siteUrl } from '@/lib/site';
@@ -30,11 +31,17 @@ export const metadata: Metadata = {
  */
 const THEME_BOOTSTRAP = `try{var t=localStorage.getItem('theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}`;
 
-export default function RootLayout({ children }: LayoutProps<'/'>) {
+export default async function RootLayout({ children }: LayoutProps<'/'>) {
+  /**
+   * CSP nonce (ADR-0026). proxy가 요청마다 만든다. 여기서 `headers()`를 읽는 것이
+   * **모든 화면을 동적 렌더링으로 만든다** — 정적으로 구운 화면에는 nonce가 없어
+   * 스크립트가 전부 막힌다. 이 줄을 지우지 않는다 (`test/csp-nonce.test.ts`).
+   */
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
   return (
     <html lang="ko" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
       </head>
       <body className="flex min-h-full flex-col">
         <SiteHeader />

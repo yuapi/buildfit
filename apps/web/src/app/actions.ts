@@ -6,6 +6,7 @@ import { pickableAmong, searchCandidates, type PartOption } from '@buildfit/db/p
 import { matchQuote, type QuoteLineResult } from '@buildfit/db/quote';
 import { SLOT_META, type SlotName } from '@/lib/categories';
 import { getDb } from '@/lib/db';
+import { sanitizeSelection } from '@/lib/build-selection';
 import { MAX_LIMIT, MAX_QUERY_CHARS, MAX_QUOTE_CHARS, PAGE } from '@/lib/picker';
 
 export type { PartOption };
@@ -142,7 +143,7 @@ export async function recentCandidates(
 // 남아 있었다 — 호출부가 변수를 넘겨 타입 검사를 비켜 갔을 뿐 실제로는 넘어오고 있었다
 export async function fetchBuildParts(selection: BuildSelection): Promise<QueryResult<Build>> {
   try {
-    return { ok: true, data: await loadBuild(getDb(), selection) };
+    return { ok: true, data: await loadBuild(getDb(), sanitizeSelection(selection)) };
   } catch {
     return { ok: false };
   }
