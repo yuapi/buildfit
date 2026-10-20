@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
 import { getDb } from '@/lib/db';
 import { clientIp, RateLimiter } from '@/lib/rate-limit';
+import { logServerError } from '@/lib/server-log';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -60,7 +61,8 @@ export async function reportSpecAction(
   let target: Awaited<ReturnType<typeof reportTarget>>;
   try {
     target = await reportTarget(getDb(), partId);
-  } catch {
+  } catch (err) {
+    logServerError('action reportSpec', err);
     return { ok: false, message: '지금은 신고를 접수하지 못했습니다. 잠시 후 다시 시도해 주세요.' };
   }
   if (!target) return { ok: false, message: '없는 부품입니다.' };
@@ -109,7 +111,8 @@ export async function reportSpecAction(
       note: note || null,
       clientToken: clientToken || 'anonymous',
     });
-  } catch {
+  } catch (err) {
+    logServerError('action reportSpec', err);
     return { ok: false, message: '지금은 신고를 접수하지 못했습니다. 잠시 후 다시 시도해 주세요.' };
   }
 

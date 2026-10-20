@@ -14,6 +14,7 @@ import { saveSpec } from '@buildfit/db/queries';
 import { requireAdmin } from '@/lib/admin-auth';
 import { getDb } from '@/lib/db';
 import { parseSourceUrl, parseSpecValue } from '@/lib/spec-input';
+import { logServerError } from '@/lib/server-log';
 
 export interface SaveResult {
   readonly ok: boolean;
@@ -77,6 +78,8 @@ export async function saveSpecCore(
       err instanceof Error &&
       (KNOWN_REFUSALS.some((k) => err.message.startsWith(k)) ||
         err.message.includes('를 저장할 수 없습니다'));
+    // 우리가 문구를 쓴 거절은 오류가 아니다. 그 밖은 원인을 남긴다 (T-21)
+    if (!known) logServerError('admin saveSpec', err);
     return {
       ok: false,
       message: known ? (err as Error).message : '저장하지 못했습니다. 값을 확인해 주세요.',

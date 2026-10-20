@@ -52,6 +52,8 @@ Sitemap: http://localhost:3000/sitemap/pages.xml   ← 이렇게 나간다
 | `/` `/part` `/part/ram` `/rules` `/build/<코드>` | 200, 안내 문구 |
 | `/healthz` | **503** `{"ok":false}` |
 
+**원인은 서비스 로그에 `[buildfit] <어디서>: [코드] 메시지` 한 줄로 남는다** (`journalctl -u buildfit`, T-21 — 접속 문자열의 비밀번호는 가린다).
+
 **그래서 배포 플랫폼은 `/healthz`를 봐야 한다.** 화면의 200을 건강으로 읽으면
 DB가 끊긴 채로 계속 서비스된다. 이 주소는 인증이 없으므로 몸통에
 오류 내용도 접속 문자열 조각도 넣지 않는다 — 200이냐 503이냐만 말한다.

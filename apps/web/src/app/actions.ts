@@ -8,6 +8,7 @@ import { SLOT_META, type SlotName } from '@/lib/categories';
 import { getDb } from '@/lib/db';
 import { sanitizeSelection } from '@/lib/build-selection';
 import { MAX_LIMIT, MAX_QUERY_CHARS, MAX_QUOTE_CHARS, PAGE } from '@/lib/picker';
+import { logServerError } from '@/lib/server-log';
 
 export type { PartOption };
 
@@ -98,7 +99,8 @@ export async function searchParts(
       limit: Number.isFinite(limit) ? Math.min(Math.max(PAGE, Math.trunc(limit)), MAX_LIMIT) : PAGE,
     });
     return { ok: true, data: page };
-  } catch {
+  } catch (err) {
+    logServerError('action searchParts', err);
     return { ok: false };
   }
 }
@@ -128,7 +130,8 @@ export async function recentCandidates(
       ok: true,
       data: await pickableAmong(getDb(), { category: meta.category, ids: clean, constraints: sanitize(constraints) }),
     };
-  } catch {
+  } catch (err) {
+    logServerError('action recentCandidates', err);
     return { ok: false };
   }
 }
@@ -144,7 +147,8 @@ export async function recentCandidates(
 export async function fetchBuildParts(selection: BuildSelection): Promise<QueryResult<Build>> {
   try {
     return { ok: true, data: await loadBuild(getDb(), sanitizeSelection(selection)) };
-  } catch {
+  } catch (err) {
+    logServerError('action fetchBuildParts', err);
     return { ok: false };
   }
 }
@@ -160,7 +164,8 @@ export async function readQuote(text: string): Promise<QueryResult<QuoteLineResu
   const input = typeof text === 'string' ? text.slice(0, MAX_QUOTE_CHARS) : '';
   try {
     return { ok: true, data: await matchQuote(getDb(), input) };
-  } catch {
+  } catch (err) {
+    logServerError('action readQuote', err);
     return { ok: false };
   }
 }

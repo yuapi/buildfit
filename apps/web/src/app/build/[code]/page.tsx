@@ -7,6 +7,7 @@ import { decodeBuildCode } from '@/lib/build-code';
 import { buildLabel, buildSummary, missingCount, missingNotice, nameOf, pickedCount } from '@/lib/build-summary';
 import { SLOT_META } from '@/lib/categories';
 import { getDb } from '@/lib/db';
+import { logServerError } from '@/lib/server-log';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,7 +44,8 @@ export async function generateMetadata({ params }: { params: Promise<{ code: str
       // 링크 미리보기는 og를 먼저 본다. 제목·설명을 같은 것으로 맞춘다.
       openGraph: { title: `${label} — buildfit`, description },
     };
-  } catch {
+  } catch (err) {
+    logServerError('/build/[code]', err);
     return FALLBACK;
   }
 }
@@ -79,7 +81,8 @@ export default async function SharedBuild({ params }: { params: Promise<{ code: 
   let build;
   try {
     build = await loadBuild(getDb(), selection);
-  } catch {
+  } catch (err) {
+    logServerError('/build/[code]', err);
     return (
       <Problem
         title="지금은 견적을 불러올 수 없습니다"

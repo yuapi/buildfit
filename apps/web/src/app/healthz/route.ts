@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
+import { logServerError } from '@/lib/server-log';
 
 /**
  * 배포 플랫폼이 부를 준비 상태 점검 — `docs/deployment.md`.
@@ -18,7 +19,8 @@ export async function GET(): Promise<Response> {
   try {
     await getDb().execute(sql`select 1`);
     return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
-  } catch {
+  } catch (err) {
+    logServerError('/healthz', err);
     return new Response(JSON.stringify({ ok: false }), { status: 503, headers });
   }
 }

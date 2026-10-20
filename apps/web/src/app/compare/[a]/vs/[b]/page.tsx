@@ -9,6 +9,7 @@ import { alignSpecs } from '@/lib/compare';
 import { categoryLabel } from '@/lib/categories';
 import { getDb } from '@/lib/db';
 import { specLabel, specValueText } from '@/lib/spec-labels';
+import { logServerError } from '@/lib/server-log';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +23,8 @@ export async function generateMetadata({ params }: { params: Promise<{ a: string
       title: `${left.modelName} vs ${right.modelName}`,
       description: `${left.modelName} · ${right.modelName} — 두 부품의 스펙을 나란히 비교합니다.`,
     };
-  } catch {
+  } catch (err) {
+    logServerError('/compare', err);
     return { title: { absolute: 'buildfit' } };
   }
 }
@@ -38,7 +40,8 @@ export default async function ComparePage({
   try {
     const db = getDb();
     [left, right] = await Promise.all([partBySlug(db, a), partBySlug(db, b)]);
-  } catch {
+  } catch (err) {
+    logServerError('/compare', err);
     return (
       <div className="mx-auto max-w-3xl px-4 py-16">
         <h1 className="text-xl font-semibold">지금은 비교할 수 없습니다</h1>
