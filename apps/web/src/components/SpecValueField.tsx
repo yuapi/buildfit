@@ -82,7 +82,7 @@ export function SpecValueField({
     return (
       <fieldset className="flex flex-wrap gap-x-4 gap-y-2">
         {/* 여러 개를 고를 수 있다는 것을 스크린리더도 알아야 한다 */}
-        <legend className="sr-only">{label ?? req.label} — 해당하는 것을 모두 고르세요</legend>
+        <legend className="sr-only">{label ?? req.label} — 해당 항목 모두 선택</legend>
         {(req.options ?? []).map((opt) => (
           <label key={opt} className="flex items-center gap-1.5 text-sm">
             <input

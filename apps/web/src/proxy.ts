@@ -95,7 +95,7 @@ export function proxy(req: NextRequest): NextResponse {
   }
 
   adminFailLimiter.take(ip);
-  return new NextResponse('어드민 비밀이 필요합니다.\n', {
+  return new NextResponse('인증이 필요합니다.\n', {
     status: 401,
     headers: {
       // 아이디 칸은 비워도 된다. 계정이 아니라 공유 비밀이다.

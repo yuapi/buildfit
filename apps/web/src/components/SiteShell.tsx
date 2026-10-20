@@ -12,7 +12,7 @@ import { ThemeToggle } from './ThemeToggle';
  */
 
 const NAV = [
-  { href: '/', label: '견적 구성' },
+  { href: '/', label: '견적 검사' },
   { href: '/part', label: '부품' },
   { href: '/calc/power', label: '전기요금' },
   { href: '/rules', label: '검사 규칙' },
@@ -89,25 +89,23 @@ export function SiteFooter() {
               </span>
               <span className="font-mono">buildfit</span>
             </div>
-            <p className="mt-2">PC 부품 조합의 호환성·소비전력을 판정합니다. 가격 비교가 아니라 판단을 돕습니다.</p>
+            <p className="mt-2">PC 부품 호환성·소비전력 검사</p>
           </div>
           <div className="border-b border-chrome-line py-6 sm:border-b-0 sm:border-r sm:px-5">
-            <p className="eyebrow text-chrome-muted">Rule</p>
+            <p className="font-semibold text-chrome-fg">판정 기준</p>
             <p className="mt-2">
-              판정에 쓰는 값이 비어 있으면{' '}
-              <strong className="font-medium text-chrome-fg">판정 불가</strong>로 표시합니다. 없는
-              수치를 지어내지 않습니다.{' '}
+              판정에 필요한 데이터가 없으면 <strong className="font-medium text-chrome-fg">판정 불가</strong>로 표시합니다.{' '}
               {/* 어디가 얼마나 비었는지도 공개한다. 숨기면 판정 불가가 결함으로 읽힌다 */}
               <Link href="/rules" className="link text-chrome-fg">
-                무엇을 검사하고 무엇을 모르는지
+                검사 규칙 및 데이터 현황
               </Link>
             </p>
           </div>
           {/* ODC-By 1.0은 출처 표기가 유일한 조건이다 (명세 §5.7) */}
           <div className="py-6 sm:px-5">
-            <p className="eyebrow text-chrome-muted">Data</p>
+            <p className="font-semibold text-chrome-fg">데이터 출처</p>
             <p className="mt-2">
-              부품 데이터:{' '}
+              
               <a
                 href="https://github.com/buildcores/buildcores-open-db"
                 className="link text-chrome-fg"

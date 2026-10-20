@@ -110,7 +110,7 @@ export function PowerCalculator() {
       <div className="mt-3">
         <NumberField
           id={ids.household}
-          label="평소 가구 월 사용량"
+          label="가구 월 사용량"
           unit="kWh"
           value={householdText}
           onChange={setHousehold}
@@ -122,17 +122,17 @@ export function PowerCalculator() {
           placeholder="300"
         />
         <p className="mt-1 text-xs text-fg-subtle">
-          전기요금 고지서의 「사용량」입니다. 견적 화면과 같이 기억합니다.
+          전기요금 고지서의 월 사용량을 입력해 주세요.
         </p>
       </div>
 
       <fieldset className="mt-4">
-        <legend className="text-xs font-medium text-fg-muted">게임·작업할 때</legend>
+        <legend className="text-xs font-medium text-fg-muted">고부하 (게임·작업)</legend>
         <div className="mt-1 grid grid-cols-2 gap-3">
           <NumberField id={ids.loadW} label="소비전력" unit="W" value={loadW} onChange={setLoadW} placeholder="400" />
           <NumberField
             id={ids.loadH}
-            label="하루에"
+            label="하루 사용"
             unit="시간"
             value={loadH}
             onChange={setLoadH}
@@ -144,13 +144,13 @@ export function PowerCalculator() {
 
       <fieldset className="mt-3">
         <legend className="text-xs font-medium text-fg-muted">
-          켜 두기만 할 때 <span className="font-normal text-fg-subtle">(선택)</span>
+          저부하 (대기·웹 서핑) <span className="font-normal text-fg-subtle">(선택)</span>
         </legend>
         <div className="mt-1 grid grid-cols-2 gap-3">
           <NumberField id={ids.idleW} label="소비전력" unit="W" value={idleW} onChange={setIdleW} placeholder="80" />
           <NumberField
             id={ids.idleH}
-            label="하루에"
+            label="하루 사용"
             unit="시간"
             value={idleH}
             onChange={setIdleH}
@@ -163,7 +163,7 @@ export function PowerCalculator() {
           * 채우면 그 숫자가 사실처럼 계산에 들어간다.
           */}
         <p className="mt-1 text-xs text-fg-subtle">
-          값은 PC마다 크게 다릅니다. 모르면 비워 두세요 — 채우지 않은 줄은 계산에 넣지 않습니다.
+          비워 둔 항목은 계산에서 제외합니다.
         </p>
       </fieldset>
 
@@ -185,7 +185,7 @@ export function PowerCalculator() {
 
       {!baselineOk ? (
         <p className="mt-4 border-t border-border pt-3 text-sm text-fg-subtle">
-          가구 월 사용량을 넣으면 계산합니다.
+          가구 월 사용량을 입력하면 계산합니다.
         </p>
       ) : !usage.ok ? (
         <p role="status" className="mt-4 border-t border-border pt-3 text-sm text-fg-subtle">
@@ -197,7 +197,7 @@ export function PowerCalculator() {
           addedKwhLow={usage.kwh}
           addedKwhHigh={usage.kwh}
           season={season}
-          subject="이 기기"
+          subject="기기"
         />
       )}
 

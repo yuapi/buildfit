@@ -15,7 +15,7 @@ import { deployStatus } from '@/lib/deploy-status';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata = { title: '어드민 — 빈 필드 보강' };
+export const metadata = { title: '어드민 — 누락 데이터 보강' };
 
 export default async function AdminHome() {
   // 데이터를 만지기 전에 막는다. 레이아웃에서만 막으면 늦는다 (ADR-0020).
@@ -36,10 +36,9 @@ export default async function AdminHome() {
 
   return (
     <Container className="py-10">
-      <h1 className="text-3xl font-extrabold tracking-[-0.03em]">빈 필드 보강</h1>
+      <h1 className="text-3xl font-extrabold tracking-[-0.03em]">누락 데이터 보강</h1>
       <p className="mt-2 text-sm text-fg-muted">
-        호환성 판정에 필요한데 아직 비어 있는 필드다. 채우면 그만큼 &ldquo;판정 불가&rdquo;가 줄어든다.
-        결측이 많은 순으로 보여준다.
+        호환성 판정에 필요한 누락 필드입니다. 누락이 많은 순으로 표시합니다.
       </p>
 
       {deployed && (
@@ -47,7 +46,7 @@ export default async function AdminHome() {
           배포 버전 <span className="font-medium text-fg">{deployed.label}</span> ({deployed.sha.slice(0, 7)})
           {deployed.failedSha && (
             <span className="ml-2 text-danger">
-              최근 자동 배포 실패: {deployed.failedSha.slice(0, 7)} — 서버에서 journalctl -u buildfit-deploy 로 확인
+              최근 자동 배포 실패: {deployed.failedSha.slice(0, 7)} (서버 로그: journalctl -u buildfit-deploy)
             </span>
           )}
         </p>
@@ -55,11 +54,11 @@ export default async function AdminHome() {
 
       <div className="mt-6 flex gap-6 text-sm">
         <div>
-          <div className="text-fg-subtle">구멍 있는 필드</div>
+          <div className="text-fg-subtle">누락 필드</div>
           <div className="text-xl font-semibold">{open.length} / {gaps.length}</div>
         </div>
         <div>
-          <div className="text-fg-subtle">채워야 할 값</div>
+          <div className="text-fg-subtle">누락 값</div>
           <div className="text-xl font-semibold">{totalMissing.toLocaleString()}개</div>
         </div>
       </div>
@@ -71,7 +70,7 @@ export default async function AdminHome() {
             사용자 신고 <span className="text-sm font-normal text-fg-subtle">{reports.length}건</span>
           </h2>
           <p className="mt-1 text-xs text-fg-subtle">
-            사용자가 실제로 마주친 오류다. 결측 목록보다 우선순위가 높다.
+            사용자가 신고한 오류입니다. 누락 목록보다 먼저 처리합니다.
           </p>
           <ul className="mt-3 space-y-2 text-sm">
             {reports.map((r) => (
@@ -87,7 +86,7 @@ export default async function AdminHome() {
                 </span>
                 {r.reportedValue && (
                   <p className="mt-0.5 text-xs">
-                    맞다는 값: <span className="font-medium">{r.reportedValue}</span>
+                    신고 값: <span className="font-medium">{r.reportedValue}</span>
                   </p>
                 )}
                 {r.note && <p className="mt-0.5 text-xs text-fg-subtle">{r.note}</p>}
@@ -112,13 +111,11 @@ export default async function AdminHome() {
       {conflicts.length > 0 && (
         <section className="mt-8">
           <h2 className="font-medium">
-            값이 어긋나는 스펙{' '}
+            값 불일치{' '}
             <span className="text-sm font-normal text-fg-subtle">{conflicts.length}건</span>
           </h2>
           <p className="mt-1 text-xs leading-relaxed text-fg-subtle">
-            같은 제품이 원본에 여러 레코드로 들어 있고 값이 다르다. 하나는 틀렸다.
-            <strong className="font-medium"> 어느 쪽이 맞는지는 고르지 않는다</strong> — 다수결도
-            최신순도 근거가 아니다. 출처를 보고 채우면 「검증 중」 표시가 풀린다.
+            중복 등록된 제품의 값이 서로 다릅니다. 출처를 확인해 저장하면 「검증 중」 표시가 해제됩니다.
           </p>
           <ul className="mt-3 space-y-3">
             {conflicts.map((c) => (
@@ -179,13 +176,11 @@ export default async function AdminHome() {
       {earlyYears.length > 0 && (
         <section className="mt-8">
           <h2 className="font-medium">
-            소켓보다 앞선 출시 연도{' '}
+            출시 연도 오류{' '}
             <span className="text-sm font-normal text-fg-subtle">{earlyYears.length}건</span>
           </h2>
           <p className="mt-1 text-xs leading-relaxed text-fg-subtle">
-            같은 소켓의 다른 부품들보다 빈 해를 사이에 두고 홀로 앞서 있다. 부품은 소켓보다
-            먼저 나올 수 없다. <strong className="font-medium">맞는 연도는 적지 않는다</strong> —
-            모른다. 출처를 보고 채우면 「검증 중」 표시가 풀린다.
+            출시 연도가 같은 소켓의 다른 부품보다 크게 앞섭니다. 출처를 확인해 저장하면 「검증 중」 표시가 해제됩니다.
           </p>
           <ul className="mt-3 space-y-2">
             {earlyYears.map((y) => (
@@ -197,8 +192,7 @@ export default async function AdminHome() {
                   <span className="text-xs text-fg-subtle">{y.category} · 규칙 #12</span>
                 </div>
                 <p className="mt-0.5 text-xs text-fg-muted tnum">
-                  {y.socket} · 원본 {y.year}년 · 이 소켓의 다음 연도는 {y.nextYear}년 (연도가 있는{' '}
-                  {y.socketCount}건 중 앞선 {y.leadCount}건)
+                  {y.socket} · 원본 {y.year}년 · 이 소켓의 다음 연도 {y.nextYear}년 (연도 기록 {y.socketCount}건 중 {y.leadCount}건이 앞섬)
                 </p>
               </li>
             ))}
@@ -213,13 +207,11 @@ export default async function AdminHome() {
       {badKits.length > 0 && (
         <section className="mt-8">
           <h2 className="font-medium">
-            스스로 모순인 메모리{' '}
+            메모리 구성 불일치{' '}
             <span className="text-sm font-normal text-fg-subtle">{badKits.length}건</span>
           </h2>
           <p className="mt-1 text-xs leading-relaxed text-fg-subtle">
-            모듈 수 × 모듈 용량이 총 용량과 다르거나 이름의 구성과 다르다. 어딘가 틀렸다.
-            <strong className="font-medium"> 어느 값인지는 고르지 않는다</strong> — 출처를 보고
-            틀린 값을 고치면 표시가 풀린다.
+            모듈 수 × 모듈 용량이 총 용량 또는 제품명의 구성과 다릅니다. 출처를 확인해 수정하면 표시가 해제됩니다.
           </p>
           <ul className="mt-3 space-y-2">
             {badKits.map((k) => (
@@ -242,14 +234,14 @@ export default async function AdminHome() {
         </section>
       )}
 
-      <h2 className="mt-10 font-medium">빈 필드</h2>
+      <h2 className="mt-10 font-medium">누락 필드</h2>
       <table className="mt-3 w-full text-sm">
         <thead className="border-b border-border-strong text-left">
           <tr className="text-fg-subtle">
             <th className="py-2 font-medium">카테고리</th>
             <th className="py-2 font-medium">필드</th>
-            <th className="py-2 font-medium">막는 규칙</th>
-            <th className="py-2 text-right font-medium">결측</th>
+            <th className="py-2 font-medium">영향 규칙</th>
+            <th className="py-2 text-right font-medium">누락</th>
             <th className="py-2 text-right font-medium">비율</th>
           </tr>
         </thead>
@@ -283,7 +275,7 @@ export default async function AdminHome() {
       </table>
 
       {open.length === 0 && (
-        <p className="mt-8 text-sm text-fg-subtle">비어 있는 필수 필드가 없다.</p>
+        <p className="mt-8 text-sm text-fg-subtle">누락된 필수 필드가 없습니다.</p>
       )}
     </Container>
   );

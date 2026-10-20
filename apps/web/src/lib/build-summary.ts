@@ -82,7 +82,7 @@ export function countsText(counts: BuildVerdict['counts']): string {
   const problems = counts.fail - counts.info;
   const parts = [`통과 ${counts.pass}`];
   if (problems > 0) parts.push(`문제 ${problems}`);
-  if (counts.info > 0) parts.push(`알아둘 것 ${counts.info}`);
+  if (counts.info > 0) parts.push(`참고 ${counts.info}`);
   if (counts.unknown > 0) parts.push(`판정 불가 ${counts.unknown}`);
   return parts.join(' · ');
 }
@@ -140,5 +140,5 @@ export function missingCount(sel: BuildSelection, build: Build): number {
 /** 빠진 부품 안내 한 줄. 없으면 `null` */
 export function missingNotice(missing: number): string | null {
   if (missing <= 0) return null;
-  return `담긴 부품 중 ${missing}개를 찾지 못해 빼고 보여줍니다. 데이터가 갱신되면서 사라졌을 수 있습니다.`;
+  return `부품 ${missing}개를 찾을 수 없어 제외했습니다. 데이터 갱신으로 삭제되었을 수 있습니다.`;
 }

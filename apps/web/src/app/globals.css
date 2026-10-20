@@ -381,16 +381,6 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* 작은 머리글. 영문·숫자 표식에만 쓴다 (대문자는 한글에 의미가 없다) */
-  .eyebrow {
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
-    font-weight: 500;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--color-fg-subtle);
-  }
-
   /*
    * 모눈 — 표제 칸의 바탕에만 깐다. 색이 아니라 괘선 토큰으로 그리므로
    * 「색은 판정에만」을 어기지 않는다.

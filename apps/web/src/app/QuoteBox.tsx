@@ -35,9 +35,9 @@ export type ConflictReason =
   | 'duplicate';
 
 const CONFLICT_TEXT: Readonly<Record<ConflictReason, string>> = {
-  taken: '같은 칸을 앞줄이 이미 채웁니다. 이 줄은 넣지 않습니다.',
-  full: `메모리는 ${MAX_RAM_KITS}묶음까지 넣습니다. 이 줄은 넣지 않습니다.`,
-  duplicate: '앞줄에서 같은 부품을 이미 골랐습니다. 이 줄은 넣지 않습니다.',
+  taken: '앞 줄의 부품이 같은 항목에 이미 들어가 있어 제외합니다.',
+  full: `메모리는 최대 ${MAX_RAM_KITS}개까지 추가할 수 있어 제외합니다.`,
+  duplicate: '앞 줄과 같은 부품이라 제외합니다.',
 };
 
 export interface QuotePick {
@@ -138,11 +138,10 @@ export function QuoteBox({ onApply }: { onApply: (picks: readonly QuotePick[]) =
       <div className="border border-dashed border-border-strong px-4 py-3">
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <div className="min-w-0">
-            <h2 className="text-sm font-bold">견적서가 이미 있나요?</h2>
+            <h2 className="text-sm font-bold">견적서 붙여넣기</h2>
             <p className="text-sm text-fg-muted">
               {/* 칸 수를 적지 않는다 — 「일곱 칸」이 칸이 여덟이 된 뒤에도 남아 있었다 (이슈 #46) */}
-              받아 온 견적서를 붙여넣으면 부품을 찾아 채웁니다. 칸을 하나씩 손으로 채우지
-              않아도 됩니다.
+              쇼핑몰 견적서를 붙여넣으면 부품을 자동으로 찾습니다.
             </p>
           </div>
           <button ref={openButtonRef} type="button" onClick={() => toggle(true)} className="btn btn-secondary shrink-0">
@@ -165,8 +164,7 @@ export function QuoteBox({ onApply }: { onApply: (picks: readonly QuotePick[]) =
       </div>
 
       <p className="mt-1 text-sm text-fg-muted">
-        줄마다 부품을 찾습니다. <strong className="font-medium text-fg">고른 것만 들어갑니다</strong> —
-        저절로 채워지지 않습니다.
+        줄마다 부품을 찾습니다. <strong className="font-medium text-fg">선택한 부품만 견적에 추가됩니다.</strong>
       </p>
 
       <textarea
@@ -209,7 +207,7 @@ export function QuoteBox({ onApply }: { onApply: (picks: readonly QuotePick[]) =
             }}
             className="btn btn-secondary"
           >
-            고른 <span className="tnum">{picks.length}</span>개를 견적에 넣기
+            <span className="tnum">{picks.length}</span>개 견적에 추가
           </button>
         )}
       </div>
@@ -224,7 +222,7 @@ export function QuoteBox({ onApply }: { onApply: (picks: readonly QuotePick[]) =
         <>
           {/* 결과가 나왔다는 것을 화면 낭독기도 알아야 한다. 초점은 버튼에 남아 있다 */}
           <p role="status" className="sr-only">
-            {lines.filter((l) => l.isPart).length}줄에서 부품을 찾았습니다. 고른 것은 {picks.length}개입니다.
+            부품 {lines.filter((l) => l.isPart).length}줄 인식 · {picks.length}개 선택
           </p>
           {/*
             * 넓은 화면에서만 높이를 자른다. 좁은 화면에서 안쪽 스크롤을 만들면
@@ -252,12 +250,12 @@ export function QuoteBox({ onApply }: { onApply: (picks: readonly QuotePick[]) =
                 />
               ) : null,
             )}
-            {lines.length === 0 && <li className="py-3 text-fg-subtle">읽을 줄이 없습니다.</li>}
+            {lines.length === 0 && <li className="py-3 text-fg-subtle">입력된 내용이 없습니다.</li>}
           </ul>
 
           {skipped > 0 && (
             <p className="mt-2 text-xs text-fg-subtle">
-              부품 줄로 보이지 않는 <span className="tnum">{skipped}</span>줄은 건너뜁니다.
+              부품이 아닌 <span className="tnum">{skipped}</span>줄은 제외합니다.
             </p>
           )}
         </>
@@ -290,15 +288,15 @@ function QuoteRow({
         // "못 찾음"과 "아직 다루지 않음"은 사용자가 할 행동이 다르다.
         <p className="mt-1 text-fg-muted">
           {line.unsupported}
-          {josa(line.unsupported, "은", "는")} 아직 다루지 않습니다.
+          {josa(line.unsupported, "은", "는")} 지원하지 않는 부품입니다.
         </p>
       ) : !line.isPart ? (
-        <p className="mt-1 text-fg-subtle">부품 줄로 보이지 않아 건너뜁니다.</p>
+        <p className="mt-1 text-fg-subtle">부품이 아닌 줄로 판단해 제외합니다.</p>
       ) : usable.length === 0 ? (
         <p className="mt-1 text-fg-muted">
-          찾지 못했습니다.{' '}
+          일치하는 부품이 없습니다.{' '}
           <span className="text-fg-subtle">
-            {line.terms.length > 0 && `찾은 말: ${line.terms.join(' ')}`}
+            {line.terms.length > 0 && `인식한 단어: ${line.terms.join(' ')}`}
           </span>
         </p>
       ) : (
@@ -310,7 +308,7 @@ function QuoteRow({
             */}
           <fieldset className="mt-1.5">
             <legend className="sr-only">
-              이 줄에 넣을 부품 하나를 고르세요 ({usable.length}개 중)
+              부품 하나를 선택해 주세요 (후보 {usable.length}개)
             </legend>
             <ul className="space-y-0.5">
             {usable.map((c) => (
@@ -339,7 +337,7 @@ function QuoteRow({
           {/* 여럿이면 우리가 고르지 않는다. 왜 안 골랐는지 말해야 한다 */}
           {usable.length > 1 && picked === undefined && (
             <p className="mt-1 px-1.5 text-xs text-fg-subtle">
-              {usable.length}개가 맞습니다{line.hasMore ? ' (더 있음)' : ''} — 하나를 고르세요.
+              후보 {usable.length}개{line.hasMore ? ' 이상' : ''} — 하나를 선택해 주세요.
             </p>
           )}
           {conflict !== undefined && (

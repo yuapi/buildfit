@@ -66,7 +66,7 @@ export function FitBar({
           {over
             ? `${Math.abs(slack)}${unit} 초과`
             : tight
-              ? `여유 ${slack}${unit} — 빠듯함`
+              ? `여유 ${slack}${unit} (빠듯함)`
               : `여유 ${slack}${unit}`}
         </span>
       </div>

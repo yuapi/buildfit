@@ -5,17 +5,17 @@ import { BuildTool } from './BuildTool';
 
 export const metadata = {
   // 첫 화면은 브랜드가 제목이다. 템플릿을 거치면 「— buildfit」이 두 번 붙는다.
-  title: { absolute: 'buildfit — PC 견적 검증' },
+  title: { absolute: 'buildfit — PC 견적 호환성 검사' },
   description:
-    'PC 부품 조합의 호환성과 소비전력을 판정합니다. 가격 비교가 아니라 판단을 돕는 도구입니다.',
+    'PC 부품 조합의 장착 호환성, 소비전력, 전기요금을 검사합니다.',
 };
 
 /** 표제 칸 오른쪽의 사양. 지어낸 홍보 수치가 아니라 이 도구가 하는 일의 범위다 */
 const SPEC: readonly (readonly [string, React.ReactNode])[] = [
   ['검사 항목', <><span className="stat text-lg">{Object.keys(RULE_SUMMARY).length}</span>개</>],
-  ['다루는 부품', <><span className="stat text-lg">{Object.keys(CATEGORY_LABELS).length}</span>종</>],
-  ['값이 없으면', '판정 불가'],
-  ['회원가입', '없음'],
+  ['지원 부품', <><span className="stat text-lg">{Object.keys(CATEGORY_LABELS).length}</span>종</>],
+  ['데이터 누락 시', '판정 불가 표시'],
+  ['회원가입', '불필요'],
 ];
 
 /** 좁은 화면은 2×2, 넓은 화면은 세로 한 줄 — 칸마다 그을 괘선 */
@@ -35,13 +35,12 @@ export default function Home() {
        */}
       <section className="card sheet-grid grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="px-5 py-7 sm:px-8 sm:py-9">
-          <p className="eyebrow">PC Build Inspection</p>
-          <h1 className="mt-3 text-4xl font-extrabold tracking-[-0.035em] sm:text-5xl">
-            조립 전 호환성 검증
+          
+          <h1 className="text-4xl font-extrabold tracking-[-0.035em] sm:text-5xl">
+            PC 견적 호환성 검사
           </h1>
           <p className="mt-4 max-w-xl text-fg-muted">
-            부품을 고르면 서로 맞물리는지, 파워 용량이 충분한지 판정합니다. 가격 비교가 아니라{' '}
-            <strong className="font-semibold text-fg">판단을 돕는 도구</strong>입니다.
+            부품을 선택하면 장착 호환성과 파워 용량을 검사합니다.
           </p>
         </div>
         {/* 판정 불가를 결함으로 오해하지 않게 사양 칸에 못 박는다 */}

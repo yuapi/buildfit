@@ -123,7 +123,7 @@ describe('요약 한 줄', () => {
     const v = evaluate(b);
     expect(v.results.find((r) => r.ruleId === 12)?.severity).toBe('info');
     const s = buildSummary(b, v);
-    expect(s).toContain('알아둘 것 1');
+    expect(s).toContain('참고 1');
     expect(s).not.toContain('문제');
   });
 
@@ -153,8 +153,8 @@ describe('한 칸을 한 줄로', () => {
 });
 
 describe('판정 수 한 줄 — 요약 막대와 미리보기가 같이 쓴다', () => {
-  it('문제·알아둘 것·판정 불가를 나눠 적고 0건은 적지 않는다', () => {
-    expect(countsText({ pass: 17, fail: 2, info: 1, unknown: 1 })).toBe('통과 17 · 문제 1 · 알아둘 것 1 · 판정 불가 1');
+  it('문제·참고·판정 불가를 나눠 적고 0건은 적지 않는다', () => {
+    expect(countsText({ pass: 17, fail: 2, info: 1, unknown: 1 })).toBe('통과 17 · 문제 1 · 참고 1 · 판정 불가 1');
     expect(countsText({ pass: 20, fail: 0, info: 0, unknown: 0 })).toBe('통과 20');
   });
 });
@@ -208,7 +208,7 @@ describe('담겼는데 읽히지 않은 부품', () => {
 
   it('안내는 몇 개인지와 이유를 말한다', () => {
     expect(missingNotice(2)).toBe(
-      '담긴 부품 중 2개를 찾지 못해 빼고 보여줍니다. 데이터가 갱신되면서 사라졌을 수 있습니다.',
+      '부품 2개를 찾을 수 없어 제외했습니다. 데이터 갱신으로 삭제되었을 수 있습니다.',
     );
   });
 });

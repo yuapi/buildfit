@@ -35,14 +35,14 @@ async function relatedParts(
   if (category === 'CPU') {
     return {
       label: `소켓이 같은 메인보드`,
-      note: '소켓만 대조한 목록입니다. 메모리 규격 등 나머지는 견적 도구에서 판정합니다.',
+      note: '소켓 기준 목록입니다. 메모리 규격 등은 견적 검사에서 확인할 수 있습니다.',
       items: await partsOnSameSocket(getDb(), { category: 'Motherboard', socket }),
     };
   }
   if (category === 'Motherboard') {
     return {
       label: `소켓이 같은 CPU`,
-      note: '소켓만 대조한 목록입니다. BIOS 버전 등 나머지는 견적 도구에서 판정합니다.',
+      note: '소켓 기준 목록입니다. BIOS 버전 등은 견적 검사에서 확인할 수 있습니다.',
       items: await partsOnSameSocket(getDb(), { category: 'CPU', socket, excludePartId: id }),
     };
   }
@@ -60,7 +60,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     if (!part) return { title: '부품을 찾을 수 없습니다' };
     return {
       title: `${part.modelName} 스펙`,
-      description: `${part.modelName}의 스펙과 호환 정보. 조합의 호환성과 소비전력을 판정합니다.`,
+      description: `${part.modelName} 스펙과 호환 정보.`,
       // 같은 제품이 여러 레코드로 들어 있다. 중복 페이지는 대표를 가리킨다 —
       // 그냥 두면 같은 내용의 페이지들이 서로 순위를 갉아먹는다.
       alternates: {
@@ -88,7 +88,7 @@ export default async function PartPage({
     return (
       <Container width="narrow" className="py-20">
         <h1 className="text-3xl font-extrabold tracking-[-0.03em]">
-          지금은 부품 정보를 불러올 수 없습니다
+          부품 정보를 불러오지 못했습니다
         </h1>
         <p className="mt-2 text-fg-muted">잠시 후 다시 시도해 주세요.</p>
       </Container>
@@ -157,11 +157,7 @@ export default async function PartPage({
         */}
         {part.canonicalSlug && (
           <p className="mt-4 text-sm text-fg-muted">
-            같은 제품이 원본 데이터에 여러 번 들어 있습니다. 대표 항목은{' '}
-            <Link href={partHref(part.category, part.canonicalSlug)} className="link">
-              여기
-            </Link>
-            입니다.
+            원본 데이터에 중복 등록된 제품입니다. <Link href={partHref(part.category, part.canonicalSlug)} className="link">대표 항목 보기</Link>
           </p>
         )}
       </header>
@@ -169,7 +165,7 @@ export default async function PartPage({
       <section className="mt-10">
         <h2 className="text-lg font-semibold">스펙</h2>
         {part.specs.length === 0 ? (
-          <p className="mt-2 text-sm text-fg-muted">아직 등록된 스펙이 없습니다.</p>
+          <p className="mt-2 text-sm text-fg-muted">등록된 스펙이 없습니다.</p>
         ) : (
           <div className="card mt-3 overflow-hidden">
             <table className="w-full text-sm">
@@ -206,14 +202,13 @@ export default async function PartPage({
         {missingRequired.length > 0 && (
           <div className="mt-4 rounded-(--radius-card) border border-warn-border bg-warn-bg p-4 text-sm">
             <p className="font-medium text-warn">
-              호환성 판정에 필요한데 비어 있는 항목 {missingRequired.length}개
+              호환성 판정에 필요한 누락 항목 {missingRequired.length}개
             </p>
             <p className="mt-1.5 text-xs leading-relaxed text-fg-muted">
               {missingRequired.map(specLabel).join(', ')}
             </p>
             <p className="mt-1.5 text-xs leading-relaxed text-fg-subtle">
-              이 값이 없으면 견적에서 &ldquo;판정 불가&rdquo;로 나옵니다. 아시는 값이 있으면
-              아래에서 알려주세요.
+              누락된 항목은 견적 검사에서 &ldquo;판정 불가&rdquo;로 표시됩니다. 아래에서 값을 제보할 수 있습니다.
             </p>
           </div>
         )}
@@ -241,8 +236,7 @@ export default async function PartPage({
             </div>
           ) : (
             <p className="mt-2 text-sm text-fg-muted">
-              이 부품의 측정값이 없습니다. 공개 벤치마크(Blender Open Data)에서 같은 이름을 찾지
-              못했거나 실행이 5회 미만입니다.
+              측정값이 없습니다. Blender Open Data에 해당 제품이 없거나 실행 횟수가 5회 미만입니다.
             </p>
           )}
         </section>
@@ -274,9 +268,9 @@ export default async function PartPage({
 
       {comparable.length > 0 && (
         <section className="mt-12">
-          <h2 className="text-lg font-semibold">비교해 볼 만한 부품</h2>
+          <h2 className="text-lg font-semibold">비교할 부품</h2>
           <p className="mt-1 text-xs leading-relaxed text-fg-subtle">
-            같은 축을 공유하는 것끼리만 묶습니다. 아무 두 부품이나 비교하지 않습니다.
+            같은 기준으로 비교할 수 있는 부품입니다.
           </p>
           <ul className="mt-3 grid grid-cols-1 gap-0.5 sm:grid-cols-2">
             {comparable.map((c) => (
@@ -285,7 +279,7 @@ export default async function PartPage({
                   href={`/compare/${part.slug}/vs/${c.slug}`}
                   className="-mx-2 block truncate rounded-(--radius-control) px-2 py-1.5 text-sm transition-colors hover:bg-surface-2"
                 >
-                  {c.modelName}하고 비교
+                  {c.modelName} 비교
                 </Link>
               </li>
             ))}
@@ -295,11 +289,7 @@ export default async function PartPage({
 
       {/* ODC-By 1.0은 출처 표기가 유일한 조건이다. 이 부품의 원본 링크는 여기 둔다 (§5.7) */}
       <div className="mt-12 border-t border-border pt-5 text-xs leading-relaxed text-fg-subtle">
-        이 부품의 스펙은{' '}
-        <a href={OPENDB_REPO} className="link">
-          BuildCores OpenDB
-        </a>
-        에서 가져왔습니다.
+        스펙 출처: <a href={OPENDB_REPO} className="link">BuildCores OpenDB</a>
         {sourceUrl && (
           <>
             {' · '}

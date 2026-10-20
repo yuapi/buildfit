@@ -82,13 +82,13 @@ export async function saveSpecCore(
     if (!known) logServerError('admin saveSpec', err);
     return {
       ok: false,
-      message: known ? (err as Error).message : '저장하지 못했습니다. 값을 확인해 주세요.',
+      message: known ? (err as Error).message : '저장에 실패했습니다. 값을 확인해 주세요.',
     };
   }
 
   return {
     ok: true,
-    message: '저장했습니다. 출처와 확인 시각을 함께 기록했습니다.',
+    message: '저장되었습니다. 출처와 확인 시각이 기록되었습니다.',
     saved: { partId, category, specKey },
   };
 }

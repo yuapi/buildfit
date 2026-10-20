@@ -57,7 +57,7 @@ export function RecentParts() {
       <h2 id="recent-parts-heading" className="text-sm font-semibold text-fg-muted">
         최근 본 부품
       </h2>
-      <p className="mt-1 text-xs text-fg-subtle">이 브라우저에만 남습니다.</p>
+      <p className="mt-1 text-xs text-fg-subtle">이 브라우저에만 저장됩니다.</p>
       {/* grid-cols-1을 적어야 긴 모델명이 truncate된다 (부품 페이지와 같은 이유) */}
       <ul className="mt-2 grid grid-cols-1 gap-0.5 sm:grid-cols-2">
         {items.map((p) => (

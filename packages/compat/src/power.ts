@@ -100,7 +100,7 @@ export function coolerPower(
  */
 export function describeExcluded(excluded: readonly string[]): string | null {
   if (excluded.length === 0) return null;
-  return `${excluded.join(', ')}의 소비전력은 근거 있는 범위를 구하지 못해 계산에 넣지 않았습니다. 실제 소비전력은 이 구간보다 높습니다.`;
+  return `${excluded.join(', ')}의 소비전력은 근거 있는 범위를 구하지 못해 계산에서 제외했습니다. 실제 소비전력은 이 구간보다 높습니다.`;
 }
 
 /**

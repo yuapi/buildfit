@@ -30,7 +30,7 @@ describe('규칙 21 (이슈 #23)', () => {
     const r = rule21(noGpu('None'));
     expect(r).toMatchObject({ verdict: 'fail', severity: 'warning' });
     expect(r?.message).toContain('AMD Ryzen 5 7500F');
-    expect(r?.message).toContain('그래픽카드를 함께 골라');
+    expect(r?.message).toContain('그래픽카드를 함께 선택해');
   });
 
   it('★ 「0」도 없음이다 — 7500F 정품 레코드의 표기 (§21.2)', () => {

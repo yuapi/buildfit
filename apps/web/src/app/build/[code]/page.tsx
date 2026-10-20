@@ -57,7 +57,7 @@ function Problem({ title, detail }: { title: string; detail: string }) {
       <h1 className="text-3xl font-extrabold tracking-[-0.03em]">{title}</h1>
       <p className="mt-2 text-fg-muted">{detail}</p>
       <Link href="/" className="btn btn-primary mt-6">
-        새로 견적 구성하기
+        새 견적
       </Link>
     </Container>
   );
@@ -71,8 +71,8 @@ export default async function SharedBuild({ params }: { params: Promise<{ code: 
   if (!selection) {
     return (
       <Problem
-        title="이 링크를 읽을 수 없습니다"
-        detail="링크가 잘리거나 손상된 것 같습니다. 원본 링크를 다시 확인해 주세요."
+        title="잘못된 링크입니다"
+        detail="링크가 잘렸거나 손상되었습니다. 원본 링크를 확인해 주세요."
       />
     );
   }
@@ -85,8 +85,8 @@ export default async function SharedBuild({ params }: { params: Promise<{ code: 
     logServerError('/build/[code]', err);
     return (
       <Problem
-        title="지금은 견적을 불러올 수 없습니다"
-        detail="링크는 정상입니다. 잠시 후 다시 열어 주세요."
+        title="견적을 불러오지 못했습니다"
+        detail="잠시 후 다시 시도해 주세요."
       />
     );
   }
@@ -97,8 +97,8 @@ export default async function SharedBuild({ params }: { params: Promise<{ code: 
   if (pickedCount(build) === 0) {
     return (
       <Problem
-        title="담긴 부품을 찾지 못했습니다"
-        detail="링크는 읽었지만 그 안의 부품이 없습니다. 데이터가 갱신되면서 사라졌을 수 있습니다."
+        title="부품 정보를 찾을 수 없습니다"
+        detail="데이터 갱신으로 삭제된 부품일 수 있습니다."
       />
     );
   }
@@ -137,7 +137,7 @@ export default async function SharedBuild({ params }: { params: Promise<{ code: 
           </p>
         )}
         <p className="mt-3 text-sm text-fg-subtle">
-          이어서 고치면 내 견적이 됩니다. 원본 링크는 그대로 남습니다.
+          수정한 내용은 내 견적에 저장되며 원본 링크는 바뀌지 않습니다.
         </p>
       </header>
 
