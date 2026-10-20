@@ -157,3 +157,11 @@
 - 변경: packages/db/src/queries/part.ts (rejectSpecReport), gaps.ts (saveSpec 가 열린 신고를 resolved), apps/web/src/app/admin/actions.ts·page.tsx (거절 버튼), apps/ingest/test/report-close.test.ts
 - 검증: typecheck 0 · lint 0 · test 284→286 / 506→507 / 545 · build 성공. 빌드한 앱에서 신고 → /admin 에 보임 → 거절 → 사라짐, 콘솔 오류 0
 - 후속: 없음
+
+## 2026-10-20T14:10 | 릴리스 v0.2.1 | discover | skill 1.10.0
+- release/0.2.1 → main (PR #124), 태그 v0.2.1. 서버 타이머가 2분 안에 배포 — /opt/buildfit/current = 13433002, https://buildfit.duckdns.org/healthz ok
+
+## 2026-10-20T14:25 | T-19 | done | skill 1.10.0
+- 변경: apps/web/test/deploy-config.test.ts (bash -n, 유닛→스크립트 경로, 타이머 짝·설치, next 실행 파일 경로, 포트 3200, sudo 허용 명령)
+- 변이 확인: buildfit-sync.service 의 sync.sh → synk.sh 로 바꾸면 실패
+- 검증: typecheck 0 · lint 0 · test 286 / 507→522 / 545 · build 성공
