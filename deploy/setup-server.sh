@@ -70,7 +70,8 @@ sudo -u deploy git -C "$APP/repo" fetch --quiet --tags origin
 
 step "systemd 서비스·타이머 + 재시작 권한"
 SRC="$(mktemp -d)"
-git -C "$APP/repo" archive origin/main deploy/systemd | tar -x -C "$SRC"
+# 저장소는 deploy 소유다. root 로 git 을 부르면 「dubious ownership」으로 거절된다
+sudo -u deploy git -C "$APP/repo" archive origin/main deploy/systemd | tar -x -C "$SRC"
 install -m 644 "$SRC"/deploy/systemd/buildfit*.service "$SRC"/deploy/systemd/buildfit*.timer /etc/systemd/system/
 rm -rf "$SRC"
 echo 'deploy ALL=(root) NOPASSWD: /usr/bin/systemctl restart buildfit' > /etc/sudoers.d/buildfit
@@ -83,8 +84,9 @@ step "첫 배포 (처음이면 부품 적재까지 — 몇 분 걸려요)"
 if [[ ! -e "$APP/current" ]]; then
   # 첫 배포는 레포에서 꺼낸 스크립트로 돈다. 그 뒤로는 배포된 릴리스의 스크립트를 쓴다
   TMP="$(mktemp -d)" && chmod 755 "$TMP"
-  git -C "$APP/repo" show origin/main:deploy/deploy.sh > "$TMP/deploy.sh"
-  sudo -u deploy bash "$TMP/deploy.sh" origin/main
+  sudo -u deploy git -C "$APP/repo" show origin/main:deploy/deploy.sh > "$TMP/deploy.sh"
+  # deploy 계정이 못 들어가는 폴더(개발자 홈)에서 시작하지 않게 / 에서 부른다
+  (cd / && sudo -u deploy bash "$TMP/deploy.sh" origin/main)
   rm -rf "$TMP"
 fi
 systemctl enable --now --quiet buildfit-deploy.timer buildfit-sync.timer buildfit-backup.timer
