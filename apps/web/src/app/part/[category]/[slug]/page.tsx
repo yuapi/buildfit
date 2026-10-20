@@ -87,7 +87,7 @@ export default async function PartPage({
     logServerError('/part/[category]/[slug]', err);
     return (
       <Container width="narrow" className="py-20">
-        <h1 className="text-2xl font-semibold tracking-tight">
+        <h1 className="text-3xl font-extrabold tracking-[-0.03em]">
           지금은 부품 정보를 불러올 수 없습니다
         </h1>
         <p className="mt-2 text-fg-muted">잠시 후 다시 시도해 주세요.</p>
@@ -131,7 +131,7 @@ export default async function PartPage({
       </nav>
 
       <header className="mt-3">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{part.modelName}</h1>
+        <h1 className="text-3xl font-extrabold tracking-[-0.03em] sm:text-4xl">{part.modelName}</h1>
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           <span className="chip">{part.brand ?? '제조사 미상'}</span>
           {part.releaseYear && (

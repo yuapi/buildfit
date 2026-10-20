@@ -41,7 +41,7 @@ export default async function GapList({
       <Link href="/admin" className="link text-sm text-fg-muted">
         ← 빈 필드 목록
       </Link>
-      <h1 className="mt-4 text-2xl font-semibold">
+      <h1 className="mt-4 text-3xl font-extrabold tracking-[-0.03em]">
         {category} · {req.label}
       </h1>
       <p className="mt-2 text-sm text-fg-muted">
