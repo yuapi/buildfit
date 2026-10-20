@@ -104,6 +104,7 @@ DATABASE_URL=... ADMIN_TOKEN=... npm run start --workspace web
 ```
 
 OCI 인스턴스에 세우는 절차(systemd·Caddy·주간 재동기·개발 세션 이관)는 `docs/oci-migration.md`.
+**다른 서비스와 같은 서버에 세우는 절차는 §8이다** — 위 순서를 스크립트가 대신한다.
 
 **재동기가 케이스 데이터를 늘리는 유일한 자동 경로다** (ADR-0025). 업스트림이 6시간마다 자동 동기로
 채운다 — 2026-09-21 → 09-25의 커밋 16개로 케이스 PSU 폼팩터 599 → 703, PSU 길이 539 → 654,
@@ -127,7 +128,7 @@ OCI 인스턴스에 세우는 절차(systemd·Caddy·주간 재동기·개발 �
 
 ## 6. 아직 정하지 않은 것
 
-**도메인** (명세 §12). 정해지기 전에는 §2가 확인할 수 없다.
+**도메인** (명세 §12). 정해지기 전에는 §2가 확인할 수 없다. 서버 자리는 정했다 — §8.
 
 **마이그레이션 시점.** 지금은 손으로 돌린다. 컬럼 추가는 expand-contract의 T0라
 구버전과 공존한다 (pipeline-plan §7.1) — 즉 **마이그레이션을 먼저 돌리고 배포하는
@@ -170,4 +171,47 @@ Phase 0b가 `v0.2.0`이었어야 하므로 Phase 1 완료가 `v0.3.0`이다.
 - **`/healthz`**: 200/503만 말하고 오류 내용을 내보내지 않는다 (§3)
 - **의존성**: `npm audit --omit=dev` 0건 — CI가 high 이상이면 실패한다. 남은 경고는 개발 도구뿐
   (eslint의 braces, drizzle-kit의 esbuild — 상위에 고친 버전이 없다)
-- **서버**: 앱은 127.0.0.1에만 열고 Caddy가 HTTPS. systemd 전용 계정·쓰기 제한 (oci-migration §4.6)
+- **서버**: 앱은 127.0.0.1에만 열고 Caddy가 HTTPS. systemd 전용 계정·쓰기 제한 (`deploy/systemd/buildfit.service`).
+  비밀 파일은 `/etc/buildfit/buildfit.env`(640). 서버에 GitHub 러너를 두지 않는다 (ADR-0027)
+
+## 8. 같은 서버에 배포 (3200) — ADR-0027
+
+다른 서비스가 3000·3100을 쓰는 서버에 `127.0.0.1:3200` + Caddy로 세운다. 스크립트는 `deploy/`에 있다.
+
+### 첫 설치 (한 번, sudo)
+
+1. 도메인을 정하고 DNS를 서버 공인 IP로 돌린다 (`NEXT_PUBLIC_SITE_URL`이 빌드에 구워진다 — §2)
+2. `main`에 릴리스가 있어야 한다 — 첫 배포는 `origin/main`을 꺼낸다 (§6 릴리스 태그)
+3. 개발 체크아웃에서:
+
+```bash
+sudo DOMAIN=<도메인> bash deploy/setup-server.sh
+```
+
+PostgreSQL 16 설치, 계정·DB·비밀 파일, OpenDB 원본, 부품 적재, 빌드, systemd, Caddy, 헬스 체크까지 한다.
+처음에는 적재·빌드로 몇 분 걸린다. 다시 돌려도 안전하다.
+
+### 그 뒤 배포
+
+**`main`이 바뀌면 서버가 2분 안에 알아서 배포한다** (`buildfit-deploy.timer`). 릴리스 PR을 머지하면 끝이다.
+
+| 할 일 | 명령 (서버에서) |
+|---|---|
+| 배포 기록 | `journalctl -u buildfit-deploy -n 50` |
+| 서비스 로그 | `journalctl -u buildfit -f` |
+| 지금 바로 배포 | `sudo -u deploy bash /opt/buildfit/current/deploy/deploy.sh` |
+| 특정 태그로 | `sudo -u deploy bash /opt/buildfit/current/deploy/deploy.sh v0.2.0` |
+| 직전 릴리스로 되돌리기 | `sudo -u deploy bash /opt/buildfit/current/deploy/deploy.sh --rollback` |
+| 도메인을 바꾼 뒤 다시 굽기 | 비밀 파일의 `NEXT_PUBLIC_SITE_URL` 수정 → `deploy.sh --rebuild` |
+| 어드민 비밀 보기 | `sudo grep ADMIN_TOKEN /etc/buildfit/buildfit.env` |
+| 백업 | `/opt/buildfit/backups/*.dump` (매일, 14개). 되살리기는 `deploy/backup.sh` 머리말 |
+
+새 버전이 빌드·헬스 체크에 실패하면 이전 릴리스가 그대로 돌고, 그 커밋은 자동으로 다시 시도하지 않는다.
+고친 커밋을 머지하면 다시 배포된다.
+
+| 경로 | 무엇 |
+|---|---|
+| `/opt/buildfit/current` | 지금 릴리스 (`releases/<시각>-<커밋>`을 가리키는 링크) |
+| `/opt/buildfit/repo` | 코드를 꺼내 오는 clone (작업 트리 없음) |
+| `/opt/buildfit/opendb` | OpenDB 원본 — 매주 월요일 재동기 (`buildfit-sync.timer`) |
+| `/etc/buildfit/buildfit.env` | DB 주소·어드민 비밀·도메인·포트 |
