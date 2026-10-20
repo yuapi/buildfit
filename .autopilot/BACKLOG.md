@@ -1,6 +1,6 @@
 # BACKLOG (autopilot 작업 큐)
 
-next_id: 22
+next_id: 23
 
 상태: open | in_progress | done | blocked | waiting(앞 단계 대기)
 유형: fix | security | test | lint | todo | cleanup | docs | refactor
@@ -28,3 +28,4 @@ next_id: 22
 | T-19 | test | done | 1 | `deploy/` 정적 검사 테스트 — 모든 `.sh`가 `bash -n` 통과, systemd 유닛이 가리키는 스크립트 경로가 레포에 있고, 서비스 포트·`ExecStart` 경로가 deploy.sh·문서(§8)와 같다 | 새 테스트가 지금 통과하고, 유닛의 스크립트 이름을 틀리게 바꾸면 실패한다(변이 확인) | 테스트 공백 — 배포 스크립트에 검사 0건 | 2026-10-20 |
 | T-20 | docs | done | 1 | README·CLAUDE.md의 낡은 카탈로그 수치(부품 26,504/26,511 → 실측, 중복·disputed) — 지난 STOP의 보류 보조 작업 | 수치가 임시 DB 실측과 맞고 날짜가 있다, 테스트 유지 | 보류한 보조 작업 (2026-10-02 STOP) | 2026-10-20 |
 | T-21 | enhance | done | 1 | 서버 쪽 오류를 로그에 남긴다 — DB를 부르는 서버 동작·화면·`/healthz`의 `catch`가 오류를 삼켜 운영 중 원인을 알 수 없다(`console.error` 0건). `lib/server-log.ts`(`server-only`, 접속 문자열 가림)로 한 줄씩 | 헬퍼 단위 테스트(어디서·메시지·`postgres://user:pw@` 가림) + DB를 부르는 서버 파일이 전부 헬퍼를 쓰는지 소스 검사, DB를 닫은 채 띄운 앱에서 화면을 열면 로그에 한 줄 | 품질 속성 — 관측 가능성 (2026-10-20) | 2026-10-20 |
+| T-22 | enhance | done | 1 | `/admin`에 배포 상태 — 지금 도는 버전(태그·커밋)과 「최근 자동 배포 실패」(`/opt/buildfit/.deploy/failed`). 지금은 서버 journal 을 봐야만 안다. deploy.sh 가 릴리스 폴더에 `.release-label`도 쓴다 | 순수 함수(릴리스 폴더 → 상태) 단위 테스트, 개발 환경(릴리스 폴더 아님)에서는 칸을 숨긴다, deploy-config 테스트 유지 | 시나리오 — 운영자가 배포 결과 확인 (2026-10-20) | 2026-10-20 |

@@ -113,6 +113,7 @@ fail() {
 
 git -C "$REPO" archive "$TARGET" | tar -x -C "$DIR" || fail "코드 꺼내기"
 echo "$TARGET" > "$DIR/.release-sha"
+echo "$LABEL" > "$DIR/.release-label"
 cd "$DIR"
 npm ci --no-audit --no-fund --loglevel=error || fail "npm ci"
 # 마이그레이션은 배포보다 먼저다 — 컬럼 추가는 옛 버전과 공존한다 (deployment.md §6)
