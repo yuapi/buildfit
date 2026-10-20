@@ -97,8 +97,8 @@ describe('★ 읽기 — 형식이 틀리면 아무것도 돌려주지 않는다
     expect(parseBackup(text)).toEqual({ ok: false, problem });
   });
 
-  it('안내는 저장 목록이 그대로라고 말한다', () => {
-    expect(describeProblem('not-json')).toContain('저장 목록은 그대로입니다');
+  it('안내는 기존 저장 목록이 유지된다고 말한다', () => {
+    expect(describeProblem('not-json')).toContain('기존 저장 목록은 유지됩니다');
   });
 });
 
@@ -149,17 +149,17 @@ describe('합치기', () => {
 describe('결과 안내', () => {
   it('넣은 것과 건너뛴 이유를 함께 말한다', () => {
     expect(describeImport({ added: 3, duplicate: 1, overLimit: 2 }, 1, 20)).toBe(
-      '3개를 더했습니다. 건너뜀: 이미 있음 1개 · 읽을 수 없음 1개 · 저장 상한(20개) 초과 2개',
+      '3개를 가져왔습니다. 제외: 이미 있음 1개 · 읽을 수 없음 1개 · 저장 상한(20개) 초과 2개',
     );
   });
 
   it('건너뛴 것이 없으면 그것만', () => {
-    expect(describeImport({ added: 2, duplicate: 0, overLimit: 0 }, 0, 20)).toBe('2개를 더했습니다.');
+    expect(describeImport({ added: 2, duplicate: 0, overLimit: 0 }, 0, 20)).toBe('2개를 가져왔습니다.');
   });
 
   it('하나도 못 넣었으면 그렇다고 말한다', () => {
     expect(describeImport({ added: 0, duplicate: 4, overLimit: 0 }, 0, 20)).toBe(
-      '더한 견적이 없습니다. 건너뜀: 이미 있음 4개',
+      '가져온 견적이 없습니다. 제외: 이미 있음 4개',
     );
   });
 });

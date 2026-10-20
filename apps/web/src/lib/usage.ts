@@ -34,14 +34,14 @@ export const HOURS_PER_DAY = 24;
  */
 export function usageKwh(rows: readonly UsageRow[]): UsageResult {
   const used = rows.filter((r) => r.watts > 0 && r.hoursPerDay > 0);
-  if (used.length === 0) return { ok: false, message: '소비전력과 시간을 넣으면 계산합니다.' };
+  if (used.length === 0) return { ok: false, message: '소비전력과 사용 시간을 입력하면 계산합니다.' };
 
   for (const r of rows) {
     if (!Number.isFinite(r.watts) || !Number.isFinite(r.hoursPerDay)) {
-      return { ok: false, message: '숫자를 넣어 주세요.' };
+      return { ok: false, message: '숫자를 입력해 주세요.' };
     }
     if (r.watts < 0 || r.hoursPerDay < 0) {
-      return { ok: false, message: '0보다 작은 값은 넣을 수 없습니다.' };
+      return { ok: false, message: '0 이상의 값을 입력해 주세요.' };
     }
   }
 
@@ -49,7 +49,7 @@ export function usageKwh(rows: readonly UsageRow[]): UsageResult {
   if (hours > HOURS_PER_DAY) {
     return {
       ok: false,
-      message: `하루는 ${HOURS_PER_DAY}시간입니다. 지금 합이 ${hours}시간입니다.`,
+      message: `하루 사용 시간의 합이 ${HOURS_PER_DAY}시간을 넘습니다 (현재 ${hours}시간).`,
     };
   }
 

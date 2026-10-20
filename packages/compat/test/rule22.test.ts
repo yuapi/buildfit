@@ -24,7 +24,7 @@ describe('규칙 22 (이슈 #24)', () => {
     const r = rule22(noCooler(false));
     expect(r).toMatchObject({ verdict: 'fail', severity: 'warning' });
     expect(r?.message).toContain('AMD Ryzen 7 9800X3D');
-    expect(r?.message).toContain('CPU 쿨러를 함께 골라');
+    expect(r?.message).toContain('CPU 쿨러를 함께 선택해');
   });
 
   it('값이 없으면 추측하지 않는다 — 판정 불가', () => {

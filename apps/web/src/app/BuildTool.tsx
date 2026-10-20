@@ -37,7 +37,6 @@ import { addToSlot, isMultiSlot, maxForSlot, removeFromSlot } from "@/lib/multi-
 import { SLOT_META, type SlotName } from "@/lib/categories";
 import { ElectricityPanel } from "./ElectricityPanel";
 import { NO_CURSOR, nextCursor } from "@/lib/list-cursor";
-import { listWithJosa } from "@/lib/korean";
 import { groupFieldsByPart } from "@/lib/field-refs";
 import {
   clearDraft,
@@ -196,7 +195,7 @@ export function BuildTool({ initial }: { initial?: Build }) {
   useEffect(() => {
     if (phase.current === "restoring") return;
     // 빈 견적은 적어두지 않는다. 빈 코드도 멀쩡한 코드라서, 그대로 쓰면
-    // 「비우고 새로 시작」이 칸을 지우지 않고 "빈 것"을 적어두게 된다.
+    // 「새 견적」이 칸을 지우지 않고 "빈 것"을 적어두게 된다.
     saveDraft(pickedCount(build) === 0 ? "" : encodeBuildCode(toSelection(build)));
   }, [build]);
 
@@ -318,10 +317,10 @@ export function BuildTool({ initial }: { initial?: Build }) {
           className="flex flex-wrap items-baseline justify-between gap-2 rounded-(--radius-card) border border-border bg-surface-2 px-4 py-2.5 text-sm"
         >
           <span className="text-fg-muted">
-            지난번 하던 견적을 이어서 엽니다. 이 브라우저에만 남아 있습니다.
+            이전에 작업하던 견적을 불러왔습니다.
           </span>
           <button type="button" onClick={startOver} className="btn btn-ghost px-2 py-1 text-xs">
-            비우고 새로 시작
+            새 견적
           </button>
         </p>
       )}
@@ -335,8 +334,7 @@ export function BuildTool({ initial }: { initial?: Build }) {
 
       {loadError && (
         <p role="alert" className="verdict-bar verdict-warning text-sm">
-          부품 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요. 고른
-          구성은 그대로 있습니다.
+          부품 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요. 선택한 부품은 유지됩니다.
         </p>
       )}
 
@@ -455,7 +453,7 @@ function FitPanel({ build }: { build: Build }) {
   return (
     <section className="card p-4 sm:p-5" aria-labelledby="fit-heading">
       <h2 id="fit-heading" className="panel-title card-head">
-        <span className="idx">FIT</span>케이스 여유
+        <span className="idx">FIT</span>케이스 장착 여유
       </h2>
       <div className="mt-3 space-y-4">
         {rows.map((r) => (
@@ -503,7 +501,7 @@ function PowerPanel({ build }: { build: Build }) {
       </p>
       {/* 구간의 폭이 곧 신뢰도 표시다. 점 값을 내지 않는다 (§7.2) */}
       <p className="mt-1 text-xs text-fg-subtle">
-        가정 범위. 점 값을 내지 않습니다
+        추정 범위
       </p>
 
       <dl className="mt-4 space-y-1.5 border-t border-border pt-3 text-sm">
@@ -522,7 +520,7 @@ function PowerPanel({ build }: { build: Build }) {
         </div>
         {psuW !== null && (
           <div className="flex items-baseline justify-between gap-2">
-            <dt className="text-fg-muted">고른 파워</dt>
+            <dt className="text-fg-muted">선택한 파워</dt>
             <dd className="tnum font-medium">{psuW} W</dd>
           </div>
         )}
@@ -624,7 +622,7 @@ function SlotRow({
           </span>
           <span className="min-w-0 text-sm">
             {picked.length === 0 ? (
-              <span className="text-fg-subtle">아직 고르지 않음</span>
+              <span className="text-fg-subtle">미선택</span>
             ) : (
               <span className="block space-y-0.5">
                 {picked.map((p) => (
@@ -894,7 +892,7 @@ function PartPicker({
           run(e.target.value, active, PAGE);
         }}
         onKeyDown={onKeyDown}
-        placeholder="모델명·한글 이름으로 검색 (라이젠, 지포스 5080)"
+        placeholder="모델명 검색 (예: 라이젠, 지포스 5080)"
         aria-label="부품 검색"
         role="combobox"
         aria-expanded
@@ -939,12 +937,12 @@ function PartPicker({
       <div aria-live="polite" className="empty:hidden">
         {translated.length > 0 && (
           <p className="mt-1.5 text-xs text-fg-subtle">
-            한글을 바꿔 찾았습니다 — {translated.map((t) => `${t.from} → ${t.to}`).join(', ')}
+            한글 검색어 변환: {translated.map((t) => `${t.from} → ${t.to}`).join(', ')}
           </p>
         )}
         {unknown.length > 0 && (
           <p className="mt-1.5 text-xs text-warn">
-            {unknown.join(', ')}: 카탈로그에서 쓰지 않는 말입니다. 영문 모델명으로 쳐 보세요.
+            {unknown.join(', ')}: 인식할 수 없는 검색어입니다. 영문 모델명으로 검색해 주세요.
           </p>
         )}
       </div>
@@ -957,7 +955,7 @@ function PartPicker({
               checked={narrow}
               onChange={(e) => setNarrow(e.target.checked)}
             />
-            맞는 것만 보기
+            호환 부품만 보기
           </label>
           {/* 몇 개를 왜 숨겼는지 말하지 않으면 목록이 짧은 이유를 알 수 없다 */}
           {narrow && hidden > 0 && (
@@ -993,8 +991,7 @@ function PartPicker({
         )}
         {!loading && !failed && options.length === 0 && (
           <p className="mt-2 px-1 text-sm text-fg-subtle">
-            결과가 없습니다.
-            {narrow && hidden > 0 && ' 「맞는 것만 보기」를 끄면 더 나옵니다.'}
+            검색 결과가 없습니다. {narrow && hidden > 0 && ' 「호환 부품만 보기」를 해제하면 더 많은 결과가 표시됩니다.'}
           </p>
         )}
       </div>
@@ -1049,8 +1046,7 @@ function PartPicker({
       {/* 상한에 닿으면 왜 더 안 나오는지 말한다. 말없이 멈추면 고장으로 보인다 */}
       {!loading && !failed && matched > options.length && options.length >= MAX_LIMIT && (
         <p className="mt-2 text-xs text-fg-subtle">
-          한 번에 <span className="tnum">{MAX_LIMIT}</span>개까지 봅니다. 검색어를 더 적어
-          보세요.
+          최대 <span className="tnum">{MAX_LIMIT}</span>개까지 표시됩니다. 검색어를 더 구체적으로 입력해 주세요.
         </p>
       )}
     </div>
@@ -1093,14 +1089,14 @@ const TONE_RANK: Record<Tone, number> = {
 
 /** 한 줄 요약. 가장 심각한 등급이 견적 전체의 표정이 된다. */
 const HEADLINE: Record<Tone, { text: string; className: string }> = {
-  error: { text: "조립되지 않는 조합입니다", className: "text-danger" },
-  warning: { text: "확인이 필요합니다", className: "text-warn" },
-  info: { text: "알아둘 것이 있습니다", className: "text-info" },
+  error: { text: "호환 불가", className: "text-danger" },
+  warning: { text: "확인 필요", className: "text-warn" },
+  info: { text: "참고 사항 있음", className: "text-info" },
   unknown: {
-    text: "데이터가 없어 판정하지 못한 항목이 있습니다",
+    text: "일부 판정 불가",
     className: "text-fg-muted",
   },
-  pass: { text: "검사한 항목은 모두 통과했습니다", className: "text-ok" },
+  pass: { text: "모든 항목 통과", className: "text-ok" },
 };
 
 /**
@@ -1173,10 +1169,9 @@ function VerdictBar({
   if (results.length === 0) {
     return (
       <div className="verdict-bar verdict-unknown flex flex-wrap items-baseline gap-x-4 gap-y-1">
-        <span className="eyebrow text-current">Verdict</span>
         <span className="text-xl font-extrabold tracking-tight sm:text-2xl">판정 대기</span>
         <span className="verdict-aside text-sm">
-          부품을 두 개 이상 고르면 검사를 시작합니다.
+          부품을 2개 이상 선택하면 검사합니다.
         </span>
       </div>
     );
@@ -1189,17 +1184,11 @@ function VerdictBar({
       aria-live="polite"
       className={`verdict-bar verdict-${tone} flex flex-wrap items-baseline gap-x-4 gap-y-1.5`}
     >
-      <span className="eyebrow text-current">Verdict</span>
       <span className="text-xl font-extrabold tracking-tight sm:text-2xl">{HEADLINE[tone].text}</span>
       <span className="font-mono text-sm tnum">{countsText(counts)}</span>
       {waiting.length > 0 && (
         <span className="verdict-aside text-xs">
-          {listWithJosa(
-            waiting.map((x) => SLOT_LABELS[x]),
-            "을",
-            "를",
-          )}{" "}
-          아직 고르지 않음
+          미선택: {waiting.map((x) => SLOT_LABELS[x]).join(", ")}
         </span>
       )}
       {pending && <span className="verdict-aside ml-auto text-xs">갱신 중…</span>}
@@ -1252,11 +1241,7 @@ export function VerdictPanel({
             * 결과가 나온 뒤에는 자리가 빠듯하니 빈 화면에서만 건넨다.
             */}
           <p className="mt-3 text-xs leading-relaxed text-fg-subtle">
-            각 검사가 쓰는 데이터가 얼마나 비어 있는지도{' '}
-            <Link href="/rules" className="link">
-              공개합니다
-            </Link>
-            .
+            <Link href="/rules" className="link">검사 규칙 및 데이터 현황</Link>
           </p>
         </>
       ) : (
@@ -1282,7 +1267,7 @@ export function VerdictPanel({
                     {r.reason && (
                       <p className="mt-1 text-xs leading-relaxed text-fg-subtle">
                         {r.reason.kind === "missing"
-                          ? "없는 정보: "
+                          ? "누락 데이터: "
                           : "데이터 이상: "}
                         {r.reason.kind !== "missing" && `${r.reason.detail} `}
                         {/* 판정 불가를 만난 사람이 그 값을 아는 경우가 있다.
@@ -1292,7 +1277,7 @@ export function VerdictPanel({
                           partHref(build, f.slug),
                         ) && (
                           <span className="ml-1">
-                            — 아는 값이 있으면 알려주세요
+                            — 값 제보
                           </span>
                         )}
                       </p>
@@ -1304,11 +1289,10 @@ export function VerdictPanel({
                     */}
                     {r.contested && (
                       <p className="mt-1 text-xs leading-relaxed text-warn">
-                        검증 중인 값으로 판정했습니다:{" "}
+                        검증 중인 값 포함:{" "}
                         <FieldList build={build} refs={r.contested} />
                         <span className="ml-1">
-                          — 같은 제품의 다른 기록과 값이 다르거나 오류 신고가
-                          들어온 항목입니다
+                          — 다른 기록과 값이 다르거나 오류 신고가 접수된 항목
                         </span>
                       </p>
                     )}
@@ -1350,8 +1334,7 @@ function ShareBox({ code }: { code: string }) {
     <section className="card p-4 sm:p-5">
       <h3 className="panel-title card-head">공유 링크</h3>
       <p className="mt-1 text-xs leading-relaxed text-fg-subtle">
-        이 링크에 견적 내용이 전부 담겨 있습니다. 브라우저 데이터를 지워도
-        링크만 있으면 복원됩니다.
+        링크로 같은 견적을 열 수 있습니다.
       </p>
       <input
         readOnly
@@ -1370,7 +1353,7 @@ function ShareBox({ code }: { code: string }) {
         }}
         className="btn btn-primary mt-2 w-full"
       >
-        {copied ? "복사했습니다" : "링크 복사"}
+        {copied ? "복사됨" : "링크 복사"}
       </button>
     </section>
   );
@@ -1432,7 +1415,7 @@ function BackupControls({
     }
     const merged = mergeBuilds(builds, parsed.builds, LIMITS.builds);
     if (merged.added > 0 && !replaceBuilds(merged.builds)) {
-      onResult("가져오지 못했습니다. 저장 공간이 가득 찼을 수 있습니다. 저장 목록은 그대로입니다.");
+      onResult("가져오기에 실패했습니다. 저장 공간이 부족할 수 있습니다.");
       return;
     }
     onResult(describeImport(merged, parsed.unreadable, LIMITS.builds));
@@ -1446,14 +1429,14 @@ function BackupControls({
         onClick={download}
         className="btn btn-ghost px-2 py-1 text-xs"
       >
-        목록 내보내기
+        내보내기
       </button>
       <button
         type="button"
         onClick={() => fileRef.current?.click()}
         className="btn btn-ghost px-2 py-1 text-xs"
       >
-        파일에서 가져오기
+        가져오기
       </button>
       <input
         ref={fileRef}
@@ -1515,8 +1498,7 @@ function SaveBox({
       <section className="card p-4 sm:p-5">
         <h3 className="panel-title card-head">저장</h3>
         <p className="mt-1 text-xs leading-relaxed text-fg-subtle">
-          이 브라우저에서는 저장할 수 없습니다. 시크릿 모드이거나 저장이 차단된
-          것 같습니다. 위의 공유 링크를 복사해 두면 나중에 그대로 복원됩니다.
+          이 브라우저에서는 저장할 수 없습니다 (시크릿 모드 또는 저장소 차단). 공유 링크를 복사해 보관해 주세요.
         </p>
       </section>
     );
@@ -1526,8 +1508,7 @@ function SaveBox({
     <section className="card p-4 sm:p-5">
       <h3 className="panel-title card-head">저장</h3>
       <p className="mt-1 text-xs leading-relaxed text-fg-subtle">
-        이 브라우저에만 저장됩니다. 브라우저 데이터를 지우면 사라지니 공유
-        링크도 함께 보관해 두세요.
+        이 브라우저에만 저장되며, 브라우저 데이터를 삭제하면 함께 삭제됩니다.
       </p>
 
       <div className="mt-2 flex gap-2">
@@ -1547,8 +1528,8 @@ function SaveBox({
             const ok = saveBuild(code, label || defaultLabel);
             setMessage(
               ok
-                ? "저장했습니다."
-                : "저장하지 못했습니다. 저장 공간이 가득 찼을 수 있습니다.",
+                ? "저장되었습니다."
+                : "저장에 실패했습니다. 저장 공간이 부족할 수 있습니다.",
             );
             setLabel("");
           }}

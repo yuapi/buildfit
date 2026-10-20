@@ -158,7 +158,7 @@ export function pickerConstraints(build: Build, slot: PartSlot): Constraint[] {
       key: 'memory_slots',
       value: pickedModules,
       ruleId: 3,
-      because: `고른 메모리 모듈 ${pickedModules}개`,
+      because: `선택한 메모리 모듈 ${pickedModules}개`,
     });
   }
 
@@ -294,7 +294,7 @@ export function pickerConstraints(build: Build, slot: PartSlot): Constraint[] {
       key: 'internal_3_5_bays',
       value: picked35,
       ruleId: 19,
-      because: `고른 3.5" 드라이브 ${picked35}개`,
+      because: `선택한 3.5" 드라이브 ${picked35}개`,
     });
   }
 

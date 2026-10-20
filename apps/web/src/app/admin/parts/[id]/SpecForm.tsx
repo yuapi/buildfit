@@ -68,7 +68,7 @@ export function SpecForm({
       <div className="flex items-baseline justify-between gap-2">
         <label className="font-medium" htmlFor={`spec-${req.specKey}`}>
           {req.label}
-          {!filled && <span className="ml-2 text-xs font-normal text-warn">비어 있음</span>}
+          {!filled && <span className="ml-2 text-xs font-normal text-warn">누락</span>}
         </label>
         <span className="shrink-0 text-xs text-fg-subtle">
           {req.specKey} · 규칙 #{req.ruleId}
@@ -108,11 +108,11 @@ export function SpecForm({
           required
           value={sourceUrl}
           onChange={(e) => setSourceUrl(e.target.value)}
-          placeholder="제조사 스펙시트 주소"
+          placeholder="제조사 스펙 페이지 URL"
           className="field mt-1"
         />
         <p className="mt-1 text-xs text-fg-subtle">
-          나중에 재검증할 때 출처가 없으면 처음부터 다시 해야 한다 (§5.5).
+          재검증에 필요하므로 출처 URL은 필수입니다.
         </p>
       </div>
 
@@ -122,7 +122,7 @@ export function SpecForm({
           disabled={pending}
           className="btn btn-primary"
         >
-          {pending ? '저장 중…' : '확인하고 저장'}
+          {pending ? '저장 중…' : '저장'}
         </button>
         {state && (
           <span

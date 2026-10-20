@@ -32,7 +32,7 @@ export const dynamic = 'force-dynamic';
 export const metadata = {
   title: '검사 규칙과 데이터 현황',
   description:
-    'buildfit이 부품 조합에서 검사하는 항목과, 각 검사가 쓰는 데이터가 얼마나 채워져 있는지 공개합니다.',
+    '부품 조합 검사 항목과 항목별 데이터 누락 현황.',
 };
 
 /** 이 규칙이 쓰는 필수 필드들. 결측이 많은 순 */
@@ -51,8 +51,8 @@ function severityOf(rule: number): 'error' | 'warning' | 'info' {
 }
 
 const SEVERITY_TEXT: Readonly<Record<'error' | 'warning' | 'info', string>> = {
-  error: '안 맞으면 오류',
-  warning: '안 맞으면 경고',
+  error: '불일치 시 오류',
+  warning: '불일치 시 경고',
   info: '정보',
 };
 
@@ -76,21 +76,16 @@ export default async function RulesPage() {
 
   return (
     <Container width="narrow" className="py-10 sm:py-14">
-      <p className="eyebrow">Rules &amp; Coverage</p>
-      <h1 className="mt-2 text-3xl font-extrabold tracking-[-0.03em] sm:text-4xl">검사 규칙과 데이터 현황</h1>
+      
+      <h1 className="text-3xl font-extrabold tracking-[-0.03em] sm:text-4xl">검사 규칙과 데이터 현황</h1>
       <p className="mt-2.5 text-fg-muted">
-        부품 조합에서 아래 <span className="tnum">{ruleIds.length}</span>가지를 검사합니다.
-        각 검사가 쓰는 데이터가 <strong className="font-medium text-fg">얼마나 비어 있는지</strong>도
-        함께 적습니다.
+        부품 조합에서 <span className="tnum">{ruleIds.length}</span>개 항목을 검사합니다. 항목별로 판정에 쓰는 데이터의 누락 비율을 함께 표시합니다.
       </p>
       <p className="mt-2 text-sm leading-relaxed text-fg-subtle">
-        데이터가 없으면 통과시키지 않고 &lsquo;판정 불가&rsquo;로 표시합니다. 그것은 결함이 아니라
-        저희가 모른다는 뜻입니다 — 없는 수치를 지어내지 않습니다.
+        판정에 필요한 데이터가 없으면 통과로 처리하지 않고 &lsquo;판정 불가&rsquo;로 표시합니다.
       </p>
       <p className="mt-2 text-sm leading-relaxed text-fg-subtle">
-        각 검사에 붙은 부품 표식은 <strong className="font-medium text-fg">그 검사가 돌기 위해
-        골라야 하는 부품</strong>입니다. 하나라도 비어 있으면 그 검사는 돌지 않고,
-        돌지 않았다고 표시됩니다.
+        항목마다 표시된 부품을 모두 선택해야 해당 항목을 검사합니다.
       </p>
       {/*
         결측만 적으면 절반만 말하는 것이다. 판정의 세 번째 상태(값은 있으나
@@ -98,23 +93,17 @@ export default async function RulesPage() {
         값으로 판정했습니다」가 나오는데, 그게 무슨 뜻인지 알 곳이 없었다.
       */}
       <p className="mt-2 text-sm leading-relaxed text-fg-subtle">
-        값이 <strong className="font-medium text-fg">어긋나는</strong> 경우도 있습니다. 같은
-        제품이 원본에 여러 번 들어 있고 값이 다르거나, 출시 연도가 그 소켓이 나오기 전으로
-        적혀 있거나, 메모리의 모듈 수·용량이 서로 맞지 않거나, 오류 신고가 들어온 값입니다. 그때는
-        판정을 지우지 않고 <strong className="font-medium text-fg">&lsquo;검증 중인 값으로
-        판정했습니다&rsquo;</strong>라고 함께 적습니다 — 어느 쪽이 맞는지는 저희가 고르지
-        않습니다. 다수결도 최신순도 근거가 아닙니다.
+        중복 등록된 제품의 값이 서로 다르거나, 출시 연도가 소켓 출시보다 앞서거나, 메모리 모듈 수·용량이 맞지 않거나, 오류 신고가 접수된 값은 <strong className="font-medium text-fg">&lsquo;검증 중&rsquo;</strong>으로 표시하고 판정 결과에 함께 안내합니다.
         {disputed && disputed.rows > 0 && (
           <>
-            {' '}지금 <span className="tnum">{disputed.rows.toLocaleString()}</span>개 값,{' '}
-            <span className="tnum">{disputed.parts.toLocaleString()}</span>개 부품이 그렇습니다.
+            {' '}현재 <span className="tnum">{disputed.rows.toLocaleString()}</span>개 값 · <span className="tnum">{disputed.parts.toLocaleString()}</span>개 부품.
           </>
         )}
       </p>
 
       {gapsFailed && (
         <p role="alert" className="mt-5 text-sm text-warn">
-          지금은 데이터 현황을 불러올 수 없습니다. 규칙 설명만 표시합니다.
+          데이터 현황을 불러오지 못했습니다. 규칙 목록만 표시합니다.
         </p>
       )}
 
@@ -147,8 +136,8 @@ export default async function RulesPage() {
                   </caption>
                   <thead>
                     <tr className="text-left text-xs text-fg-subtle">
-                      <th className="py-1 font-normal">쓰는 데이터</th>
-                      <th className="py-1 text-right font-normal">비어 있음</th>
+                      <th className="py-1 font-normal">사용 데이터</th>
+                      <th className="py-1 text-right font-normal">누락</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -188,19 +177,17 @@ export default async function RulesPage() {
       </ul>
 
       <section className="mt-10 border-t border-border pt-6">
-        <h2 className="font-semibold">아는 값이 있으면 알려주세요</h2>
+        <h2 className="font-semibold">누락 데이터 제보</h2>
         <p className="mt-2 text-sm leading-relaxed text-fg-muted">
-          비어 있는 값은 원본 데이터에 없는 것입니다. 부품 페이지에서 제조사 스펙과 함께
-          알려주시면 그만큼 &lsquo;판정 불가&rsquo;가 줄어듭니다. 회원가입은 없습니다.
+          부품 상세 페이지에서 누락된 값을 제보할 수 있습니다. 제조사 스펙 URL을 함께 입력하면 확인 후 반영합니다.
         </p>
         <Link href="/part" className="btn btn-secondary mt-3">
-          부품 찾아보기
+          부품 목록
         </Link>
       </section>
 
       <p className="mt-8 text-xs leading-relaxed text-fg-subtle">
-        규칙 번호는 건너뛴 곳이 있습니다. 데이터가 없어 아직 만들지 못한 규칙의 자리를
-        비워 둔 것입니다 — 번호를 당겨 메우면 문서와 어긋납니다.
+        빠진 규칙 번호는 데이터 부족으로 보류된 규칙입니다.
       </p>
     </Container>
   );

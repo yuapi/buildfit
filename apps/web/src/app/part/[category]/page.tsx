@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: { params: Promise<{ category:
   if (!resolved) return { title: { absolute: 'buildfit' } };
   return {
     title: `${categoryLabel(resolved)} 목록`,
-    description: `${categoryLabel(resolved)} 스펙과 호환 정보를 찾아봅니다.`,
+    description: `${categoryLabel(resolved)} 스펙과 호환 정보.`,
   };
 }
 
@@ -57,7 +57,7 @@ export default async function CategoryIndex({
     logServerError('/part/[category]', err);
     return (
       <Container width="narrow" className="py-20">
-        <h1 className="text-3xl font-extrabold tracking-[-0.03em]">지금은 목록을 불러올 수 없습니다</h1>
+        <h1 className="text-3xl font-extrabold tracking-[-0.03em]">목록을 불러오지 못했습니다</h1>
         <p className="mt-2 text-fg-muted">잠시 후 다시 시도해 주세요.</p>
       </Container>
     );
@@ -89,7 +89,7 @@ export default async function CategoryIndex({
           type="search"
           name="q"
           defaultValue={q ?? ''}
-          placeholder="모델명·한글 이름으로 검색"
+          placeholder="모델명 검색"
           aria-label="모델명으로 검색"
           className="field min-w-0 flex-1"
         />
@@ -101,19 +101,18 @@ export default async function CategoryIndex({
       {/* 한글을 영문으로 바꿔 찾았으면 그렇다고 말한다 (ADR-0017) */}
       {result.translated.length > 0 && (
         <p className="mt-2 text-xs text-fg-subtle">
-          한글을 바꿔 찾았습니다 — {result.translated.map((t) => `${t.from} → ${t.to}`).join(', ')}
+          한글 검색어 변환: {result.translated.map((t) => `${t.from} → ${t.to}`).join(', ')}
         </p>
       )}
       {result.unknown.length > 0 && (
         <p className="mt-2 text-xs text-warn">
-          {result.unknown.join(', ')}: 카탈로그에서 쓰지 않는 말입니다. 영문 모델명으로 쳐 보세요.
+          {result.unknown.join(', ')}: 인식할 수 없는 검색어입니다. 영문 모델명으로 검색해 주세요.
         </p>
       )}
 
       {result.items.length === 0 ? (
         <p className="mt-10 text-sm text-fg-muted">
-          해당하는 부품이 없습니다.
-          {q && ' 검색어를 줄여 보세요.'}
+          검색 결과가 없습니다. {q && ' 검색어를 줄여 다시 검색해 주세요.'}
         </p>
       ) : (
         /* 목록은 표다 — 모델 · 제조사 · 출시 칸이 세로로 맞는다 (ADR-0028) */

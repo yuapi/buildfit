@@ -83,15 +83,13 @@ export function ElectricityPanel({ build }: { build: Build }) {
         <span className="idx">KWH</span>전기요금
       </h2>
       <p className="mt-1 text-xs leading-relaxed text-fg-subtle">
-        누진 구간 때문에 <strong className="font-medium text-fg-muted">가구가 평소 얼마를
-        쓰는지</strong>에 따라 추가 요금이 갈립니다. PC 사용량만 따로 곱한 값은 실제와
-        다릅니다.
+        누진제로 인해 <strong className="font-medium text-fg-muted">가구 전체 사용량</strong>에 따라 추가 요금이 달라집니다.
       </p>
 
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <label htmlFor={householdId} className="block text-xs text-fg-muted">
-            평소 가구 월 사용량
+            가구 월 사용량
           </label>
           <div className="mt-1 flex items-baseline gap-1.5">
             <input
@@ -114,7 +112,7 @@ export function ElectricityPanel({ build }: { build: Build }) {
         </div>
         <div>
           <label htmlFor={hoursId} className="block text-xs text-fg-muted">
-            PC를 하루에
+            하루 사용
           </label>
           <div className="mt-1 flex items-baseline gap-1.5">
             <input
@@ -156,7 +154,7 @@ export function ElectricityPanel({ build }: { build: Build }) {
 
       {!ready ? (
         <p className="mt-4 border-t border-border pt-3 text-sm text-fg-subtle">
-          두 칸을 채우면 추가 요금을 계산합니다.
+          월 사용량과 사용 시간을 입력하면 계산합니다.
         </p>
       ) : (
         // 결과 표시는 단독 계산기(/calc/power)와 한 벌이다

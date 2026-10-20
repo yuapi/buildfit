@@ -44,14 +44,10 @@ export default async function PartIndex({
 
   return (
     <Container width="narrow" className="py-10 sm:py-14">
-      <p className="eyebrow">Parts Catalog</p>
-      <h1 className="mt-2 text-3xl font-extrabold tracking-[-0.03em] sm:text-4xl">부품</h1>
+      
+      <h1 className="text-3xl font-extrabold tracking-[-0.03em] sm:text-4xl">부품</h1>
       <p className="mt-2 text-fg-muted">
-        스펙과 호환 정보를 부품별로 봅니다. 조합의 판정은{' '}
-        <Link href="/" className="link">
-          견적 구성
-        </Link>
-        에서 합니다.
+        부품별 스펙과 호환 정보를 확인할 수 있습니다.
       </p>
 
       {/*
@@ -64,7 +60,7 @@ export default async function PartIndex({
           name="q"
           defaultValue={q}
           maxLength={MAX_QUERY_CHARS}
-          placeholder="모델명·한글 이름으로 전체 검색 (9800x3d, 리안리)"
+          placeholder="모델명 검색 (예: 9800X3D, 리안리)"
           aria-label="부품 전체 검색"
           className="field min-w-0 flex-1"
         />
@@ -99,7 +95,7 @@ export default async function PartIndex({
                   {categoryLabel(category)}
                 </span>
                 <span className="shrink-0 font-mono text-xs text-fg-muted tnum">
-                  {total > 0 ? total.toLocaleString() : '아직 없음'}
+                  {total > 0 ? total.toLocaleString() : '준비 중'}
                 </span>
               </>
             );
@@ -133,8 +129,7 @@ export default async function PartIndex({
       {/* 왜 비어 있는 칸이 있는지 말한다. 말하지 않으면 빠뜨린 것으로 읽힌다 */}
       {Object.keys(CATEGORY_LABELS).some((c) => (byCategory.get(c) ?? 0) === 0) && (
         <p className="mt-4 text-xs leading-relaxed text-fg-subtle">
-          어두운 칸은 아직 다루지 않는 부품입니다. 판정에 쓸 데이터를 확보한 뒤에 넣습니다 —
-          목록만 늘리는 것은 이 도구가 하는 일이 아닙니다.
+          어두운 칸은 준비 중인 카테고리입니다.
         </p>
       )}
     </Container>
@@ -160,17 +155,17 @@ function SearchResults({ q, found }: { q: string; found: AcrossCategories }) {
       {/* 한글을 영문으로 바꿔 찾았으면 그렇다고 말한다 (ADR-0017) */}
       {found.translated.length > 0 && (
         <p className="mt-1.5 text-xs text-fg-subtle">
-          한글을 바꿔 찾았습니다 — {found.translated.map((t) => `${t.from} → ${t.to}`).join(', ')}
+          한글 검색어 변환: {found.translated.map((t) => `${t.from} → ${t.to}`).join(', ')}
         </p>
       )}
       {found.unknown.length > 0 && (
         <p className="mt-1.5 text-xs text-warn">
-          {found.unknown.join(', ')}: 카탈로그에서 쓰지 않는 말입니다. 영문 모델명으로 쳐 보세요.
+          {found.unknown.join(', ')}: 인식할 수 없는 검색어입니다. 영문 모델명으로 검색해 주세요.
         </p>
       )}
 
       {found.groups.length === 0 ? (
-        <p className="mt-3 text-sm text-fg-muted">해당하는 부품이 없습니다.</p>
+        <p className="mt-3 text-sm text-fg-muted">검색 결과가 없습니다.</p>
       ) : (
         <div className="mt-3 space-y-4">
           {found.groups.map((g) => (
@@ -189,7 +184,7 @@ function SearchResults({ q, found }: { q: string; found: AcrossCategories }) {
                     href={`/part/${g.category.toLowerCase()}?q=${encodeURIComponent(q)}`}
                     className="link text-xs"
                   >
-                    전부 보기
+                    전체 보기
                   </Link>
                 )}
               </div>

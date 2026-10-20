@@ -29,7 +29,7 @@ export function parseSourceUrl(raw: unknown): ParseResult {
   if (text === '') {
     return {
       ok: false,
-      message: '출처 URL은 필수입니다. 나중에 재검증하려면 출처가 있어야 합니다 (§5.5).',
+      message: '출처 URL을 입력해 주세요.',
     };
   }
   let url: URL;
@@ -57,7 +57,7 @@ export function parseSpecValue(req: FieldRequirement, values: readonly unknown[]
     if (first === '' || !Number.isFinite(n)) return { ok: false, message: '숫자를 입력해 주세요.' };
     // 0과 음수는 이 도메인에서 값이 아니다. 원본이 미입력을 0으로 채운 레코드가
     // 실재하고 그 0이 거짓 통과를 만든다 (docs/compat-rules.md §8.4).
-    if (n <= 0) return { ok: false, message: '0 이하는 값으로 받지 않습니다.' };
+    if (n <= 0) return { ok: false, message: '0보다 큰 값을 입력해 주세요.' };
     // 선언된 범위를 벗어나면 오타로 본다. **값에 대한 주장이 아니라 입력 검사다.**
     // 이게 없으면 출시 연도에 999999999가 들어가고 규칙 12가 그대로 읽는다.
     if (req.min !== undefined && n < req.min) {

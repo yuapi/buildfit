@@ -22,7 +22,7 @@ import {
 export const SEASON_LABEL: Readonly<Record<Season, string>> = {
   summer: "하계 (7·8월)",
   winter: "동계 (12·1·2월)",
-  other: "기타계절",
+  other: "기타 계절",
 };
 
 const won = (n: number) => Math.round(n).toLocaleString("ko-KR");
@@ -56,7 +56,7 @@ export function BillResult({
 
   return (
     <div className="mt-4 border-t border-border pt-3">
-      <p className="text-xs text-fg-muted">{subject} 때문에 더 내는 금액 (월)</p>
+      <p className="text-xs text-fg-muted">{subject} 사용에 따른 추가 요금 (월)</p>
       <p className="mt-1 flex items-baseline gap-1.5">
         <span className="stat text-3xl">{won(low.addedWon)}</span>
         {!single && (
@@ -82,7 +82,7 @@ export function BillResult({
           </dd>
         </div>
         <div className="flex items-baseline justify-between gap-2">
-          <dt className="text-fg-muted">1kWh 더 쓸 때</dt>
+          <dt className="text-fg-muted">추가 1kWh당 단가</dt>
           <dd className="tnum">{high.marginalWonPerKwh}원</dd>
         </div>
       </dl>
@@ -93,16 +93,12 @@ export function BillResult({
         */}
       {high.tierRose && (
         <p className="mt-3 rounded-(--radius-control) border border-warn-border bg-warn-bg p-2.5 text-sm">
-          <span className="font-medium">누진 구간이 올라갑니다.</span> {subject} 사용량을 더하면
-          가구 사용량이 {low.before.kwh.toFixed(0)}kWh에서 {high.after.kwh.toFixed(0)}kWh로
-          올라 단가가 {high.before.marginalWonPerKwh}원에서 {high.marginalWonPerKwh}원이
-          됩니다.
+          <span className="font-medium">누진 구간 상승</span> — 가구 사용량 {low.before.kwh.toFixed(0)}kWh → {high.after.kwh.toFixed(0)}kWh, 단가 {high.before.marginalWonPerKwh}원 → {high.marginalWonPerKwh}원
         </p>
       )}
       {high.after.superUser && (
         <p className="mt-2 rounded-(--radius-control) border border-danger-border bg-danger-bg p-2.5 text-sm">
-          <span className="font-medium">슈퍼유저요금 구간입니다.</span> 하계·동계에
-          1,000kWh를 넘으면 초과분에 {TARIFF.summer.energy[3]?.wonPerKwh}원/kWh가 붙습니다.
+          <span className="font-medium">슈퍼유저요금 구간</span> — 하계·동계 1,000kWh 초과분에 {TARIFF.summer.energy[3]?.wonPerKwh}원/kWh 적용
         </p>
       )}
 
@@ -119,7 +115,7 @@ export function TariffSource() {
       <a href={TARIFF.source.url} target="_blank" rel="noreferrer" className="link">
         {TARIFF.source.label}
       </a>
-      . 단가는 예고 없이 개정됩니다.
+      . 요금은 개정될 수 있습니다.
     </p>
   );
 }
