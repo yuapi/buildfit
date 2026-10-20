@@ -169,3 +169,12 @@
 ## 2026-10-20T14:40 | T-20 | done | skill 1.10.0
 - 변경: README 카탈로그 행(26,538 / 240,558 / 63,091), CLAUDE.md 중복(492그룹 527건 1.99%)·disputed(266행, 시험 신고 제외) — 2026-10-20 최신 원본 적재 실측
 - 검증: typecheck 0 · lint 0 · test 286/522/545 · build 성공
+
+## 2026-10-20T14:55 | 재발굴 | discover | skill 1.10.0
+- 큐 비어 재발굴. 품질 속성 — 관측 가능성: 서버 쪽 console.error 0건, DB 를 부르는 catch 가 오류를 삼킨다 → T-21(enhance)
+- 시나리오 「견적을 카톡에 공유」: 미리보기 이미지 없음 → 디자인 결정이 필요해 제안 P-1
+- 열린 이슈 0
+
+## 2026-10-20T15:30 | T-21 | done | skill 1.10.0
+- 변경: apps/web/src/lib/server-log.ts (logServerError — drizzle 의 cause 를 앞에, 비밀번호 가림, Next 404·redirect 무시), DB 를 부르는 서버 파일 13곳의 catch, sitemap·어드민 저장(모르는 오류만), test/server-log.test.ts, deployment.md §3
+- 검증: typecheck 0 · lint 0 · test 286 / 522→539 / 545 · build 성공. DB 를 닫은 채 띄운 앱: /part·/healthz 에서 「[buildfit] /part: [ECONNREFUSED] …」, 비밀번호 노출 0

@@ -3,6 +3,7 @@ import { slugsInCategory } from '@buildfit/db/part';
 import { INDEXED_CATEGORIES } from '@/lib/categories';
 import { getDb } from '@/lib/db';
 import { PAGES_SITEMAP_ID, STATIC_PAGES, siteUrl } from '@/lib/site';
+import { logServerError } from '@/lib/server-log';
 
 /**
  * 카테고리마다 sitemap을 하나씩 낸다.
@@ -55,6 +56,7 @@ export default async function sitemap({
     // 걱정한 바로 그 상황이다. 요청 시점의 실패와 배포물의 결함은 다른 문제다.
     if (process.env.NEXT_PHASE === 'phase-production-build') throw err;
     // 요청 시점이라면 빈 sitemap을 내는 것이 500을 내는 것보다 낫다.
+    logServerError('/sitemap', err);
     return [];
   }
 
