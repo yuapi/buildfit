@@ -121,6 +121,9 @@ OCI 인스턴스에 세우는 절차(systemd·Caddy·주간 재동기·개발 �
 - [ ] 부품 상세 페이지의 `rel=canonical`이 실제 도메인이다
 - [ ] `/admin`이 비밀 없이는 404, 비밀로는 열린다
 - [ ] `/` 에서 견적을 하나 구성해 판정이 나온다
+- [ ] `curl -sI https://<도메인>/`에 `content-security-policy`(nonce 포함)·`x-frame-options`·
+      `strict-transport-security`가 있고 `x-powered-by`가 없다 (§7)
+- [ ] 브라우저 개발자 도구 콘솔에 CSP 위반이 없다
 
 ## 6. 아직 정하지 않은 것
 
@@ -146,3 +149,25 @@ Phase 0b가 `v0.2.0`이었어야 하므로 Phase 1 완료가 `v0.3.0`이다.
 폐기하며 완료 — ADR-0022)와 0b가 끝났지만 `v0.1.0`·`v0.2.0`은 만들지 않았다. 배포하지
 않은 코드를 `main`에 올리면 「배포된 것만」이 거짓이 된다. 버전은 **첫 배포 시점에 끝나
 있는 마지막 Phase**로 정한다 — Phase 1이 끝나기 전에 배포하면 `v0.2.0`이다.
+
+## 7. 보안
+
+2026-10-20 배포 전 점검 결과와 지금 걸려 있는 장치 (이슈 #115, ADR-0026).
+**외부 서비스(분석·글꼴·이미지 CDN 등)를 붙이면 `apps/web/src/lib/security-headers.ts`의 CSP에 주소를 더한다.**
+
+- **헤더**: CSP(요청마다 nonce, 인라인 스크립트·eval 금지, 외부 출처 없음, `object-src 'none'`,
+  `frame-ancestors 'none'`), `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`,
+  COOP·CORP `same-origin`, HSTS. `X-Powered-By` 없음. 모든 화면이 동적 렌더링이다 (nonce 때문)
+- **어드민**: 공유 비밀 하나(ADR-0020), 타이밍 안전 비교, proxy와 화면·동작 양쪽에서 검사.
+  틀린 응답 20번이면 그 IP는 30초에 한 번만 다시 시도할 수 있다. 응답은 `no-store`·`noindex`
+- **요청 제한**: 서버 동작 IP당 120회 몰아 쓰기·초당 4회, 신고 IP당 시간 약 10건.
+  IP는 Caddy가 채운 `X-Forwarded-For`의 맨 오른쪽 값 — **앱을 Caddy 없이 밖에 열면 IP를 지어낼 수 있다**
+- **CSRF**: 상태를 바꾸는 것은 전부 서버 동작이고, Next가 `Origin`과 호스트가 다르면 거부한다
+- **입력**: 서버 동작은 클라이언트 값을 믿지 않는다 — 검색어·견적서 길이, 제약 모양, 부품 id(uuid)와
+  개수, 신고 대상은 DB에서 다시 읽는다. SQL은 전부 파라미터다(`sql.raw`는 고정 별칭만).
+  외부 링크는 적재할 때 http(s)만 받는다
+- **이미지 최적화 끔**: `next/image`를 쓰지 않는다. 켜 두면 `/_next/image`가 남의 주소를 받아 오는 통로다
+- **`/healthz`**: 200/503만 말하고 오류 내용을 내보내지 않는다 (§3)
+- **의존성**: `npm audit --omit=dev` 0건 — CI가 high 이상이면 실패한다. 남은 경고는 개발 도구뿐
+  (eslint의 braces, drizzle-kit의 esbuild — 상위에 고친 버전이 없다)
+- **서버**: 앱은 127.0.0.1에만 열고 Caddy가 HTTPS. systemd 전용 계정·쓰기 제한 (oci-migration §4.6)

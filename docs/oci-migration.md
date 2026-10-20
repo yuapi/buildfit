@@ -330,6 +330,12 @@ EnvironmentFile=/etc/buildfit/buildfit.env
 # 127.0.0.1에만 묶는다. 밖에서는 Caddy를 거친다
 ExecStart=/usr/bin/npm run start --workspace web -- -H 127.0.0.1 -p 3000
 Restart=on-failure
+# 권한을 좁힌다 (deployment.md §7). 쓰기는 체크아웃(.next 캐시)만
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/srv/buildfit
 
 [Install]
 WantedBy=multi-user.target
@@ -340,7 +346,8 @@ sudo systemctl daemon-reload && sudo systemctl enable --now buildfit
 curl -s localhost:3000/healthz        # {"ok":true}
 ```
 
-`npm`의 경로는 `which npm`으로 확인한다 (nvm으로 깔았으면 `/usr/bin`이 아니다).
+`npm`의 경로는 `which npm`으로 확인한다 (nvm으로 깔았으면 `/usr/bin`이 아니다). **nvm이 홈 아래에 있으면
+`ProtectHome=true`가 막는다** — Node는 NodeSource 같은 시스템 경로로 깐다.
 
 ### 4.7 Caddy — HTTPS
 
@@ -348,9 +355,16 @@ curl -s localhost:3000/healthz        # {"ok":true}
 
 ```
 <도메인> {
+    encode zstd gzip
     reverse_proxy 127.0.0.1:3000
 }
 ```
+
+보안 헤더(HSTS 포함)는 앱이 붙인다 — Caddy에 따로 적지 않아도 된다. **Caddy를 빼고 앱을 밖에 열지 않는다** —
+요청 제한이 Caddy가 채운 `X-Forwarded-For`로 IP를 센다 (ADR-0026).
+
+**같은 서버에 다른 서비스가 있으면 포트를 바꾼다.** 3000이 이미 쓰이고 있으면(예: 다른 앱) `-p`와 여기의
+포트를 비어 있는 것(예: 3200)으로 맞춘다. `ss -ltnp`로 확인한다.
 
 ```bash
 sudo systemctl reload caddy
