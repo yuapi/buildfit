@@ -4,10 +4,13 @@ import { partsInCategory } from '@buildfit/db/part';
 import { Container } from '@/components/SiteShell';
 import { categoryFromSlug, categoryLabel } from '@/lib/categories';
 import { getDb } from '@/lib/db';
+import { MAX_QUERY_CHARS } from '@/lib/picker';
 
 export const dynamic = 'force-dynamic';
 
 const PAGE_SIZE = 60;
+/** 가장 많은 카테고리도 수백 쪽이다. 그보다 뒤는 빈 쪽이다 */
+const MAX_PAGE = 1000;
 
 export async function generateMetadata({ params }: { params: Promise<{ category: string }> }) {
   const { category } = await params;
@@ -34,12 +37,14 @@ export default async function CategoryIndex({
   const first = (v: string | string[] | undefined): string | undefined =>
     Array.isArray(v) ? v[0] : v;
   const page = first(rawPage);
-  const q = first(rawQ);
+  // 길이를 자른다 — 조각 수가 그대로 쿼리 조건 수가 된다 (`MAX_QUERY_CHARS`, 이슈 #115)
+  const q = first(rawQ)?.slice(0, MAX_QUERY_CHARS);
 
   const resolved = categoryFromSlug(category);
   if (!resolved) notFound();
 
-  const pageNo = Math.max(1, Number(page ?? '1') || 1);
+  // `?page=1e309`는 Infinity다. 상한이 없으면 OFFSET이 터무니없는 수가 된다 (이슈 #115)
+  const pageNo = Math.min(MAX_PAGE, Math.max(1, Math.trunc(Number(page ?? '1')) || 1));
   let result;
   try {
     result = await partsInCategory(getDb(), resolved, {

@@ -1,9 +1,20 @@
 'use server';
 
 import { SPEC_REQUIREMENTS } from '@buildfit/compat';
-import { createSpecReport } from '@buildfit/db/part';
+import { createSpecReport, reportTarget } from '@buildfit/db/part';
 import { revalidatePath } from 'next/cache';
+import { headers } from 'next/headers';
 import { getDb } from '@/lib/db';
+import { clientIp, RateLimiter } from '@/lib/rate-limit';
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * 신고는 IP당 10건을 몰아 쓰고 6분에 하나씩 찬다 (시간당 약 10건, 이슈 #115).
+ * 브라우저 토큰은 클라이언트가 정하는 값이라 중복 방지만 하고 남용은 못 막는다 —
+ * 토큰을 바꿔 가며 보내면 부품마다 「검증 중」을 세울 수 있었다.
+ */
+const reportLimiter = new RateLimiter({ capacity: 10, refillPerSecond: 1 / 360 });
 
 export interface ReportResult {
   readonly ok: boolean;
@@ -32,11 +43,34 @@ export async function reportSpecAction(
     .filter((v) => v !== '')
     .join(', ');
   const note = String(form.get('note') ?? '').trim();
-  const clientToken = String(form.get('clientToken') ?? '').trim();
-  const slug = String(form.get('slug') ?? '');
-  const category = String(form.get('category') ?? '');
+  const clientToken = String(form.get('clientToken') ?? '').trim().slice(0, 64);
 
-  if (!partId || !specKey) return { ok: false, message: '어느 항목이 잘못됐는지 골라 주세요.' };
+  if (!UUID.test(partId) || !specKey || specKey.length > 64) {
+    return { ok: false, message: '어느 항목이 잘못됐는지 골라 주세요.' };
+  }
+
+  if (!reportLimiter.take(clientIp(await headers()))) {
+    return { ok: false, message: '신고가 너무 많습니다. 잠시 후 다시 시도해 주세요.' };
+  }
+
+  /**
+   * 카테고리·slug는 폼이 아니라 DB에서 읽는다 (이슈 #115). 폼 값은 클라이언트가 바꿀 수 있다 —
+   * 다른 카테고리를 적으면 아래 허용값 검사를 비켜 가고, 아무 경로나 다시 그리게 할 수 있었다.
+   */
+  let target: Awaited<ReturnType<typeof reportTarget>>;
+  try {
+    target = await reportTarget(getDb(), partId);
+  } catch {
+    return { ok: false, message: '지금은 신고를 접수하지 못했습니다. 잠시 후 다시 시도해 주세요.' };
+  }
+  if (!target) return { ok: false, message: '없는 부품입니다.' };
+  const { category, slug } = target;
+
+  // 화면이 고르게 하는 항목만 받는다 — 이 부품에 있는 스펙이거나, 규칙이 읽는 항목
+  const knownKey =
+    target.specKeys.includes(specKey) ||
+    SPEC_REQUIREMENTS.some((r) => r.category === category && r.specKey === specKey);
+  if (!knownKey) return { ok: false, message: '어느 항목이 잘못됐는지 골라 주세요.' };
 
   /**
    * 정해진 목록이 있는 항목은 **그 목록 밖의 값을 받지 않는다.**
@@ -79,7 +113,7 @@ export async function reportSpecAction(
     return { ok: false, message: '지금은 신고를 접수하지 못했습니다. 잠시 후 다시 시도해 주세요.' };
   }
 
-  revalidatePath(`/part/${category}/${slug}`);
+  revalidatePath(`/part/${category.toLowerCase()}/${slug}`);
   revalidatePath('/admin');
   return { ok: true, message: '신고했습니다. 확인 후 반영하겠습니다.' };
 }

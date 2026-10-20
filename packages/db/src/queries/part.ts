@@ -201,6 +201,29 @@ export async function partsMatchingSpecs(
  * 신고가 들어오면 해당 필드에 `disputed`를 세운다. 결과 화면이 "검증 중"으로
  * 표시하고, 어드민이 보강 대상으로 집는다.
  */
+/**
+ * 신고 대상 부품의 실제 카테고리·slug·스펙 키 (이슈 #115).
+ *
+ * 신고 폼이 보내는 카테고리·slug를 믿지 않고 이걸로 검사한다 — 폼 값을 믿으면 허용값 검사를
+ * 다른 카테고리로 비켜 가고, 아무 경로나 다시 그리게 할 수 있었다.
+ */
+export async function reportTarget(
+  db: Database,
+  partId: string,
+): Promise<{ category: string; slug: string; specKeys: string[] } | null> {
+  const [part] = await db
+    .select({ category: parts.category, slug: parts.slug })
+    .from(parts)
+    .where(eq(parts.id, partId))
+    .limit(1);
+  if (!part) return null;
+  const keys = await db
+    .select({ key: partSpecs.key })
+    .from(partSpecs)
+    .where(eq(partSpecs.partId, partId));
+  return { ...part, specKeys: keys.map((k) => k.key) };
+}
+
 export async function createSpecReport(
   db: Database,
   input: {
