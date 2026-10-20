@@ -187,3 +187,6 @@
 ## 2026-10-20T16:00 | T-22 | done | skill 1.10.0
 - 변경: apps/web/src/lib/deploy-status.ts, /admin 머리에 「배포 버전 …」·「최근 자동 배포 실패」, deploy.sh 가 .release-label 도 쓴다, test/deploy-status.test.ts
 - 검증: typecheck 0 · lint 0 · test 286 / 539→543 / 545 · build 성공. 개발 환경에서는 칸이 숨는다(단위 테스트). 운영 화면은 어드민 비밀이 없어 직접 못 봤다 — 릴리스 뒤 서버의 .release-label 생성만 확인한다
+
+## 2026-10-20T16:15 | 심층 발굴 → 최종 중단 | stop | skill 1.10.0
+- 심층 발굴 4단계 결과는 ROADMAP 「심층 발굴」. 실질 작업 0 → STOP. 제안 P-1·P-2 결정 대기

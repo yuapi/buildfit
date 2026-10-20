@@ -56,6 +56,17 @@ last_retro: 2026-10-20 (T-1~T-17: done 17, failed 0, blocked 0 — 회고할 실
 - `npm run typecheck` 16s · `npm run lint` 16s · `DATABASE_URL=… npm test` 29s (284/506/545) · `NEXT_PUBLIC_SITE_URL=http://localhost:3399 npm run build` 10~60s
 - `npm audit --omit=dev --audit-level=high` 0 · 코드 마커 0 · 정적 보안 패턴 0 · 열린 이슈 0
 
+## 심층 발굴 (2026-10-20, skill 1.10.0)
+1. 정적: 기능 지도 그대로 — 「빠진 것」「약한 것」은 이번 사이클 T-18·T-21·T-22로 메운 뒤 **없음**. 보안(audit 0·정적 패턴 0), 마커 0, 새 모듈 전부 테스트, 열린 이슈 0
+2. 실행: 경계 입력 14개(결함 0), 새 시나리오 3개 — 운영자 신고 처리(→T-18), 배포 결과 확인(→T-22), 카톡 공유 미리보기(→P-1)
+3. 품질 속성: 오류 처리·입력 검증(#115)·관측 가능성(→T-21)·성능(견적서 4,000자 52ms)·보안 기본값·업그레이드(배포가 마이그레이션 먼저)·문서 예시(README 스크립트 전부 존재). 남는 것은 사람이 정할 일 → P-2(외부 감시)
+4. 외부 신호: 이슈 0, 채택된 제안 0, 「하지 않기로 한 것」의 사유 그대로
+
+## 배운 것
+- 배포 스크립트는 **지금 배포된 릴리스의 것**으로 돈다 (타이머 → current/deploy/deploy.sh). deploy.sh 변경은 한 릴리스 늦게 적용된다 (T-22의 .release-label)
+- 테스트는 임시 DB(5439)로. 운영 DB(5432)는 쓰지 않는다 — 테스트가 DB를 만들고 지운다
+- 릴리스가 곧 배포다 (main → 2분 안에). 기능 보강은 patch(v0.2.x), Phase 완료는 minor
+
 ## 현재 상태 요약
 - 베이스라인: typecheck 0 err · lint 0 err · test 275 / 444 / 537 pass · `next build` 성공
 - 코드 마커(TODO·FIXME·HACK·XXX): 0건
