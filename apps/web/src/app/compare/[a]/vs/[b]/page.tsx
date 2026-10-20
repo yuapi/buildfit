@@ -21,7 +21,7 @@ export async function generateMetadata({ params }: { params: Promise<{ a: string
     if (!left || !right) return { title: { absolute: 'buildfit' } };
     return {
       title: `${left.modelName} vs ${right.modelName}`,
-      description: `${left.modelName} · ${right.modelName} — 두 부품의 스펙을 나란히 비교합니다.`,
+      description: `${left.modelName} · ${right.modelName} 스펙 비교.`,
     };
   } catch (err) {
     logServerError('/compare', err);
@@ -44,7 +44,7 @@ export default async function ComparePage({
     logServerError('/compare', err);
     return (
       <div className="mx-auto max-w-3xl px-4 py-16">
-        <h1 className="text-2xl font-extrabold tracking-[-0.03em]">지금은 비교할 수 없습니다</h1>
+        <h1 className="text-2xl font-extrabold tracking-[-0.03em]">비교 정보를 불러오지 못했습니다</h1>
         <p className="mt-2 text-sm text-fg-muted">
           잠시 후 다시 시도해 주세요.
         </p>
@@ -97,15 +97,11 @@ export default async function ComparePage({
             다릅니다.
           </>
         ) : oneSided > 0 ? (
-          <>두 쪽 모두 값이 있는 스펙은 전부 같습니다.</>
+          <>비교 가능한 스펙은 모두 같습니다.</>
         ) : (
           <>스펙 {rows.length}개가 모두 같습니다.</>
         )}
-        {oneSided > 0 && <> {oneSided}개는 한쪽 값이 없어 비교하지 않았습니다.</>} 조합의 호환성은{' '}
-        <Link href="/" className="link">
-          견적 구성
-        </Link>
-        에서 판정합니다.
+        {oneSided > 0 && <> {oneSided}개는 한쪽 값이 없어 제외했습니다.</>}
       </p>
 
       <div className="card mt-6 overflow-x-auto">
@@ -179,13 +175,12 @@ export default async function ComparePage({
                   ) : felt ? (
                     <>{axisLabel(axis)} — 두 측정값이 같습니다.</>
                   ) : (
-                    <>{axisLabel(axis)} — 한쪽 측정값이 없어 비교하지 않습니다.</>
+                    <>{axisLabel(axis)} — 한쪽 측정값 없음</>
                   )}
                 </p>
                 {l && r && l.backend !== r.backend && (
                   <p className="mt-1 text-xs text-fg-subtle">
-                    두 장치의 연산 방식이 다릅니다 ({backendLabel(l.backend)} · {backendLabel(r.backend)}). 각 장치에서
-                    가장 많이 쓰인 방식의 측정값이라, 실제로 쓰는 방식끼리의 비교입니다.
+                    연산 방식이 다릅니다 ({backendLabel(l.backend)} · {backendLabel(r.backend)}). 각 장치에서 가장 많이 쓰인 방식의 측정값입니다.
                   </p>
                 )}
                 <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">

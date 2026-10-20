@@ -187,7 +187,7 @@ describe('스토리지 좁히기 (규칙 17·19)', () => {
     expect(pickerConstraints(unknownPcie, 'storage').find((x) => x.key === 'form_factor')).toBeDefined();
   });
 
-  it('고른 3.5" 드라이브가 케이스 후보를 좁힌다', () => {
+  it('선택한 3.5" 드라이브가 케이스 후보를 좁힌다', () => {
     const b = f.withBuild({ storage: [f.drive, f.sataDrive] });
     expect(
       pickerConstraints(b, 'pcCase').find((x) => x.key === 'internal_3_5_bays'),

@@ -22,12 +22,11 @@ export function BenchmarkBlock({ bench }: { readonly bench: PartBenchmark }) {
         <span className="ml-1 text-sm font-normal text-fg-muted">{bench.unit}</span>
       </p>
       <p className="mt-2 text-xs leading-relaxed text-fg-subtle">
-        세 장면 합의 중앙값 · 실행 <span className="tnum">{bench.runs.toLocaleString('ko-KR')}</span>회 ·
-        측정 장치 「{bench.deviceName}」
-        {bench.perChip && ' · 칩 기준 측정이라 같은 칩의 모든 제품이 같은 값입니다'}
+        3개 장면 합계 중앙값 · <span className="tnum">{bench.runs.toLocaleString('ko-KR')}</span>회 실행 · 측정 장치: {bench.deviceName}
+        {bench.perChip && ' · 칩 기준 측정 (같은 칩 제품은 동일 값)'}
       </p>
       <p className="mt-1 text-xs leading-relaxed text-fg-subtle">
-        3D 렌더링(Cycles) 한 용도의 측정값입니다. 게임 성능이 아닙니다. 출처{' '}
+        3D 렌더링(Cycles) 측정값이며 게임 성능과는 다릅니다. 출처{' '}
         <a href={bench.sourceUrl} className="link">
           Blender Open Data
         </a>{' '}

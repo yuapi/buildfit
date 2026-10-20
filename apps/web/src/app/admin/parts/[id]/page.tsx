@@ -42,7 +42,7 @@ export default async function PartEditor({
   return (
     <Container className="py-10">
       <Link href="/admin" className="link text-sm text-fg-muted">
-        ← 빈 필드 목록
+        ← 누락 필드 목록
       </Link>
 
       <h1 className="mt-4 text-3xl font-extrabold tracking-[-0.03em]">{part.modelName}</h1>
@@ -62,16 +62,16 @@ export default async function PartEditor({
         </a>
       ) : (
         <p className="mt-2 text-sm text-fg-subtle">
-          제조사 스펙 주소가 없습니다. 출처를 직접 찾아야 합니다.
+          제조사 스펙 URL이 없습니다. 출처 확인이 필요합니다.
         </p>
       )}
 
       <section className="mt-8">
         <h2 className="text-lg font-medium">
-          호환성 판정에 쓰는 필드
+          호환성 판정 필드
           {part.missing.length > 0 && (
             <span className="ml-2 text-sm font-normal text-warn">
-              {part.missing.length}개 비어 있음
+              {part.missing.length}개 누락
             </span>
           )}
         </h2>

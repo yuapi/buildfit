@@ -63,7 +63,7 @@ export function BulkRow({
           {part.releaseYear === null ? '' : ` · ${part.releaseYear}`}
         </span>
         {part.manufacturerUrl === null ? (
-          <span className="text-xs text-fg-subtle">출처를 직접 찾아야 합니다</span>
+          <span className="text-xs text-fg-subtle">출처 확인 필요</span>
         ) : (
           <a
             href={part.manufacturerUrl}
@@ -78,7 +78,7 @@ export function BulkRow({
           href={`/admin/parts/${part.id}?focus=${req.specKey}`}
           className="link text-xs text-fg-subtle"
         >
-          전체 필드
+          전체 스펙
         </a>
       </div>
 

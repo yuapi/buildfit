@@ -1200,7 +1200,7 @@ describe('7.4.1 드라이브 전력 — 개당 0~15W (이슈 #5)', () => {
   it('★ 이제 드라이브를 「빠졌다」고 적지 않는다 — 계산에 들어갔다', () => {
     const notes = rule7(f.goodBuild)?.notes ?? [];
     expect(notes).toHaveLength(1);
-    expect(notes.join(' ')).not.toContain('계산에 넣지 않았습니다');
+    expect(notes.join(' ')).not.toContain('계산에서 제외했습니다');
     expect(notes[0]).toContain('드라이브당 최대 15W');
   });
 

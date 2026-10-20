@@ -8,7 +8,7 @@
 export interface FeltDifference {
   /** 빠른 쪽이 느린 쪽보다 몇 % 높은가. 반올림한 정수 */
   readonly percent: number;
-  readonly label: '체감하기 어려움' | '상황에 따라 느낄 수 있음' | '뚜렷한 차이' | '체급이 다름';
+  readonly label: '체감 어려움' | '상황에 따라 체감' | '체감 가능' | '큰 차이';
   /** `a`가 빠르면 `a`, `b`가 빠르면 `b`, 같으면 `null` */
   readonly faster: 'a' | 'b' | null;
 }
@@ -19,7 +19,7 @@ export function feltDifference(a: number, b: number): FeltDifference | null {
   // (hi / lo - 1)은 115/100에서 14.999…가 된다. 차를 먼저 구한다
   const pct = ((hi - lo) / lo) * 100;
   const label =
-    pct < 5 ? '체감하기 어려움' : pct < 15 ? '상황에 따라 느낄 수 있음' : pct < 30 ? '뚜렷한 차이' : '체급이 다름';
+    pct < 5 ? '체감 어려움' : pct < 15 ? '상황에 따라 체감' : pct < 30 ? '체감 가능' : '큰 차이';
   return { percent: Math.round(pct), label, faster: a === b ? null : a > b ? 'a' : 'b' };
 }
 

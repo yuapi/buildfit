@@ -54,7 +54,7 @@ export function ReportForm({
         onClick={() => setOpen(true)}
         className="link text-sm text-fg-muted"
       >
-        {missingKeys.length > 0 ? '비어 있는 값 알려주기 · 오류 신고' : '스펙이 잘못됐나요? 신고하기'}
+        {missingKeys.length > 0 ? '누락 값 제보 · 오류 신고' : '스펙 오류 신고'}
       </button>
     );
   }
@@ -67,12 +67,11 @@ export function ReportForm({
 
       <h3 className="font-medium">{missingKeys.length > 0 ? '값 제보 · 오류 신고' : '스펙 오류 신고'}</h3>
       <p className="mt-1 text-xs text-fg-subtle">
-        신고하면 해당 항목이 &ldquo;검증 중&rdquo;으로 표시되고 확인 후 반영합니다.
-        로그인은 필요 없습니다.
+        신고된 항목은 &ldquo;검증 중&rdquo;으로 표시되며 확인 후 반영됩니다.
       </p>
 
       <label className="mt-3 block text-xs text-fg-muted" htmlFor="report-spec-key">
-        어느 항목인가요
+        항목
       </label>
       <select
         id="report-spec-key"
@@ -90,7 +89,7 @@ export function ReportForm({
       >
         {/* 비어 있는 필수 항목을 먼저 보여준다. 견적을 막고 있는 것이 이쪽이다. */}
         {missingKeys.length > 0 && (
-          <optgroup label="비어 있음 — 판정을 막고 있습니다">
+          <optgroup label="누락 (판정 불가 원인)">
             {missingKeys.map((k) => (
               <option key={k} value={k}>
                 {specLabel(k)}
@@ -110,7 +109,7 @@ export function ReportForm({
       </select>
 
       <label className="mt-3 block text-xs text-fg-muted" htmlFor="reported-value">
-        맞다고 생각하는 값
+        올바른 값
       </label>
       <div className="mt-1">
         {req ? (
@@ -138,19 +137,19 @@ export function ReportForm({
       </div>
       {req?.options && (
         <p className="mt-1 text-xs text-fg-subtle">
-          판정이 이 값을 글자 그대로 비교합니다. 목록에 없으면 아래 설명란에 적어 주세요.
+          목록에 없는 값은 설명란에 입력해 주세요.
         </p>
       )}
 
       <label className="mt-3 block text-xs text-fg-muted" htmlFor="report-note">
-        설명이나 출처 (선택)
+        설명 또는 출처 (선택)
       </label>
       <textarea
         id="report-note"
         name="note"
         rows={2}
         maxLength={500}
-        placeholder="제조사 스펙시트 주소를 적어 주시면 확인이 빠릅니다"
+        placeholder="예: 제조사 스펙 페이지 URL"
         className="field mt-1"
       />
 
@@ -160,7 +159,7 @@ export function ReportForm({
           disabled={pending}
           className="btn btn-primary"
         >
-          {pending ? '보내는 중…' : '신고'}
+          {pending ? '전송 중…' : '신고'}
         </button>
         <button type="button" onClick={() => setOpen(false)} className="text-xs text-fg-subtle">
           닫기

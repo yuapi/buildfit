@@ -221,7 +221,7 @@ export const rule6: Rule = ({ psu, pcCase }) => {
     const note = describeCaseReference(pcCase.formFactor);
     return missing(
       6,
-      '이 케이스가 지원하는 파워 규격 정보가 아직 없어 판정하지 못했습니다. 제조사 스펙을 직접 확인해 주세요.',
+      '이 케이스가 지원하는 파워 규격 정보가 없어 판정하지 못했습니다. 제조사 스펙을 직접 확인해 주세요.',
       gaps,
       note === null ? undefined : [note],
     );
@@ -888,7 +888,7 @@ export const rule21: Rule = ({ cpu, gpu }) => {
     : fail(
         21,
         'warning',
-        `${cpu.name}에는 내장그래픽이 없어 그래픽카드 없이는 화면이 나오지 않습니다. 그래픽카드를 함께 골라 주세요.`,
+        `${cpu.name}에는 내장그래픽이 없어 그래픽카드 없이는 화면이 나오지 않습니다. 그래픽카드를 함께 선택해 주세요.`,
       );
 };
 
@@ -909,11 +909,11 @@ export const rule22: Rule = ({ cpu, cooler }) => {
     ]);
   }
   return cpu.includesCooler
-    ? pass(22, '쿨러를 고르지 않았지만 CPU에 기본 쿨러가 들어 있습니다.')
+    ? pass(22, '쿨러를 선택하지 않았지만 CPU에 기본 쿨러가 들어 있습니다.')
     : fail(
         22,
         'warning',
-        `${cpu.name}에는 기본 쿨러가 들어 있지 않습니다. CPU 쿨러를 함께 골라 주세요.`,
+        `${cpu.name}에는 기본 쿨러가 들어 있지 않습니다. CPU 쿨러를 함께 선택해 주세요.`,
       );
 };
 

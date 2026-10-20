@@ -39,14 +39,13 @@ export default async function GapList({
   return (
     <Container className="py-10">
       <Link href="/admin" className="link text-sm text-fg-muted">
-        ← 빈 필드 목록
+        ← 누락 필드 목록
       </Link>
       <h1 className="mt-4 text-3xl font-extrabold tracking-[-0.03em]">
         {category} · {req.label}
       </h1>
       <p className="mt-2 text-sm text-fg-muted">
-        이 값이 없어 규칙 {req.ruleId}번이 판정 불가로 처리되는 부품{' '}
-        <strong className="font-medium">{counts.missing.toLocaleString()}건</strong>이다.
+        이 값이 없어 규칙 {req.ruleId}번이 판정 불가인 부품: <strong className="font-medium">{counts.missing.toLocaleString()}건</strong>
       </p>
       {/*
         보강에서 가장 오래 걸리는 단계는 출처를 찾는 것이다. 주소가 있는 것을
@@ -54,19 +53,15 @@ export default async function GapList({
         모르므로, 전에 쓰던 "최신순"은 사실상 이름순이었다 (이슈 #3).
       */}
       <p className="mt-1 text-sm">
-        이 중 <strong className="font-medium">{counts.withSource.toLocaleString()}건</strong>은
-        제조사 스펙 주소가 있어 바로 채울 수 있다. 그것부터 보여준다.
+        이 중 제조사 스펙 URL이 있는 <strong className="font-medium">{counts.withSource.toLocaleString()}건</strong>을 먼저 표시합니다.
         {counts.missing > counts.withSource && (
           <span className="text-fg-subtle">
-            {' '}나머지 {(counts.missing - counts.withSource).toLocaleString()}건은 출처를 직접
-            찾아야 한다.
+            {' '}나머지 {(counts.missing - counts.withSource).toLocaleString()}건은 출처 확인이 필요합니다.
           </span>
         )}
       </p>
       <p className="mt-1 text-xs leading-relaxed text-fg-subtle">
-        여기서 바로 채운다. 채운 줄은 <strong className="font-medium">사라지지 않고</strong>{' '}
-        「저장됨」으로 남는다 — 사라지면 아래 줄이 위로 밀려 커서 아래에서 줄이 바뀐다.
-        목록을 새로 받으려면 새로고침한다.
+        저장한 줄은 「저장됨」으로 표시됩니다. 목록을 갱신하려면 새로고침해 주세요.
       </p>
 
       {/* 줄마다 상세 화면을 열고 돌아오는 왕복이 작업량의 대부분이었다 (이슈 #3) */}
@@ -77,7 +72,7 @@ export default async function GapList({
       </div>
 
       {rows.length === 0 && (
-        <p className="mt-6 text-sm text-fg-subtle">이 페이지에는 더 이상 없다.</p>
+        <p className="mt-6 text-sm text-fg-subtle">이 페이지에 남은 항목이 없습니다.</p>
       )}
 
       <div className="mt-8 flex gap-4 text-sm">

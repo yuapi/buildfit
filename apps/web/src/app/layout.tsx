@@ -11,11 +11,11 @@ const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin']
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl()),
   title: {
-    default: 'buildfit — PC 견적 검증',
+    default: 'buildfit — PC 견적 호환성 검사',
     template: '%s — buildfit',
   },
   description:
-    'PC 부품 조합의 호환성과 소비전력을 판정합니다. 가격 비교가 아니라 판단을 돕는 도구입니다.',
+    'PC 부품 조합의 장착 호환성, 소비전력, 전기요금을 검사합니다.',
   openGraph: {
     type: 'website',
     siteName: 'buildfit',

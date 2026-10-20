@@ -47,11 +47,11 @@ export async function reportSpecAction(
   const clientToken = String(form.get('clientToken') ?? '').trim().slice(0, 64);
 
   if (!UUID.test(partId) || !specKey || specKey.length > 64) {
-    return { ok: false, message: '어느 항목이 잘못됐는지 골라 주세요.' };
+    return { ok: false, message: '항목을 선택해 주세요.' };
   }
 
   if (!reportLimiter.take(clientIp(await headers()))) {
-    return { ok: false, message: '신고가 너무 많습니다. 잠시 후 다시 시도해 주세요.' };
+    return { ok: false, message: '요청이 많습니다. 잠시 후 다시 시도해 주세요.' };
   }
 
   /**
@@ -63,16 +63,16 @@ export async function reportSpecAction(
     target = await reportTarget(getDb(), partId);
   } catch (err) {
     logServerError('action reportSpec', err);
-    return { ok: false, message: '지금은 신고를 접수하지 못했습니다. 잠시 후 다시 시도해 주세요.' };
+    return { ok: false, message: '신고를 접수하지 못했습니다. 잠시 후 다시 시도해 주세요.' };
   }
-  if (!target) return { ok: false, message: '없는 부품입니다.' };
+  if (!target) return { ok: false, message: '존재하지 않는 부품입니다.' };
   const { category, slug } = target;
 
   // 화면이 고르게 하는 항목만 받는다 — 이 부품에 있는 스펙이거나, 규칙이 읽는 항목
   const knownKey =
     target.specKeys.includes(specKey) ||
     SPEC_REQUIREMENTS.some((r) => r.category === category && r.specKey === specKey);
-  if (!knownKey) return { ok: false, message: '어느 항목이 잘못됐는지 골라 주세요.' };
+  if (!knownKey) return { ok: false, message: '항목을 선택해 주세요.' };
 
   /**
    * 정해진 목록이 있는 항목은 **그 목록 밖의 값을 받지 않는다.**
@@ -92,12 +92,12 @@ export async function reportSpecAction(
       // "(은)는"은 이 프로젝트가 피하려는 바로 그 문장이다 (lib/korean.ts).
       return {
         ok: false,
-        message: `이 항목에서 쓰지 않는 값입니다 — ${bad.join(', ')}. 목록에서 골라 주세요.`,
+        message: `허용되지 않는 값입니다: ${bad.join(', ')}. 목록에서 선택해 주세요.`,
       };
     }
   }
   if (!reportedValue && !note) {
-    return { ok: false, message: '맞다고 생각하는 값이나 설명 중 하나는 적어 주세요.' };
+    return { ok: false, message: '올바른 값 또는 설명을 입력해 주세요.' };
   }
   if (note.length > 500 || reportedValue.length > 200) {
     return { ok: false, message: '내용이 너무 깁니다.' };
@@ -113,10 +113,10 @@ export async function reportSpecAction(
     });
   } catch (err) {
     logServerError('action reportSpec', err);
-    return { ok: false, message: '지금은 신고를 접수하지 못했습니다. 잠시 후 다시 시도해 주세요.' };
+    return { ok: false, message: '신고를 접수하지 못했습니다. 잠시 후 다시 시도해 주세요.' };
   }
 
   revalidatePath(`/part/${category.toLowerCase()}/${slug}`);
   revalidatePath('/admin');
-  return { ok: true, message: '신고했습니다. 확인 후 반영하겠습니다.' };
+  return { ok: true, message: '신고가 접수되었습니다. 확인 후 반영됩니다.' };
 }

@@ -178,7 +178,7 @@ const PROBLEM_TEXT: Record<BackupProblem, string> = {
 
 /** 형식 오류 안내. 아무것도 바꾸지 않았다는 것을 함께 말한다 */
 export function describeProblem(problem: BackupProblem): string {
-  return `${PROBLEM_TEXT[problem]} 저장 목록은 그대로입니다.`;
+  return `${PROBLEM_TEXT[problem]} 기존 저장 목록은 유지됩니다.`;
 }
 
 /**
@@ -191,11 +191,11 @@ export function describeImport(
   unreadable: number,
   limit: number,
 ): string {
-  const head = merged.added > 0 ? `${merged.added}개를 더했습니다.` : '더한 견적이 없습니다.';
+  const head = merged.added > 0 ? `${merged.added}개를 가져왔습니다.` : '가져온 견적이 없습니다.';
   const skipped: string[] = [];
   if (merged.duplicate > 0) skipped.push(`이미 있음 ${merged.duplicate}개`);
   if (unreadable > 0) skipped.push(`읽을 수 없음 ${unreadable}개`);
   if (merged.overLimit > 0) skipped.push(`저장 상한(${limit}개) 초과 ${merged.overLimit}개`);
   if (skipped.length === 0) return head;
-  return `${head} 건너뜀: ${skipped.join(' · ')}`;
+  return `${head} 제외: ${skipped.join(' · ')}`;
 }

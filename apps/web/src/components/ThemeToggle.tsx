@@ -19,9 +19,9 @@ export const THEME_KEY = 'theme';
 const ORDER: readonly Theme[] = ['system', 'light', 'dark'];
 
 const LABEL: Record<Theme, string> = {
-  system: '시스템 설정',
-  light: '밝게',
-  dark: '어둡게',
+  system: '시스템',
+  light: '라이트',
+  dark: '다크',
 };
 
 function read(): Theme {
@@ -65,8 +65,8 @@ export function ThemeToggle() {
       // 헤더의 어두운 크롬 위에 놓인다. 본문 색 토큰을 쓰면 안 보인다
       className="flex items-center gap-1.5 rounded-(--radius-control) px-2.5 py-1.5 text-xs text-chrome-muted transition-colors hover:bg-white/10 hover:text-chrome-fg"
       // 아이콘만으로는 현재 상태를 읽을 수 없다. 이름에 상태를 담는다
-      aria-label={`화면 테마: ${LABEL[theme]}. 눌러서 변경`}
-      title={`화면 테마: ${LABEL[theme]}`}
+      aria-label={`테마: ${LABEL[theme]} (변경)`}
+      title={`테마: ${LABEL[theme]}`}
     >
       <ThemeIcon theme={theme} />
       <span className="hidden sm:inline">{LABEL[theme]}</span>
