@@ -1,6 +1,6 @@
 # BACKLOG (autopilot 작업 큐)
 
-next_id: 18
+next_id: 21
 
 상태: open | in_progress | done | blocked | waiting(앞 단계 대기)
 유형: fix | security | test | lint | todo | cleanup | docs | refactor
@@ -24,3 +24,6 @@ next_id: 18
 | T-15 | enhance | done | 1 | 링크·저장 견적에 담긴 부품 중 DB에서 사라진 것이 있으면 **몇 개인지 알린다** — 지금은 `/build`도 편집기도 조용히 빼고, 편집기는 그 상태로 작업 중 견적·최근 구성을 다시 써서 원래 참조가 사라진다 | 순수 함수(선택 vs 읽힌 부품 수) 테스트 + `/build`·편집기 안내, 없는 UUID를 넣은 링크로 Playwright 확인 | 제품 — 약한 기능 (공유 링크·저장) | 2026-10-02 |
 | T-16 | feature | done | 1 | [feat:recent-parts 1/2] 부품 페이지가 본 것을 기록 + `/part`에 「최근 본 부품」 (`.autopilot/features/recent-parts.md`) | 설계 문서 1/2의 완료 기준 | 제품 — 부분 기능 (명세 §8A.1 `recent_parts`, 저장 함수만 있고 호출 0) | 2026-10-02 |
 | T-17 | feature | done | 1 | [feat:recent-parts 2/2] 고르기 목록 맨 위에 그 칸의 최근 본 부품 — 지금 견적과 안 맞는 것은 거른다 | 설계 문서 2/2의 완료 기준 | 제품 — 부분 기능 | 2026-10-02 |
+| T-18 | enhance | done | 1 | 어드민이 신고를 닫는다 — 값을 저장하면 그 (부품, 항목)의 열린 신고를 `resolved`로, 신고 목록에 「거절」 버튼(`rejected`, 다른 열린 신고가 없으면 `disputed`를 내린다) | DB 테스트: 저장 → 열린 신고 0·상태 resolved, 거절 → rejected·`disputed` false(다른 열린 신고가 있으면 그대로), 어드민 밖에서 부르면 막힌다. `/admin` 목록에서 사라지는 것을 빌드한 앱으로 확인 | 시나리오 — 운영자가 신고 처리 (2026-10-20) | 2026-10-20 |
+| T-19 | test | open | 0 | `deploy/` 정적 검사 테스트 — 모든 `.sh`가 `bash -n` 통과, systemd 유닛이 가리키는 스크립트 경로가 레포에 있고, 서비스 포트·`ExecStart` 경로가 deploy.sh·문서(§8)와 같다 | 새 테스트가 지금 통과하고, 유닛의 스크립트 이름을 틀리게 바꾸면 실패한다(변이 확인) | 테스트 공백 — 배포 스크립트에 검사 0건 | |
+| T-20 | docs | open | 0 | README·CLAUDE.md의 낡은 카탈로그 수치(부품 26,504/26,511 → 실측, 중복·disputed) — 지난 STOP의 보류 보조 작업 | 수치가 임시 DB 실측과 맞고 날짜가 있다, 테스트 유지 | 보류한 보조 작업 (2026-10-02 STOP) | |

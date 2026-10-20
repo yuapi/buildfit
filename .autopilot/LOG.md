@@ -141,3 +141,19 @@
 - 그 사이(사람 작업): 보안 점검 #115(ADR-0026), 같은 서버 3200 배포 #117(ADR-0027), v0.2.0 운영 시작 https://buildfit.duckdns.org
 - 모드: 세션 연속. CONFIG 없음 → local (작업 브랜치 autopilot/20261020-1224, push 안 함)
 - Stop 훅: `.claude/settings.local.json` 에만 설치 (레포 규칙 — oci-migration §3.6, 커밋하지 않는다). 훅 스크립트는 RUN 이 있을 때만 동작
+
+## 2026-10-20T12:50 | 재발굴 | discover | skill 1.10.0
+- 베이스라인: typecheck 0 · lint 0 · test 284/506/545 · build 성공 · audit 0 · 마커 0 · 정적 보안 0 · 열린 이슈 0
+- 탐색 실행(로컬 프로덕션 3399): 경계 입력 14개 — 결함 없음 (ROADMAP 「관찰」)
+- 새 시나리오 「운영자가 신고 처리」: 신고를 닫을 방법이 없다 → T-18(enhance). 배포 스크립트 검사 0 → T-19(test). 보류했던 수치 갱신 → T-20(docs)
+- 회고: T-1~T-17 실패 0 — 배울 실패 없음, last_retro 기록
+
+## 2026-10-20T13:10 | T-18 | in_progress | skill 1.10.0
+- 사용량 한도로 중단. 브랜치 feature/autopilot-T-18-close-reports 에 커밋하지 않은 변경이 있다 (git add 만 함)
+- 구현: rejectSpecReport(part.ts), saveSpec 이 열린 신고를 resolved 로(gaps.ts), /admin 거절 버튼·rejectReportAction, DB 테스트 report-close.test.ts
+- 검증됨: typecheck 0 · lint 0 · test 286/507/545. 남은 완료 기준: 빌드한 앱에서 /admin 목록에서 사라지는 것 확인 → 그 뒤 커밋·PR
+
+## 2026-10-20T14:00 | T-18 | done | skill 1.10.0
+- 변경: packages/db/src/queries/part.ts (rejectSpecReport), gaps.ts (saveSpec 가 열린 신고를 resolved), apps/web/src/app/admin/actions.ts·page.tsx (거절 버튼), apps/ingest/test/report-close.test.ts
+- 검증: typecheck 0 · lint 0 · test 284→286 / 506→507 / 545 · build 성공. 빌드한 앱에서 신고 → /admin 에 보임 → 거절 → 사라짐, 콘솔 오류 0
+- 후속: 없음
