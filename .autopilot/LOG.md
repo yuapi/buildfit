@@ -165,3 +165,7 @@
 - 변경: apps/web/test/deploy-config.test.ts (bash -n, 유닛→스크립트 경로, 타이머 짝·설치, next 실행 파일 경로, 포트 3200, sudo 허용 명령)
 - 변이 확인: buildfit-sync.service 의 sync.sh → synk.sh 로 바꾸면 실패
 - 검증: typecheck 0 · lint 0 · test 286 / 507→522 / 545 · build 성공
+
+## 2026-10-20T14:40 | T-20 | done | skill 1.10.0
+- 변경: README 카탈로그 행(26,538 / 240,558 / 63,091), CLAUDE.md 중복(492그룹 527건 1.99%)·disputed(266행, 시험 신고 제외) — 2026-10-20 최신 원본 적재 실측
+- 검증: typecheck 0 · lint 0 · test 286/522/545 · build 성공
