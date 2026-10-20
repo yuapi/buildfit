@@ -16,7 +16,7 @@ import {
 import { and, eq, inArray, sql, type SQL } from 'drizzle-orm';
 import type { Database } from '../client';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
-import { partSpecs, parts } from '../schema';
+import { partSpecs, parts, specReports } from '../schema';
 
 /**
  * `storedOnPart` 필드의 `specKey` → `parts` 컬럼 (이슈 #15).
@@ -441,6 +441,7 @@ export async function saveSpec(
             updatedAt: sql`now()`,
           },
         });
+      await resolveOpenReports(tx, input.partId, input.key);
     });
     return;
   }
@@ -467,6 +468,24 @@ export async function saveSpec(
         updatedAt: sql`now()`,
       },
     });
+  await resolveOpenReports(db, input.partId, input.key);
+}
+
+/**
+ * 사람이 출처와 함께 값을 넣었으면 그 항목의 열린 신고는 처리된 것이다 (§5.5, T-18).
+ * 닫지 않으면 고친 뒤에도 어드민의 신고 목록에 계속 남는다.
+ */
+async function resolveOpenReports(
+  db: Pick<Database, 'update'>,
+  partId: string,
+  key: string,
+): Promise<void> {
+  await db
+    .update(specReports)
+    .set({ status: 'resolved' })
+    .where(
+      and(eq(specReports.partId, partId), eq(specReports.specKey, key), eq(specReports.status, 'open')),
+    );
 }
 
 // --- 값이 어긋나는 스펙 -------------------------------------------------------

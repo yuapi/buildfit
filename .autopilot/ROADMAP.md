@@ -1,6 +1,8 @@
 # ROADMAP (autopilot 자동 생성)
 
-last_scan: 2026-10-02
+last_scan: 2026-10-20
+last_issue_check: 2026-10-20
+last_retro: 2026-10-20 (T-1~T-17: done 17, failed 0, blocked 0 — 회고할 실패 없음)
 
 ## 제품 (2026-10-01, skill 1.4.0 첫 제품 이해)
 
@@ -36,6 +38,23 @@ last_scan: 2026-10-02
 - **없음.** 이번 사이클에 고친 것: 호환 목록의 소켓 등가(T-10), 스토리지만 담은 공유 링크(T-14), 사라진 부품을 조용히 빼던 것(T-15)
 - 입력 경로(검색·견적서·고르기·계산기)는 길이·개수 상한과 숫자 검증(음수·하루 24시간 초과)이 이미 있다
 - 쿨러·메모리·케이스의 호환 목록 → 「하지 않기로 한 것」으로 옮겼다
+
+## 관찰 (2026-10-20, 운영 v0.2.0 뒤 첫 재발굴, skill 1.10.0)
+- 로컬 프로덕션 서버(3399, 임시 DB)에 경계 입력: 깨진·5000자 공유 코드 → 「이 링크를 읽을 수 없습니다」 200, 없는 부품·비교·카테고리·sitemap → 404,
+  검색어 NUL·따옴표·꺾쇠 → 정상 결과, 한글 500자(인코딩) → 200, `/admin/parts/<uuid 아님>` → 401. 스택 노출 0
+- 응답 시간: `/` `/part` `/part/cpu` 약 20ms, `/rules` 130~180ms (첫 요청 570ms)
+
+## 시나리오 (2026-10-20)
+- **새: 운영자가 들어온 신고를 처리한다** — `/admin`에 신고 목록은 뜨지만 **닫을 방법이 없다.** 값을 고쳐 저장하면 `disputed`는
+  내려가도 신고는 `open`으로 목록에 계속 남는다. 신고가 틀렸으면 거절할 수단이 없어 그 값의 「검증 중」이 영영 남는다
+  (적재의 거두기는 중복 그룹 안의 부품만, 그것도 열린 신고가 없을 때만 거둔다 — `apps/ingest/src/duplicates.ts`) → T-18
+- 배포 운영자: 서버 스크립트(`deploy/`)에 자동 검사가 없다 — CI가 문법조차 보지 않는다 → T-19
+- 견적 구성 → 공유 → 받은 사람이 열기: 막히는 곳 없음 (실제 도메인에서 세 브라우저 확인, 2026-10-20)
+
+## 유지보수 상태 (명령·시간, 2026-10-20)
+- DB: 개발용 임시 PostgreSQL `postgres://buildfit:buildfit@localhost:5439/buildfit` (scratchpad embedded-postgres). **운영 DB(5432)는 쓰지 않는다**
+- `npm run typecheck` 16s · `npm run lint` 16s · `DATABASE_URL=… npm test` 29s (284/506/545) · `NEXT_PUBLIC_SITE_URL=http://localhost:3399 npm run build` 10~60s
+- `npm audit --omit=dev --audit-level=high` 0 · 코드 마커 0 · 정적 보안 패턴 0 · 열린 이슈 0
 
 ## 현재 상태 요약
 - 베이스라인: typecheck 0 err · lint 0 err · test 275 / 444 / 537 pass · `next build` 성공

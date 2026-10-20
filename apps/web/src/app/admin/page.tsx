@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { rejectReportAction } from './actions';
 import {
   conflictingSpecs,
   fieldGapSummary,
@@ -76,6 +77,13 @@ export default async function AdminHome() {
                   </p>
                 )}
                 {r.note && <p className="mt-0.5 text-xs text-fg-subtle">{r.note}</p>}
+                {/* 값을 고쳐 저장하면 신고가 함께 닫힌다. 신고가 틀렸을 때만 거절한다 (T-18) */}
+                <form action={rejectReportAction} className="mt-1">
+                  <input type="hidden" name="reportId" value={r.id} />
+                  <button type="submit" className="btn btn-ghost px-2 py-0.5 text-xs">
+                    거절
+                  </button>
+                </form>
               </li>
             ))}
           </ul>
