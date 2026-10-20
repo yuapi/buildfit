@@ -7,6 +7,7 @@ import { Container } from '@/components/SiteShell';
 import { INDEXED_CATEGORIES, CATEGORY_LABELS, categoryLabel } from '@/lib/categories';
 import { MAX_QUERY_CHARS } from '@/lib/picker';
 import { getDb } from '@/lib/db';
+import { logServerError } from '@/lib/server-log';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,7 +36,8 @@ export default async function PartIndex({
         ? Promise.resolve(null)
         : searchAcrossCategories(db, { query: q, categories: INDEXED_CATEGORIES }),
     ]);
-  } catch {
+  } catch (err) {
+    logServerError('/part', err);
     counts = [];
   }
   const byCategory = new Map(counts.map((c) => [c.category, c.total]));

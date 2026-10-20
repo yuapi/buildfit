@@ -15,6 +15,7 @@ import {
 import { Container } from '@/components/SiteShell';
 import { categoryLabel } from '@/lib/categories';
 import { getDb } from '@/lib/db';
+import { logServerError } from '@/lib/server-log';
 
 /**
  * 무엇을 검사하고, **무엇을 검사할 수 없는지** 공개한다.
@@ -62,7 +63,8 @@ export default async function RulesPage() {
   try {
     const db = getDb();
     [gaps, disputed] = await Promise.all([fieldGapSummary(db), disputedSummary(db)]);
-  } catch {
+  } catch (err) {
+    logServerError('/rules', err);
     // 규칙 목록은 DB 없이도 보여줄 수 있다. 숫자만 빼고 낸다 —
     // 페이지 전체를 죽이면 이 페이지의 목적(설명)이 사라진다.
     gapsFailed = true;

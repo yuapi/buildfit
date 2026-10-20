@@ -11,6 +11,7 @@ import { categoryLabel } from '@/lib/categories';
 import { getDb } from '@/lib/db';
 import { specLabel, specValueText } from '@/lib/spec-labels';
 import { ReportForm } from './ReportForm';
+import { logServerError } from '@/lib/server-log';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,7 +67,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
         canonical: partHref(part.category, part.canonicalSlug ?? part.slug),
       },
     };
-  } catch {
+  } catch (err) {
+    logServerError('/part/[category]/[slug]', err);
     return { title: { absolute: 'buildfit' } };
   }
 }
@@ -81,7 +83,8 @@ export default async function PartPage({
   let part;
   try {
     part = await partBySlug(getDb(), slug);
-  } catch {
+  } catch (err) {
+    logServerError('/part/[category]/[slug]', err);
     return (
       <Container width="narrow" className="py-20">
         <h1 className="text-2xl font-semibold tracking-tight">

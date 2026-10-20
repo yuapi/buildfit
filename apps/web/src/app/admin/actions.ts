@@ -4,6 +4,7 @@ import { rejectSpecReport } from '@buildfit/db/part';
 import { revalidatePath } from 'next/cache';
 import { requireAdmin } from '@/lib/admin-auth';
 import { getDb } from '@/lib/db';
+import { logServerError } from '@/lib/server-log';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -20,7 +21,8 @@ export async function rejectReportAction(form: FormData): Promise<void> {
   if (!UUID.test(id)) return;
   try {
     await rejectSpecReport(getDb(), id);
-  } catch {
+  } catch (err) {
+    logServerError('action rejectReport', err);
     // 목록을 다시 그리면 그대로 남아 있어 실패를 알 수 있다
   }
   revalidatePath('/admin');

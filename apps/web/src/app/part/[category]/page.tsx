@@ -5,6 +5,7 @@ import { Container } from '@/components/SiteShell';
 import { categoryFromSlug, categoryLabel } from '@/lib/categories';
 import { getDb } from '@/lib/db';
 import { MAX_QUERY_CHARS } from '@/lib/picker';
+import { logServerError } from '@/lib/server-log';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,7 +53,8 @@ export default async function CategoryIndex({
       offset: (pageNo - 1) * PAGE_SIZE,
       query: q ?? '',
     });
-  } catch {
+  } catch (err) {
+    logServerError('/part/[category]', err);
     return (
       <Container width="narrow" className="py-20">
         <h1 className="text-2xl font-semibold tracking-tight">지금은 목록을 불러올 수 없습니다</h1>
