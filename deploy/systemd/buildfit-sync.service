@@ -1,0 +1,9 @@
+# 주간 OpenDB 재동기 (ADR-0025). 새 커밋이 있을 때만 재적재·재빌드한다
+[Unit]
+Description=buildfit OpenDB 재동기
+After=network-online.target postgresql.service
+
+[Service]
+Type=oneshot
+User=deploy
+ExecStart=/bin/bash /opt/buildfit/current/deploy/sync.sh
