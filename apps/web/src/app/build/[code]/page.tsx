@@ -54,7 +54,7 @@ export async function generateMetadata({ params }: { params: Promise<{ code: str
 function Problem({ title, detail }: { title: string; detail: string }) {
   return (
     <Container width="narrow" className="py-20">
-      <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+      <h1 className="text-3xl font-extrabold tracking-[-0.03em]">{title}</h1>
       <p className="mt-2 text-fg-muted">{detail}</p>
       <Link href="/" className="btn btn-primary mt-6">
         새로 견적 구성하기
@@ -115,7 +115,7 @@ export default async function SharedBuild({ params }: { params: Promise<{ code: 
     <Container className="py-10 sm:py-14">
       <header>
         <p className="text-xs font-medium tracking-wide text-fg-subtle">공유된 견적</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">
+        <h1 className="mt-1 text-3xl font-extrabold tracking-[-0.03em] sm:text-4xl">
           {summary
             .slice(0, 2)
             .map((s) => s.name)

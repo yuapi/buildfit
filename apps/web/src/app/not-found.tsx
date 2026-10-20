@@ -7,7 +7,7 @@ export default function NotFound() {
   return (
     <Container width="narrow" className="py-20">
       <p className="text-sm font-medium text-fg-subtle tnum">404</p>
-      <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">
+      <h1 className="mt-1 text-3xl font-extrabold tracking-[-0.03em] sm:text-4xl">
         이 주소에는 아무것도 없습니다
       </h1>
       <p className="mt-2 text-fg-muted">

@@ -76,7 +76,8 @@ export default async function RulesPage() {
 
   return (
     <Container width="narrow" className="py-10 sm:py-14">
-      <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">검사 규칙과 데이터 현황</h1>
+      <p className="eyebrow">Rules &amp; Coverage</p>
+      <h1 className="mt-2 text-3xl font-extrabold tracking-[-0.03em] sm:text-4xl">검사 규칙과 데이터 현황</h1>
       <p className="mt-2.5 text-fg-muted">
         부품 조합에서 아래 <span className="tnum">{ruleIds.length}</span>가지를 검사합니다.
         각 검사가 쓰는 데이터가 <strong className="font-medium text-fg">얼마나 비어 있는지</strong>도
@@ -117,17 +118,19 @@ export default async function RulesPage() {
         </p>
       )}
 
-      <ul className="mt-8 space-y-6">
+      {/* 규칙 20개는 카드 20장이 아니라 한 장의 표다. 왼쪽 칸이 규칙 번호다 (ADR-0028) */}
+      <ul className="card mt-8 divide-y divide-border">
         {ruleIds.map((id) => {
           const needs = (RULE_PARTS[id] ?? []) as readonly PartSlot[];
           const fields = gapsFor(id, gaps);
           const severity = severityOf(id);
           return (
-            <li key={id} className="card p-4 sm:p-5">
-              <div className="flex items-baseline gap-2.5">
-                <span className="shrink-0 text-sm text-fg-subtle tnum">{id}</span>
-                <h2 className="font-semibold">{RULE_SUMMARY[id]}</h2>
-              </div>
+            <li key={id} className="grid grid-cols-[3.75rem_minmax(0,1fr)] sm:grid-cols-[4.5rem_minmax(0,1fr)]">
+              <span className="border-r border-border bg-surface-2 px-2 pt-4 text-center font-mono text-xs font-semibold text-fg-muted tnum sm:pt-5">
+                R-{String(id).padStart(2, '0')}
+              </span>
+              <div className="min-w-0 p-4 sm:p-5">
+              <h2 className="font-bold">{RULE_SUMMARY[id]}</h2>
 
               <p className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
                 <span className="chip">{SEVERITY_TEXT[severity]}</span>
@@ -165,12 +168,20 @@ export default async function RulesPage() {
                           <span className="ml-1.5 text-xs text-fg-subtle">
                             {f.missingParts.toLocaleString()}/{f.totalParts.toLocaleString()}
                           </span>
+                          {/* 빈 정도를 막대로도 — 무채색이다. 판정이 아니다 */}
+                          <span aria-hidden className="mt-1 ml-auto block h-[3px] w-24 bg-surface-2">
+                            <span
+                              className="block h-full bg-fg-muted"
+                              style={{ width: `${Math.max(f.missingPct, f.missingParts > 0 ? 2 : 0)}%` }}
+                            />
+                          </span>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               )}
+              </div>
             </li>
           );
         })}

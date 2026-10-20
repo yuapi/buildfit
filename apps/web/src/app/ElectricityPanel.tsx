@@ -79,8 +79,8 @@ export function ElectricityPanel({ build }: { build: Build }) {
 
   return (
     <section className="card p-4 sm:p-5" aria-labelledby="bill-heading">
-      <h2 id="bill-heading" className="text-sm font-semibold">
-        전기요금
+      <h2 id="bill-heading" className="panel-title card-head">
+        <span className="idx">KWH</span>전기요금
       </h2>
       <p className="mt-1 text-xs leading-relaxed text-fg-subtle">
         누진 구간 때문에 <strong className="font-medium text-fg-muted">가구가 평소 얼마를
@@ -140,16 +140,13 @@ export function ElectricityPanel({ build }: { build: Build }) {
 
       <fieldset className="mt-3">
         <legend className="text-xs text-fg-muted">계절</legend>
-        <div className="mt-1 flex flex-wrap gap-1.5">
+        <div className="seg mt-1">
           {(["other", "summer", "winter"] as const).map((s) => (
             <button
               key={s}
               type="button"
               aria-pressed={season === s}
               onClick={() => setSeason(s)}
-              className={`chip ${
-                season === s ? "border-border-strong bg-surface-2 font-medium text-fg" : ""
-              }`}
             >
               {SEASON_LABEL[s]}
             </button>

@@ -135,11 +135,11 @@ export function QuoteBox({ onApply }: { onApply: (picks: readonly QuotePick[]) =
 
   if (!open) {
     return (
-      <div className="card p-4 sm:p-5">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
+      <div className="border border-dashed border-border-strong px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <div className="min-w-0">
-            <h2 className="font-semibold">견적서가 이미 있나요?</h2>
-            <p className="mt-1 text-sm text-fg-muted">
+            <h2 className="text-sm font-bold">견적서가 이미 있나요?</h2>
+            <p className="text-sm text-fg-muted">
               {/* 칸 수를 적지 않는다 — 「일곱 칸」이 칸이 여덟이 된 뒤에도 남아 있었다 (이슈 #46) */}
               받아 온 견적서를 붙여넣으면 부품을 찾아 채웁니다. 칸을 하나씩 손으로 채우지
               않아도 됩니다.
@@ -155,8 +155,8 @@ export function QuoteBox({ onApply }: { onApply: (picks: readonly QuotePick[]) =
 
   return (
     <section aria-labelledby="quote-heading" className="card p-4 sm:p-5">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 id="quote-heading" className="font-semibold">
+      <div className="card-head flex flex-wrap items-baseline justify-between gap-2">
+        <h2 id="quote-heading" className="panel-title">
           견적서 붙여넣기
         </h2>
         <button type="button" onClick={() => toggle(false)} className="btn btn-ghost px-2 py-1 text-xs">
