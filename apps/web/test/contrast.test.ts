@@ -142,3 +142,22 @@ describe('토큰 규율', () => {
     expect(media).toEqual(DARK);
   });
 });
+
+describe('크롬 안의 초점 표시 (T-23)', () => {
+  // 라이트의 초점 색(잉크)과 크롬 배경(잉크)이 같아 헤더의 초점이 안 보였다
+  it('★ 크롬 안에서는 초점 색이 크롬 글자색이다', () => {
+    const at = CSS.indexOf('.bg-chrome {');
+    expect(at, '.bg-chrome 블록이 없다').toBeGreaterThan(-1);
+    expect(CSS.slice(at, CSS.indexOf('}', at))).toContain('--color-focus: var(--color-chrome-fg)');
+  });
+
+  it.each([
+    ['라이트', LIGHT],
+    ['다크', DARK],
+  ] as const)('%s: 본문 초점 색은 크롬 위에서 안 보일 수 있지만, 크롬 초점 색은 3:1 이상', (_n, theme) => {
+    expect(contrast(theme['--color-chrome-fg']!, theme['--color-chrome']!)).toBeGreaterThanOrEqual(3);
+    // 이 테스트가 지키는 사고: 본문 초점 색을 그대로 쓰면 라이트에서 1:1이다
+    if (_n === '라이트') expect(contrast(theme['--color-focus']!, theme['--color-chrome']!)).toBeLessThan(3);
+  });
+});
+

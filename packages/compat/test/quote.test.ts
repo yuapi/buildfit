@@ -261,6 +261,16 @@ describe('견적서 표 형식 — 부품 이름이 아닌 칸 (이슈 #85)', ()
     expect(terms('그래픽카드: RTX 4070 12GB x 1')).not.toContain('1x12gb');
   });
 
+  it('★ 용량만 괄호에 넣은 쇼핑몰 표기 `(16GB) x2`도 키트다 (T-24)', () => {
+    // 닫는 괄호가 사이에 있어 `16gbx2`로 붙어 0건이었다
+    expect(terms('메모리: 삼성전자 DDR5-5600 (16GB) x2')).toContain('2x16gb');
+    expect(terms('메모리: G.SKILL DDR5-6000 CL30 (32GB) x2')).toContain('2x32gb');
+    expect(terms('메모리: 마이크론 DDR5 [16GB] x 2')).toContain('2x16gb');
+    expect(terms('메모리: 삼성전자 DDR5-5600 (16GB) x2')).not.toContain('16gbx2');
+    // 괄호가 있어도 한 개는 키트가 아니다
+    expect(terms('메모리: 삼성전자 DDR5-5600 (16GB) x1')).not.toContain('1x16gb');
+  });
+
   it('`WD`는 `Western Digital`로도 찾는다', () => {
     expect(terms('SSD: WD BLUE SN580')).toContain('wdblue|westerndigitalblue');
   });

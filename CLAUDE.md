@@ -42,6 +42,9 @@ Git Flow를 따른다. 근거와 상세: `docs/decisions/0008-git-flow-branching
 - **`main`과 `develop`에 직접 커밋하지도, 직접 push하지도 않는다.** 항상 브랜치를 따서 **PR로** 머지한다 (ADR-0024)
 - 머지 방식은 **`merge`** — `--no-ff`와 같은 머지 커밋이다. squash·rebase는 작업 단위를 지운다
 - **PR의 CI가 녹색일 때 머지한다.** 로컬 머지 후 push하면 CI가 통합 브랜치에 들어간 **뒤에** 돈다
+- **머지는 `bash scripts/merge-gate.sh <PR>`로 한다** (ADR-0029). CI 통과면 머지, 실패면 멈춘다.
+  **CI를 쓸 수 없으면**(사용량·결제 잠금, 시작 안 됨, 대기열 멈춤, Actions 꺼짐) `ci.yml`과 같은 명령을
+  깨끗한 worktree·1회용 DB로 로컬 검증하고, 통과하면 PR에 결과를 남기고 머지한다. 배포는 서버가 `main`을 당기므로 그대로다
 - **이슈 하나 = feature 브랜치 하나.** 여러 이슈를 한 브랜치에서 처리하지 않는다
 - 머지한 feature 브랜치는 **워크플로가 지운다** (`.github/workflows/delete-merged-branch.yml`).
   `release/`·`hotfix/`는 두 곳에 머지해야 해서 지우지 않는다 — 레포 설정의 자동 삭제를 쓰지 않는 이유다
