@@ -213,3 +213,8 @@
 - 변경: scripts/ci-gate.mjs (도는 실행이 있으면 pending), scripts/merge-gate.sh (쓸 수 없음 경로만 `--admin`, 막히면 안내 후 exit 1), apps/web/test/ci-gate.test.ts, ADR-0029 §규칙 집합
 - 검증: typecheck 0 · lint 0 · test 286/567/545 (564→567)
 - 발견: develop·main 규칙 집합이 `verify` 검사를 요구하고 우회 권한이 없다. 우회 권한 추가는 자동 모드 안전 검사가 막았다 [CI Bypass] — 사람이 할 일로 남김. 그 전까지 CI가 정말 멈추면 로컬 검증까지만 되고 머지는 멈춘다
+
+## 2026-10-21T13:50 | T-24 | done | skill 1.10.0
+- 변경: packages/compat/src/quote.ts (키트 변환이 닫는 괄호를 건넌다), packages/compat/test/quote.test.ts
+- 검증: typecheck 0 · lint 0 · test 286/567/546 (545→546) · measure:quote n=444 확정 74.5% · 단일 오답 0
+- 실물: `G.SKILL DDR5-6000 CL30 (32GB) x2` 0건 → 후보 6개. `삼성전자 DDR5-5600 (16GB) x2`는 `2x16gb`로 바르게 읽히지만 카탈로그에 그 키트가 없다 (데이터 범위)
