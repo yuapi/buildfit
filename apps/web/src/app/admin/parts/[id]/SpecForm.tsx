@@ -124,18 +124,14 @@ export function SpecForm({
         >
           {pending ? '저장 중…' : '저장'}
         </button>
-        {state && (
-          <span
-            data-testid="save-message"
-            className={
-              state.ok
-                ? 'text-sm text-ok'
-                : 'text-sm text-danger'
-            }
-          >
-            {state.message}
-          </span>
-        )}
+        {/* 처음부터 있는 live 영역에 문구만 바꿔 넣는다 (WCAG 4.1.3, T-26) */}
+        <span
+          role="status"
+          data-testid="save-message"
+          className={state?.ok ? 'text-sm text-ok' : 'text-sm text-danger'}
+        >
+          {state?.message ?? ''}
+        </span>
       </div>
     </form>
   );

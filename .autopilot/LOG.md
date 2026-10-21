@@ -218,3 +218,10 @@
 - 변경: packages/compat/src/quote.ts (키트 변환이 닫는 괄호를 건넌다), packages/compat/test/quote.test.ts
 - 검증: typecheck 0 · lint 0 · test 286/567/546 (545→546) · measure:quote n=444 확정 74.5% · 단일 오답 0
 - 실물: `G.SKILL DDR5-6000 CL30 (32GB) x2` 0건 → 후보 6개. `삼성전자 DDR5-5600 (16GB) x2`는 `2x16gb`로 바르게 읽히지만 카탈로그에 그 키트가 없다 (데이터 범위)
+
+## 2026-10-21T14:20 | 릴리스 v0.3.2 | discover | skill 1.10.0
+- release/0.3.2 → main (PR #144, merge-gate로) → 태그·릴리스. 서버가 자동 배포, healthz ok, 새 CSS(크롬 초점) 반영 확인
+
+## 2026-10-21T14:50 | T-26 | done | skill 1.10.0
+- 변경: ReportForm·SpecForm·BulkRow (결과 문구를 늘 있는 `role="status"` 영역에), apps/web/test/live-status.test.ts
+- 검증: typecheck 0 · lint 0 · test 286/571/546 (567→571). 옛 ReportForm으로 되돌리면 새 테스트가 실패(변이 확인). 빌드한 앱에서 신고 제출 → status 영역에 「올바른 값 또는 설명을 입력해 주세요.」
