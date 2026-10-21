@@ -107,9 +107,10 @@ export function BulkRow({
         </button>
       </div>
 
-      {state && (
-        <p className={`mt-1 text-xs ${state.ok ? 'text-ok' : 'text-danger'}`}>{state.message}</p>
-      )}
+      {/* 처음부터 있는 live 영역에 문구만 바꿔 넣는다 (WCAG 4.1.3, T-26). 비어 있으면 높이가 없다 */}
+      <p role="status" className={`text-xs empty:hidden ${state?.ok ? 'mt-1 text-ok' : 'mt-1 text-danger'}`}>
+        {state?.message ?? ''}
+      </p>
     </form>
   );
 }

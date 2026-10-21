@@ -164,17 +164,16 @@ export function ReportForm({
         <button type="button" onClick={() => setOpen(false)} className="text-xs text-fg-subtle">
           닫기
         </button>
-        {state && (
-          <span
-            className={
-              state.ok
-                ? 'text-xs text-ok'
-                : 'text-xs text-danger'
-            }
-          >
-            {state.message}
-          </span>
-        )}
+        {/*
+          결과 문구는 처음부터 있는 live 영역에 넣는다 (WCAG 4.1.3, T-26). 결과가 생길 때 요소를
+          새로 끼우면 화면 낭독기가 놓친다
+        */}
+        <span
+          role="status"
+          className={state?.ok ? 'text-xs text-ok' : 'text-xs text-danger'}
+        >
+          {state?.message ?? ''}
+        </span>
       </div>
     </form>
   );

@@ -1,6 +1,6 @@
 # BACKLOG (autopilot 작업 큐)
 
-next_id: 26
+next_id: 27
 
 상태: open | in_progress | done | blocked | waiting(앞 단계 대기)
 유형: fix | security | test | lint | todo | cleanup | docs | refactor
@@ -32,4 +32,5 @@ next_id: 26
 | T-23 | fix | done | 1 | 헤더·푸터(어두운 크롬)에서 키보드 초점 표시가 안 보인다 — 라이트 테마에서 `--color-focus`(#14130f)가 크롬 배경(#14130f)과 같아 1:1. 로고 링크·테마 버튼 초점이 사라진다 (ADR-0028 개편 뒤) | 크롬 안의 초점 색이 크롬 배경과 3:1 이상(WCAG 1.4.11·2.4.7)을 대비 테스트가 고정, 빌드한 앱에서 Tab으로 로고·메뉴·테마 버튼 초점 색 실측(라이트·다크) | 실행 — 키보드 탐색 (2026-10-21) | 2026-10-21 |
 | T-24 | fix | done | 1 | 견적서 붙여넣기에서 `(16GB) x2` 키트 표기가 `16gbx2`로 붙어 0건 — 쇼핑몰 표기 `삼성전자 DDR5-5600 (16GB) x2`·`G.SKILL … (32GB) x2`. 키트 변환 정규식이 닫는 괄호를 건너지 못한다 (`packages/compat/src/quote.ts` stripNonName) | `(16GB) x2`·`[16GB] x 2` → `2x16GB` 회귀 테스트, 기존 quote 테스트 유지, `measure:quote` 단일 오답 0 유지 | 실행 — 견적서 붙여넣기 시나리오 (2026-10-21) | 2026-10-21 |
 | T-25 | fix | done | 1 | merge-gate 두 결함 — ① 같은 커밋의 CI 실행 둘(push·PR) 중 하나만 통과하고 하나가 도는 중이면 `pass`로 보고 머지를 시도해 규칙 집합(required_status_checks)에 막혔다 (PR #141) ② CI를 쓸 수 없을 때의 머지도 같은 규칙에 막힌다 — 우회(`--admin`)를 쓰되, 규칙 집합에 우회 권한이 없으면 원인과 할 일을 말하고 멈춘다 | ci-gate 테스트: 통과 1 + 도는 중 1 → pending, merge-gate가 쓸 수 없음 경로에서만 `--admin`, 우회가 막히면 exit 1과 안내. 기존 테스트 유지 | PR #141 머지 실패 (2026-10-21) | 2026-10-21 |
+| T-26 | fix | done | 1 | 제출 결과 문구가 화면 낭독기에 전해지지 않는다 — 부품 오류 신고(`ReportForm`)·어드민 저장(`SpecForm`·`BulkRow`)의 결과 문구에 `role`·`aria-live`가 없다 (WCAG 4.1.3). 결과가 생길 때 요소를 새로 끼워 넣어 낭독기가 놓치기도 한다 | 세 곳이 처음부터 있는 `role="status"` 영역에 문구만 바꿔 넣는다. 소스 검사 테스트: `.tsx`에서 서버 동작 결과(`state.message`)를 그리는 요소는 live 영역 안이다. 빌드한 앱에서 신고 제출 → status 영역에 문구 | 실행 — 오류 신고 (2026-10-21) | 2026-10-21 |
 
