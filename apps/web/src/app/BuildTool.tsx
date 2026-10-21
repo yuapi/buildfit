@@ -23,6 +23,7 @@ import {
   pickerConstraints,
 } from "@buildfit/compat";
 import { decodeBuildCode, encodeBuildCode } from "@/lib/build-code";
+import { copyText } from "@/lib/copy-text";
 import { FitBar } from "@/components/FitBar";
 import { PartIcon } from "@/components/Icons";
 import {
@@ -1324,11 +1325,19 @@ export function VerdictPanel({
 }
 
 function ShareBox({ code }: { code: string }) {
-  const [copied, setCopied] = useState(false);
+  /*
+   * 「복사됨」은 **그때 복사한 코드**에만 붙인다 (T-27). 불 하나로 두면 부품을 바꿔 링크가
+   * 달라져도 「복사됨」이 남아 새 링크를 복사한 것처럼 보였다.
+   */
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [failedCode, setFailedCode] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const url =
     typeof window === "undefined"
       ? `/build/${code}`
       : `${window.location.origin}/build/${code}`;
+  const copied = copiedCode === code;
+  const failed = failedCode === code;
 
   return (
     <section className="card p-4 sm:p-5">
@@ -1337,6 +1346,7 @@ function ShareBox({ code }: { code: string }) {
         링크로 같은 견적을 열 수 있습니다.
       </p>
       <input
+        ref={inputRef}
         readOnly
         value={url}
         aria-label="공유 링크"
@@ -1346,15 +1356,21 @@ function ShareBox({ code }: { code: string }) {
       <button
         type="button"
         onClick={() => {
-          void navigator.clipboard?.writeText(url).then(
-            () => setCopied(true),
-            () => setCopied(false),
-          );
+          void copyText(url).then((ok) => {
+            setCopiedCode(ok ? code : null);
+            setFailedCode(ok ? null : code);
+            // 클립보드를 못 쓰면 직접 복사할 수 있게 링크를 선택해 둔다
+            if (!ok) inputRef.current?.select();
+          });
         }}
         className="btn btn-primary mt-2 w-full"
       >
         {copied ? "복사됨" : "링크 복사"}
       </button>
+      {/* 처음부터 있는 live 영역 (T-26과 같은 방식). 비어 있으면 높이가 없다 */}
+      <p role="status" className="mt-1.5 text-xs text-fg-muted empty:hidden">
+        {failed ? "이 브라우저에서는 자동 복사가 되지 않습니다. 선택된 링크를 직접 복사해 주세요." : ""}
+      </p>
     </section>
   );
 }

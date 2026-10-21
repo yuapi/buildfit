@@ -225,3 +225,10 @@
 ## 2026-10-21T14:50 | T-26 | done | skill 1.10.0
 - 변경: ReportForm·SpecForm·BulkRow (결과 문구를 늘 있는 `role="status"` 영역에), apps/web/test/live-status.test.ts
 - 검증: typecheck 0 · lint 0 · test 286/571/546 (567→571). 옛 ReportForm으로 되돌리면 새 테스트가 실패(변이 확인). 빌드한 앱에서 신고 제출 → status 영역에 「올바른 값 또는 설명을 입력해 주세요.」
+
+## 2026-10-21T15:10 | 릴리스 v0.3.3 | discover | skill 1.10.0
+- release/0.3.3 → main (merge-gate) → 태그·릴리스. 서버 자동 배포
+
+## 2026-10-21T15:50 | T-27 | done | skill 1.10.0
+- 변경: apps/web/src/lib/copy-text.ts(새), BuildTool ShareBox, apps/web/test/copy-text.test.ts
+- 검증: typecheck 0 · lint 0 · test 286/574/546 (571→574). 빌드한 앱: 클립보드 없음 → 링크 선택 + status 안내, 권한 있음 → 「복사됨」·클립보드에 링크, 부품 변경 → 「링크 복사」로 돌아감
