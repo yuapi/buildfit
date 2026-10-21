@@ -170,7 +170,7 @@ function capacityStem(s: string): string {
  * - `M.2`는 버린다. `M`이 앞에 붙어 `990 PRO M.2` → `prom`이 됐다. 규격 표기라 이름을 가리지
  *   않고, 카탈로그 이름에 없는 것도 있다
  * - 키트 표기 `16Gx2`·`16GB x 2`를 카탈로그의 `2x16GB`로 맞춘다. 수는 2~8만 — `12GB x 1`은
- *   키트가 아니다
+ *   키트가 아니다. 쇼핑몰은 `(16GB) x2`처럼 용량만 괄호에 넣기도 한다 — 닫는 괄호를 건넌다 (T-24)
  * - 그래픽 메모리 표기 `D6`·`D6X`·`D7`은 버린다. GDDR6X의 줄임인데 `gddr6x`에 `d6x`가 들어 있지
  *   않다(`dr6x`). 칩이 정하는 값이라 이름을 가리지도 않는다. 보드의 `D4`·`D5`는 두다 —
  *   `B760M PG Lightning/D4`처럼 이름의 일부다
@@ -200,7 +200,7 @@ function stripNonName(rest: string): { text: string; dropped: string[] } {
       dropped.push(hit);
       return ' ';
     })
-    .replace(/\b(\d+)\s*G(?:B)?\s*[x×*]\s*([2-8])\b/gi, '$2x$1GB');
+    .replace(/\b(\d+)\s*G(?:B)?\s*[)\]]?\s*[x×*]\s*([2-8])\b/gi, '$2x$1GB');
   return { text, dropped };
 }
 
