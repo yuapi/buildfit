@@ -217,3 +217,10 @@ PostgreSQL 16 설치, 계정·DB·비밀 파일, OpenDB 원본, 부품 적재, �
 | `/opt/buildfit/repo` | 코드를 꺼내 오는 clone (작업 트리 없음) |
 | `/opt/buildfit/opendb` | OpenDB 원본 — 매주 월요일 재동기 (`buildfit-sync.timer`) |
 | `/etc/buildfit/buildfit.env` | DB 주소·어드민 비밀·도메인·포트 |
+
+### CI를 쓸 수 없을 때 (ADR-0029)
+
+배포는 CI에 묶여 있지 않다 — 서버가 `main`을 당긴다. 막히는 것은 머지뿐이고, `scripts/merge-gate.sh <PR>`가
+CI를 쓸 수 없다고 판단하면 `scripts/verify-local.sh`로 같은 검사를 로컬에서 돌려 머지한다.
+서버 쪽 안전장치(빌드 실패·헬스 체크 실패 시 되돌림)는 CI와 상관없이 그대로 돈다.
+
