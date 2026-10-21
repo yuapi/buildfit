@@ -304,6 +304,14 @@
     outline: 2px solid var(--color-focus);
     outline-offset: 2px;
   }
+  /*
+   * 어두운 크롬(헤더·푸터) 안에서는 초점 색을 크롬 글자색으로 바꾼다.
+   * 라이트 테마의 --color-focus는 잉크(#14130f)라 크롬 배경(#14130f)과 같아
+   * 로고·테마 버튼의 초점이 사라졌다 (1:1, T-23). 크롬 글자색은 크롬 위 4.5:1을 넘는다
+   */
+  .bg-chrome {
+    --color-focus: var(--color-chrome-fg);
+  }
 
   h1,
   h2,
