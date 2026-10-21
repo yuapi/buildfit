@@ -53,15 +53,18 @@ export function classify({ runs, pushedAt, now }) {
     const step = r.jobs?.flatMap((j) => j.steps).find((s) => s.conclusion === 'failure');
     return { state: 'fail', reason: `검사 실패${step ? `: ${step.name}` : ''}` };
   }
-  if (runs.some((r) => r.conclusion === 'success')) return { state: 'pass', reason: 'CI 통과' };
-
+  // ★ 도는 것이 하나라도 있으면 기다린다 — 통과한 것이 있어도. push·PR 실행이 둘인데
+  // 하나만 끝난 채 머지하면 규칙 집합(required_status_checks)이 막는다 (PR #141, T-25)
   const active = runs.filter((r) => r.status !== 'completed');
   if (active.length > 0) {
     const stuck = active.every((r) => r.status === 'queued' && minutes(r.createdAt) >= QUEUE_LIMIT_MIN);
-    return stuck
-      ? { state: 'unavailable', reason: `대기열에서 ${QUEUE_LIMIT_MIN}분 넘게 시작하지 못했다` }
-      : { state: 'pending', reason: 'CI가 도는 중' };
+    if (!stuck) return { state: 'pending', reason: 'CI가 도는 중' };
+    // 멈춘 것만 남았는데 다른 실행이 통과했으면 그 통과로 충분하다 — 같은 코드다
+    if (!runs.some((r) => r.conclusion === 'success')) {
+      return { state: 'unavailable', reason: `대기열에서 ${QUEUE_LIMIT_MIN}분 넘게 시작하지 못했다` };
+    }
   }
+  if (runs.some((r) => r.conclusion === 'success')) return { state: 'pass', reason: 'CI 통과' };
 
   const notes = runs.flatMap((r) => r.jobs ?? []).flatMap((j) => j.annotations ?? []);
   const billing = notes.find((n) => NOT_STARTED.test(n));

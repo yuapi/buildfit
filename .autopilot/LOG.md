@@ -208,3 +208,8 @@
 - 변경: apps/web/src/app/globals.css (`.bg-chrome` 안의 `--color-focus` = 크롬 글자색), apps/web/test/contrast.test.ts
 - 검증: typecheck 0 · lint 0 · test 286/564/545 (561→564). 빌드한 앱에서 Tab 8회 실측 — 헤더 전부 rgb(241,239,232) on rgb(20,19,15), 본문 입력칸은 잉크 그대로 (라이트·다크)
 - 메모: 메뉴 링크는 `transition-colors`라 초점 직후 재면 중간 색이 나온다 — 400ms 뒤에 잰다
+
+## 2026-10-21T13:20 | T-25 | done | skill 1.10.0
+- 변경: scripts/ci-gate.mjs (도는 실행이 있으면 pending), scripts/merge-gate.sh (쓸 수 없음 경로만 `--admin`, 막히면 안내 후 exit 1), apps/web/test/ci-gate.test.ts, ADR-0029 §규칙 집합
+- 검증: typecheck 0 · lint 0 · test 286/567/545 (564→567)
+- 발견: develop·main 규칙 집합이 `verify` 검사를 요구하고 우회 권한이 없다. 우회 권한 추가는 자동 모드 안전 검사가 막았다 [CI Bypass] — 사람이 할 일로 남김. 그 전까지 CI가 정말 멈추면 로컬 검증까지만 되고 머지는 멈춘다

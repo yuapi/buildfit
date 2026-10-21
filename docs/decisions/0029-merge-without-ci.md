@@ -37,6 +37,19 @@ GitHub Actions가 멈추는 경우:
 - 로케일을 CI 이미지(`en_US.utf8`)에 맞춘다. 없으면 `C.UTF-8`. **`C`에서는 검색 생성 컬럼 테스트가 깨졌다** —
   `lower()`가 비ASCII 글자를 다르게 다룬다
 
+### 규칙 집합 (2026-10-21 확인, T-25)
+`develop`·`main`에 규칙 집합 「def protect」가 있다 — PR 필수, merge 방식만, **`verify` 검사 필수
+(GitHub Actions 앱이 낸 것만 인정)**. 그래서 CI가 정말 돌지 못하면 로컬 검증이 통과해도 그냥은 머지되지 않는다.
+
+- 쓸 수 없음 경로는 `gh pr merge --admin`으로 머지한다. **규칙 집합에 관리자 우회 권한(PR로만)이 있어야 된다**
+- 우회 권한이 없으면 merge-gate는 로컬 검증 결과를 PR에 남기고 「우회 권한이 없다」고 말한 뒤 멈춘다
+- 우회 권한은 사람이 더한다 — 자동 모드 안전 검사가 Claude의 규칙 집합 변경을 막는다(맞는 일이다). 명령:
+  `gh api -X PUT repos/<소유자>/<레포>/rulesets/<id> --input -` 에
+  `{"bypass_actors":[{"actor_id":5,"actor_type":"RepositoryRole","bypass_mode":"pull_request"}]}`
+  (actor 5 = 관리자 역할. 이 레포의 관리자는 소유자 한 명이다)
+- 통과 경로와 훈련은 우회를 쓰지 않는다 — CI가 통과했으니 필요 없다
+- 같은 커밋에 실행이 둘(push·PR)이면 **둘 다 끝날 때까지** 기다린다. 하나만 끝난 채 머지하면 규칙 집합이 막는다 (PR #141)
+
 ### 훈련
 `CI_GATE_DRILL=1`이면 CI가 통과해도 「쓸 수 없음」 경로를 탄다. 우회 경로가 썩지 않았는지 평소에 확인한다.
 첫 훈련은 이 ADR의 PR(이슈 #139)로 했다.

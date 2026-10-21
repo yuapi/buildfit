@@ -109,6 +109,30 @@ describe('CI 상태 가르기', () => {
     expect(classify({ runs: [{ status: 'completed', conclusion: 'startup_failure', createdAt: T0 }], pushedAt: T0, now: at(2) }).state).toBe('unavailable');
   });
 
+  it('★ 실행 둘 중 하나만 통과하고 하나가 도는 중이면 pending — 규칙 집합이 머지를 막는다 (T-25)', () => {
+    const v = classify({
+      runs: [
+        { status: 'completed', conclusion: 'success', createdAt: T0 },
+        { status: 'in_progress', conclusion: null, createdAt: T0 },
+      ],
+      pushedAt: T0,
+      now: at(3),
+    });
+    expect(v.state).toBe('pending');
+  });
+
+  it('하나는 통과하고 하나는 대기열에 오래 멈췄으면 통과로 본다', () => {
+    const v = classify({
+      runs: [
+        { status: 'completed', conclusion: 'success', createdAt: T0 },
+        { status: 'queued', conclusion: null, createdAt: T0 },
+      ],
+      pushedAt: T0,
+      now: at(40),
+    });
+    expect(v.state).toBe('pass');
+  });
+
   it('대기열에서 잠깐이면 pending, 오래 멈추면 unavailable', () => {
     const run = { status: 'queued', conclusion: null, createdAt: T0 };
     expect(classify({ runs: [run], pushedAt: T0, now: at(5) }).state).toBe('pending');
@@ -149,6 +173,14 @@ describe('로컬 검증 = CI의 명령', () => {
     const r = spawnSync('bash', ['-n', join(ROOT, 'scripts', f)], { encoding: 'utf8' });
     expect(r.stderr).toBe('');
     expect(r.status).toBe(0);
+  });
+
+  it('★ 관리자 우회(--admin)는 쓸 수 없음 경로에서만, 훈련에서는 쓰지 않는다', () => {
+    const sh = readFileSync(join(ROOT, 'scripts/merge-gate.sh'), 'utf8');
+    const passBranch = sh.slice(sh.indexOf('  pass)'), sh.indexOf('  fail)'));
+    expect(passBranch).not.toContain('--admin');
+    expect(passBranch).not.toContain('BYPASS');
+    expect(sh).toMatch(/CI_GATE_DRILL[\s\S]*BYPASS=\(\)/);
   });
 
   it('★ 로컬 검증이 운영 DB 포트(5432)를 고르지 않는다', () => {

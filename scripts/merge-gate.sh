@@ -45,8 +45,11 @@ while :; do
   sleep 30
 done
 
+# 쓸 수 없음 경로의 머지는 관리자 우회가 필요하다. 훈련은 CI가 통과한 뒤라 우회 없이 머지된다
+BYPASS=(--admin)
 if [[ -n "${CI_GATE_DRILL:-}" && "$state" == "pass" ]]; then
   state="unavailable"; reason="훈련 (CI_GATE_DRILL) — CI는 통과했다"
+  BYPASS=()
 fi
 
 case "$state" in
@@ -87,7 +90,13 @@ case "$state" in
         echo '```'
       } | gh pr comment "$PR" --body-file -
       rm -f "$OUT"
-      gh pr merge "$PR" "${MERGE_ARGS[@]}"
+      # 규칙 집합이 CI 검사(verify)를 요구하므로 그냥 머지하면 막힌다. 관리자 우회로 머지한다 —
+      # 우회는 규칙 집합에 「관리자, PR로만」 우회 권한이 있어야 된다 (ADR-0029 §규칙 집합)
+      if ! gh pr merge "$PR" "${MERGE_ARGS[@]}" "${BYPASS[@]}"; then
+        echo "머지가 막혔다. 규칙 집합(def protect)에 관리자 우회 권한이 없다."
+        echo "로컬 검증은 통과했고 PR에 기록했다. 사람이 우회 권한을 더하거나 CI가 돌아온 뒤 다시 부른다."
+        exit 1
+      fi
     else
       rm -f "$OUT"
       echo "로컬 검증이 실패했다. 머지하지 않는다"
