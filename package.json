@@ -20,6 +20,6 @@
     "ingest:benchmarks": "npm run ingest:benchmarks --workspace @buildfit/ingest --"
   },
   "engines": {
-    "node": ">=20.9"
+    "node": ">=22.23.4"
   }
 }
