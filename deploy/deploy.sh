@@ -115,6 +115,9 @@ git -C "$REPO" archive "$TARGET" | tar -x -C "$DIR" || fail "코드 꺼내기"
 echo "$TARGET" > "$DIR/.release-sha"
 echo "$LABEL" > "$DIR/.release-label"
 cd "$DIR"
+# 서비스가 도는 Node가 보안 하한 아래면 알린다 (ADR-0030). 멈추지는 않는다 — 배포를 막아도 옛 릴리스가
+# 같은 Node에서 계속 돌 뿐이다. Node는 sudo로 올린다 (apt)
+"${NODE_BIN:-/usr/bin/node}" scripts/node-floor.mjs || log "주의: 서비스 Node를 올려야 해요 ($("${NODE_BIN:-/usr/bin/node}" -v))"
 npm ci --no-audit --no-fund --loglevel=error || fail "npm ci"
 # 마이그레이션은 배포보다 먼저다 — 컬럼 추가는 옛 버전과 공존한다 (deployment.md §6)
 npm run migrate --silent || fail "마이그레이션"

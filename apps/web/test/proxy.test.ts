@@ -130,3 +130,38 @@ describe('proxy — 요청 제한 (이슈 #115)', () => {
     expect(right.status).toBe(429);
   });
 });
+
+describe('proxy — 요청 본문 압축 (ADR-0030)', () => {
+  const post = (encoding?: string) =>
+    new NextRequest('http://localhost/', {
+      method: 'POST',
+      headers: { 'next-action': 'abc', ...(encoding === undefined ? {} : { 'content-encoding': encoding }) },
+      body: 'x',
+    });
+
+  it('★ 압축된 본문은 415로 돌려보낸다 — 압축 해제기에 닿기 전에', () => {
+    for (const enc of ['br', 'gzip', 'deflate', 'zstd', 'BR', ' gzip ', 'identity, br', 'x-gzip']) {
+      const res = proxy(post(enc));
+      expect(res.status, enc).toBe(415);
+      expect(res.headers.get('x-middleware-next'), enc).toBeNull();
+      expect(res.headers.get('accept-encoding')).toBe('identity');
+    }
+  });
+
+  it('압축이 없거나 identity면 그대로 넘긴다', () => {
+    for (const enc of [undefined, 'identity', 'Identity', '']) {
+      expect(proxy(post(enc)).headers.get('x-middleware-next'), String(enc)).toBe('1');
+    }
+  });
+
+  it('어드민 경로에서도 비밀을 보기 전에 막는다', () => {
+    vi.stubEnv('ADMIN_TOKEN', TOKEN);
+    vi.stubEnv('NODE_ENV', 'production');
+    const req = new NextRequest('http://localhost/admin', {
+      method: 'POST',
+      headers: { 'content-encoding': 'br', authorization: basic(TOKEN) },
+      body: 'x',
+    });
+    expect(proxy(req).status).toBe(415);
+  });
+});

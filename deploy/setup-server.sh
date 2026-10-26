@@ -20,6 +20,8 @@ ENV_FILE=$ENV_DIR/buildfit.env
 step() { echo; echo "== $*"; }
 
 [[ -x /usr/bin/node ]] || { echo "/usr/bin/node 가 없어요 (Node 22 필요)"; exit 1; }
+# 보안 하한 (package.json engines.node, ADR-0030). 첫 설치는 하한 아래에서 시작하지 않는다
+/usr/bin/node "$HERE/scripts/node-floor.mjs" || { echo "Node 를 먼저 올려 주세요"; exit 1; }
 getent passwd deploy >/dev/null || { echo "deploy 계정이 없어요"; exit 1; }
 if ss -ltn | grep -qE "[:.]$PORT\b" && ! systemctl is-active --quiet buildfit; then
   echo "포트 $PORT 를 이미 다른 프로그램이 쓰고 있어요 (ss -ltnp 로 확인)"; exit 1
