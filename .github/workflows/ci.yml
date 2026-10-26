@@ -27,6 +27,10 @@ concurrency:
   group: ci-${{ github.ref }}${{ (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main') && format('-{0}', github.sha) || '' }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/develop' && github.ref != 'refs/heads/main' }}
 
+# 이 워크플로는 코드를 읽기만 한다. 기본 토큰 권한을 레포 설정에 맡기지 않는다 (이슈 #150)
+permissions:
+  contents: read
+
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -53,9 +57,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # 러너 이미지에 캐시된 22.x가 아니라 최신 22.x를 받는다. 보안 릴리스가 나오면 바로 그것으로 돈다 —
+      # 하한은 package.json engines.node (ADR-0030)
       - uses: actions/setup-node@v7
         with:
           node-version: 22
+          check-latest: true
           cache: npm
 
       - run: npm ci
