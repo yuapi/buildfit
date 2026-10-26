@@ -173,6 +173,10 @@ Phase 0b가 `v0.2.0`이었어야 하므로 Phase 1 완료가 `v0.3.0`이다.
 - **`/healthz`**: 200/503만 말하고 오류 내용을 내보내지 않는다 (§3)
 - **의존성**: `npm audit --omit=dev` 0건 — CI가 high 이상이면 실패한다. 남은 경고는 개발 도구뿐
   (eslint의 braces, drizzle-kit의 esbuild — 상위에 고친 버전이 없다)
+- **Node**: 하한은 `package.json`의 `engines.node`(2026-10 보안 릴리스 **22.23.4**, ADR-0030). 배포가 하한 아래면
+  기록에 「주의: 서비스 Node를 올려야 해요」를 남긴다(멈추지 않는다). 올리기는 sudo — 서버에서 `node -v` 확인
+- **압축된 요청 본문**: `Content-Encoding`이 `identity`가 아니면 proxy가 415 (ADR-0030). 지금은 Caddy도 Next도
+  요청 본문을 풀지 않는다 — 압축 해제기 취약점이 닿지 않게 미리 끊는다
 - **서버**: 앱은 127.0.0.1에만 열고 Caddy가 HTTPS. systemd 전용 계정·쓰기 제한 (`deploy/systemd/buildfit.service`).
   비밀 파일은 `/etc/buildfit/buildfit.env`(640). 서버에 GitHub 러너를 두지 않는다 (ADR-0027)
 
