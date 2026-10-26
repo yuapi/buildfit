@@ -22,6 +22,10 @@ STATE="$APP/.deploy"
 log() { echo "[deploy] $*"; }
 
 mkdir -p "$RELEASES" "$STATE"
+# 서비스 계정(그룹 buildfit)이 releases 에 항목을 만들거나 이름을 바꾸지 못하게 한다 (이슈 #152).
+# 쓸 수 있으면 앱이 뚫렸을 때 지금 릴리스를 바꿔치기해 이 스크립트를 deploy 계정으로 돌리게 할 수 있다.
+# 예전 설치는 2775 였다 — 배포할 때마다 바로잡는다 (폴더 주인이 deploy 라 sudo 가 필요 없다)
+chmod g-w "$APP" "$RELEASES" 2>/dev/null || log "주의: $RELEASES 의 그룹 쓰기를 끄지 못했어요 (주인이 deploy 인지 확인)"
 # 타이머와 손 배포가 겹치지 않게 한다
 exec 9>"$STATE/lock"
 flock -n 9 || { log "다른 배포가 진행 중이에요"; exit 0; }

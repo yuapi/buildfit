@@ -70,4 +70,22 @@ describe('서로 맞물리는 값', () => {
     expect(deploy).toContain('sudo -n /usr/bin/systemctl restart "$SERVICE"');
     expect(deploy).toMatch(/SERVICE="\$\{SERVICE:-buildfit\}"/);
   });
+
+  it('★ 서비스가 쓸 수 있는 releases 에 서비스 그룹의 쓰기가 없다 (이슈 #152)', () => {
+    // 서비스(buildfit)는 ReadWritePaths 로 releases 에 쓸 수 있다. 폴더에 그룹 쓰기가 있으면 앱이 뚫렸을 때
+    // 지금 릴리스를 바꿔치기해, 2분마다 deploy 계정이 돌리는 current/deploy/deploy.sh 를 갈아 끼울 수 있다
+    const unit = read(join(UNITS, 'buildfit.service'));
+    expect(unit).toMatch(/^User=buildfit$/m);
+    expect(unit).toMatch(/^ReadWritePaths=\/opt\/buildfit\/releases$/m);
+    const install = /^install -d -m (\d+) -o deploy -g buildfit "\$APP" "\$APP\/releases"$/m.exec(setup);
+    expect(install?.[1]).toBe('2755');
+    // 예전 설치(2775)도 다음 배포에 고쳐진다 — 빌드보다 먼저
+    const fix = deploy.indexOf('chmod g-w "$APP" "$RELEASES"');
+    expect(fix).toBeGreaterThan(-1);
+    expect(fix).toBeLessThan(deploy.indexOf('npm ci'));
+    // 서비스에 쓰기를 주는 것은 새로 빌드한 .next 뿐이다
+    expect([...deploy.matchAll(/g\+\w*w/g)].map((m) => deploy.slice(deploy.lastIndexOf('\n', m.index) + 1, deploy.indexOf('\n', m.index)))).toEqual([
+      'chgrp -R "${SERVICE_GROUP:-buildfit}" apps/web/.next && chmod -R g+rwX apps/web/.next',
+    ]);
+  });
 });
