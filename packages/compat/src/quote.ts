@@ -104,9 +104,16 @@ function splitLabel(line: string): { label: QuoteLabel | null; rest: string } {
   // 「CPU:」 「[CPU]」 「CPU - …」 「CPU |」 「CPU-…」 — **구분자가 있어야** 이름표로
   // 본다. 구분자 없이 앞 낱말만 보면 「Corsair ...」의 첫 낱말도 이름표가 된다.
   // 대괄호는 그 자체가 구분자다.
-  const bracket = /^\s*\[\s*([0-9A-Za-z가-힣/ ]{1,12}?)\s*\]\s*(.*)$/.exec(line);
+  //
+  // ★ 정규식이 겹쳐 역추적하지 않게 쓴다 (이슈 #151). 서버 동작이 4000자를 받는다 — 대괄호 안을
+  // `\s*([… ]{1,12}?)\s*`로 잡으면 공백이 셋 중 어디에 들어갈지 고르느라 `[` + 공백 4000자에
+  // 279ms가 걸렸다. 대괄호 안은 `]`까지 한 번에 잡고 다듬은 뒤 모양을 따로 본다.
+  // 끝의 나머지는 `[\s\S]*`다 — `.*`는 `\r`·`\u2028`에서 멈춰 `$`가 실패하고 앞 `\s*`와 겹친다
+  const br = /^\s*\[([^\]]*)\]\s*([\s\S]*)$/.exec(line);
+  const inner = br?.[1]?.trim() ?? '';
+  const bracket = br && /^[0-9A-Za-z가-힣/ ]{1,12}$/.test(inner) ? [br[0], inner, br[2]] : null;
   // 하이픈 앞의 공백을 따로 잡는다. 붙여 쓴 것과 띄어 쓴 것의 뜻이 다르다.
-  const m = bracket ?? /^\s*([0-9A-Za-z가-힣/]{1,12})(\s*)([:|\t-])\s*(.*)$/.exec(line);
+  const m = bracket ?? /^\s*([0-9A-Za-z가-힣/]{1,12})(\s*)([:|\t-])\s*([\s\S]*)$/.exec(line);
   if (!m) return { label: null, rest: line };
 
   const head = (m[1] ?? '').toLowerCase().replace(/[\s/]/g, '');
@@ -200,7 +207,7 @@ function stripNonName(rest: string): { text: string; dropped: string[] } {
       dropped.push(hit);
       return ' ';
     })
-    .replace(/\b(\d+)\s*G(?:B)?\s*[)\]]?\s*[x×*]\s*([2-8])\b/gi, '$2x$1GB');
+    .replace(/\b(\d+)\s*G(?:B)?\s*(?:[)\]]\s*)?[x×*]\s*([2-8])\b/gi, '$2x$1GB');
   return { text, dropped };
 }
 
