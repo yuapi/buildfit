@@ -20,7 +20,7 @@ export type { SearchTerms };
  * 호출부가 길이를 자르지만, 여기가 DB 앞의 마지막 지점이다. 이름 하나를
  * 가리키는 데 40조각이면 이미 지나치게 좁고, 그 이상은 찾는 행위가 아니다.
  */
-const MAX_TERMS = 40;
+export const MAX_TERMS = 40;
 
 /**
  * 검색어를 이름 조건으로 옮긴다.

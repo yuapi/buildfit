@@ -44,11 +44,40 @@ const tooMany = () =>
     },
   });
 
+/**
+ * 요청 본문의 압축은 받지 않는다 — ADR-0030.
+ *
+ * 브라우저는 요청 본문을 압축해 보내지 않는다. 지금은 Caddy도 Next도 요청 본문을 풀지 않지만,
+ * 풀어 주는 쪽이 생기면 공격자가 고른 압축 데이터가 압축 해제기에 들어간다 — 2026-10 Node 보안
+ * 릴리스의 Brotli 해제 경계 밖 쓰기(CVE-2026-111497)가 그 경로다. 여기서 먼저 끊는다.
+ * `identity`(압축 없음)는 받는다.
+ */
+export function hasEncodedBody(headers: { get(name: string): string | null }): boolean {
+  const enc = headers.get('content-encoding');
+  if (enc === null) return false;
+  return enc.split(',').some((c) => {
+    const t = c.trim().toLowerCase();
+    return t !== '' && t !== 'identity';
+  });
+}
+
+const unsupportedEncoding = () =>
+  new NextResponse('압축된 요청 본문은 받지 않습니다.\n', {
+    status: 415,
+    headers: {
+      'content-type': 'text/plain; charset=utf-8',
+      'cache-control': 'no-store',
+      'accept-encoding': 'identity',
+    },
+  });
+
 function isAdminPath(pathname: string): boolean {
   return pathname === '/admin' || pathname.startsWith('/admin/');
 }
 
 export function proxy(req: NextRequest): NextResponse {
+  if (hasEncodedBody(req.headers)) return unsupportedEncoding();
+
   const ip = clientIp(req.headers);
 
   if (req.method === 'POST' && req.headers.has('next-action') && !actionLimiter.take(ip)) {

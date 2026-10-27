@@ -293,3 +293,37 @@ describe('이름표 사전 자체의 건전성', () => {
     }
   });
 });
+
+describe('★ 긴 줄도 정규식이 역추적하지 않는다 (이슈 #151)', () => {
+  // 서버 동작이 4000자를 받는다. 제곱으로 역추적하면 그동안 이벤트 루프 전체가 멈춘다 —
+  // 고치기 전 `[` + 공백 4000자가 279ms, `1G` + 공백이 58ms였다
+  const N = 4000;
+  const worst: Record<string, string> = {
+    '대괄호 + 공백': `[${' '.repeat(N - 1)}`,
+    '대괄호 + 공백 + 글자': `[${' '.repeat(N - 2)}x`,
+    '대괄호 + 공백 + \\r': `[ CPU ]${' '.repeat(N - 8)}\r`,
+    '이름표 + 공백 + \\r': `CPU:${' '.repeat(N - 5)}\r`,
+    '키트 표기 + 공백': `1G${' '.repeat(N - 3)}q`,
+    '이름표 + 탭': `CPU${'\t'.repeat(N - 4)}x`,
+    '숫자와 쉼표': ` ${'1,'.repeat(N / 2 - 1)}z`,
+  };
+
+  for (const [name, line] of Object.entries(worst)) {
+    it(name, () => {
+      readQuoteLine(line); // 처음 부를 때의 컴파일은 재지 않는다
+      const t = performance.now();
+      readQuoteLine(line);
+      expect(performance.now() - t).toBeLessThan(30);
+    });
+  }
+
+  it('대괄호 이름표는 안쪽 공백을 다듬어 읽는다 — 고치기 전과 같다', () => {
+    expect(readQuoteLine('[ CPU ] AMD 9800X3D').label?.category).toBe('CPU');
+    expect(readQuoteLine('[CPU\t] AMD 9800X3D').label?.category).toBe('CPU');
+    expect(terms('[ 메인보드 ]ASUS B650M')).toEqual(['asus', 'b650m']);
+    // 12자를 넘거나 이름표 글자가 아닌 것은 이름표가 아니다
+    expect(readQuoteLine('[16GB DDR5 Kit] 삼성').label).toBeNull();
+    expect(readQuoteLine('[CPU!] AMD').label).toBeNull();
+    expect(readQuoteLine('[] AMD').label).toBeNull();
+  });
+});

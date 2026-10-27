@@ -232,3 +232,10 @@
 ## 2026-10-21T15:50 | T-27 | done | skill 1.10.0
 - 변경: apps/web/src/lib/copy-text.ts(새), BuildTool ShareBox, apps/web/test/copy-text.test.ts
 - 검증: typecheck 0 · lint 0 · test 286/574/546 (571→574). 빌드한 앱: 클립보드 없음 → 링크 선택 + status 안내, 권한 있음 → 「복사됨」·클립보드에 링크, 부품 변경 → 「링크 복사」로 돌아감
+
+## 2026-10-21T16:10 | 릴리스 v0.3.4 | discover | skill 1.10.0
+- release/0.3.4 → main (merge-gate) → 태그·릴리스. 서버 자동 배포
+
+## 2026-10-21T16:30 | 심층 발굴 → 최종 중단 | stop | skill 1.10.0
+- 네 단계 모두 실질 작업 0 (ROADMAP 「심층 발굴 2026-10-21」). STOP 작성, RUN 삭제
+- 사람이 할 일: 규칙 집합 관리자 우회 권한, P-1·P-2 결정

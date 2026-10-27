@@ -20,6 +20,8 @@ ENV_FILE=$ENV_DIR/buildfit.env
 step() { echo; echo "== $*"; }
 
 [[ -x /usr/bin/node ]] || { echo "/usr/bin/node 가 없어요 (Node 22 필요)"; exit 1; }
+# 보안 하한 (package.json engines.node, ADR-0030). 첫 설치는 하한 아래에서 시작하지 않는다
+/usr/bin/node "$HERE/scripts/node-floor.mjs" || { echo "Node 를 먼저 올려 주세요"; exit 1; }
 getent passwd deploy >/dev/null || { echo "deploy 계정이 없어요"; exit 1; }
 if ss -ltn | grep -qE "[:.]$PORT\b" && ! systemctl is-active --quiet buildfit; then
   echo "포트 $PORT 를 이미 다른 프로그램이 쓰고 있어요 (ss -ltnp 로 확인)"; exit 1
@@ -63,7 +65,10 @@ sudo -u postgres psql -tAc "select 1 from pg_database where datname='buildfit_pr
   || sudo -u postgres createdb -O buildfit_app buildfit_prod
 
 step "체크아웃 $APP"
-install -d -m 2775 -o deploy -g buildfit "$APP" "$APP/releases"
+# 그룹(buildfit = 서비스 계정)에 쓰기를 주지 않는다 (이슈 #152). 서비스가 releases 에 쓸 수 있으면 릴리스 폴더를
+# 바꿔치기해 deploy 계정이 돌리는 deploy.sh 를 갈아 끼울 수 있다. 서비스가 쓰는 곳은 각 릴리스의 .next 뿐이다
+install -d -m 2755 -o deploy -g buildfit "$APP" "$APP/releases"
+chmod g-w "$APP" "$APP/releases"
 [[ -d "$APP/repo/.git" ]] || sudo -u deploy git clone --quiet --no-checkout "$REPO_URL" "$APP/repo"
 [[ -d "$APP/opendb/.git" ]] || sudo -u deploy git clone --quiet --depth 1 https://github.com/buildcores/buildcores-open-db "$APP/opendb"
 sudo -u deploy git -C "$APP/repo" fetch --quiet --tags origin

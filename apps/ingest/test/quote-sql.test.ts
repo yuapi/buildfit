@@ -10,6 +10,7 @@
 
 import { createDb } from '@buildfit/db';
 import { matchQuote } from '@buildfit/db/quote';
+import { MAX_TERMS } from '@buildfit/db/search';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createScratchDb, type Scratch } from './helpers/scratch-db';
@@ -127,5 +128,13 @@ describeIfDb('견적서 매칭 SQL (ADR-0018)', () => {
     expect(row!.isPart).toBe(true);
     expect(row!.candidates).toHaveLength(0);
     expect(row!.terms).toContain('samsung');
+  });
+
+  it('★ 한 줄의 조각 수를 검색과 같이 자른다 (이슈 #151)', async () => {
+    // 자르지 않으면 4000자 한 줄이 `like` 조건 1000개짜리 쿼리 하나가 된다
+    const filler = Array.from({ length: 300 }, (_, i) => `k${i}z`).join(' ');
+    const [row] = await run(`CPU: AMD 9800X3D ${filler}`);
+    expect(row!.terms.length).toBe(MAX_TERMS);
+    expect(row!.terms.slice(0, 2)).toEqual(['amd', '9800x3d']);
   });
 });

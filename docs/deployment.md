@@ -173,8 +173,19 @@ Phase 0b가 `v0.2.0`이었어야 하므로 Phase 1 완료가 `v0.3.0`이다.
 - **`/healthz`**: 200/503만 말하고 오류 내용을 내보내지 않는다 (§3)
 - **의존성**: `npm audit --omit=dev` 0건 — CI가 high 이상이면 실패한다. 남은 경고는 개발 도구뿐
   (eslint의 braces, drizzle-kit의 esbuild — 상위에 고친 버전이 없다)
+- **Node**: 하한은 `package.json`의 `engines.node`(2026-10 보안 릴리스 **22.23.4**, ADR-0030). 배포가 하한 아래면
+  기록에 「주의: 서비스 Node를 올려야 해요」를 남긴다(멈추지 않는다). 올리기는 sudo — 서버에서 `node -v` 확인
+- **압축된 요청 본문**: `Content-Encoding`이 `identity`가 아니면 proxy가 415 (ADR-0030). 지금은 Caddy도 Next도
+  요청 본문을 풀지 않는다 — 압축 해제기 취약점이 닿지 않게 미리 끊는다
 - **서버**: 앱은 127.0.0.1에만 열고 Caddy가 HTTPS. systemd 전용 계정·쓰기 제한 (`deploy/systemd/buildfit.service`).
   비밀 파일은 `/etc/buildfit/buildfit.env`(640). 서버에 GitHub 러너를 두지 않는다 (ADR-0027)
+- **신뢰 모델**: `main`에 들어간 커밋은 서버에서 **`deploy` 계정으로 돈다** — `npm ci`의 설치 스크립트, 마이그레이션, 빌드.
+  public 레포지만 push는 소유자만 하고 `main`·`develop`은 규칙 집합(PR·CI 필수)이 막는다. 그것이 서버 코드 실행의 문이다.
+  `deploy`는 같은 서버의 다른 서비스 그룹에도 들어 있어, 뚫리면 이 레포보다 넓게 닿는다
+- **서비스 계정 → deploy 차단** (이슈 #152): 서비스(`buildfit`)가 쓰는 곳은 각 릴리스의 `apps/web/.next`뿐이다.
+  `/opt/buildfit`·`releases`에 그룹 쓰기가 있으면 앱이 뚫렸을 때 릴리스 폴더를 바꿔치기해 2분마다 `deploy`가 돌리는
+  `current/deploy/deploy.sh`를 갈아 끼울 수 있다. 설치는 `2755`로 만들고, 배포가 매번 `chmod g-w`로 바로잡는다.
+  `.next`는 여전히 서비스가 쓸 수 있다 — 같은 계정 안의 지속이지 권한 상승은 아니다
 
 ## 8. 같은 서버에 배포 (3200) — ADR-0027
 

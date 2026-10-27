@@ -22,6 +22,10 @@ STATE="$APP/.deploy"
 log() { echo "[deploy] $*"; }
 
 mkdir -p "$RELEASES" "$STATE"
+# 서비스 계정(그룹 buildfit)이 releases 에 항목을 만들거나 이름을 바꾸지 못하게 한다 (이슈 #152).
+# 쓸 수 있으면 앱이 뚫렸을 때 지금 릴리스를 바꿔치기해 이 스크립트를 deploy 계정으로 돌리게 할 수 있다.
+# 예전 설치는 2775 였다 — 배포할 때마다 바로잡는다 (폴더 주인이 deploy 라 sudo 가 필요 없다)
+chmod g-w "$APP" "$RELEASES" 2>/dev/null || log "주의: $RELEASES 의 그룹 쓰기를 끄지 못했어요 (주인이 deploy 인지 확인)"
 # 타이머와 손 배포가 겹치지 않게 한다
 exec 9>"$STATE/lock"
 flock -n 9 || { log "다른 배포가 진행 중이에요"; exit 0; }
@@ -115,6 +119,9 @@ git -C "$REPO" archive "$TARGET" | tar -x -C "$DIR" || fail "코드 꺼내기"
 echo "$TARGET" > "$DIR/.release-sha"
 echo "$LABEL" > "$DIR/.release-label"
 cd "$DIR"
+# 서비스가 도는 Node가 보안 하한 아래면 알린다 (ADR-0030). 멈추지는 않는다 — 배포를 막아도 옛 릴리스가
+# 같은 Node에서 계속 돌 뿐이다. Node는 sudo로 올린다 (apt)
+"${NODE_BIN:-/usr/bin/node}" scripts/node-floor.mjs || log "주의: 서비스 Node를 올려야 해요 ($("${NODE_BIN:-/usr/bin/node}" -v))"
 npm ci --no-audit --no-fund --loglevel=error || fail "npm ci"
 # 마이그레이션은 배포보다 먼저다 — 컬럼 추가는 옛 버전과 공존한다 (deployment.md §6)
 npm run migrate --silent || fail "마이그레이션"
